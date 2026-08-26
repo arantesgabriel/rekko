@@ -1,41 +1,13 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 
-import { BrandMark } from "@/components/brand-mark";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { LandingPage } from "@/components/landing/landing-page";
 
-export default function LandingShellPage() {
-  return (
-    <div className="landing-shell">
-      <header className="landing-header">
-        <BrandMark inverted />
-        <div className="landing-header__actions">
-          <ThemeSwitcher />
-          <Link className="button button--light" href="/login">
-            Entrar
-          </Link>
-        </div>
-      </header>
+export const metadata: Metadata = {
+  title: "Reconstrua seu tempo",
+  description:
+    "Registre o que está fazendo, reconstrua o que ficou pelo caminho e entenda onde suas horas realmente foram usadas.",
+};
 
-      <main className="landing-intro">
-        <div className="segment-mark" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <h1>Reconstrua seu tempo. Entenda sua jornada.</h1>
-        <p>
-          Uma base precisa para registrar o trabalho, recuperar o que ficou pelo
-          caminho e compreender onde suas horas foram usadas.
-        </p>
-        <div className="landing-intro__actions">
-          <Link className="button button--light" href="/login">
-            Conhecer o Rekko
-          </Link>
-          <Link className="button button--quiet-light" href="/app">
-            Ver app shell
-          </Link>
-        </div>
-      </main>
-    </div>
-  );
+export default function HomePage() {
+  return <LandingPage />;
 }

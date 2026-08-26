@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
-export const metadata = { title: "Entrar" };
-export default function LoginPage() {
+export const metadata = { title: "Redefinir senha" };
+export default function ResetPage() {
   return (
     <AuthLayout>
       <Suspense>
-        <AuthForm mode="login" />
+        <AuthForm mode="reset" />
       </Suspense>
     </AuthLayout>
   );

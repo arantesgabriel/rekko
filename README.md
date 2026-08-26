@@ -2,7 +2,7 @@
 
 **Reconstrua seu tempo. Entenda sua jornada.**
 
-Rekko is a modular Next.js application for recording, reconstructing, and understanding work time. This repository currently contains the Phase 0 foundation: executable shells, local PostgreSQL infrastructure, quality tooling, and observability boundaries. Product features are introduced incrementally according to [`ROADMAP.md`](./ROADMAP.md).
+Rekko is a modular Next.js application for recording, reconstructing, and understanding work time. This repository contains the Phase 0 foundation and the Phase 1 landing and authentication implementation. Product features are introduced incrementally according to [`ROADMAP.md`](./ROADMAP.md).
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The auth shell is available at `/login` and the initial product shell at `/app`.
+Open [http://localhost:3000](http://localhost:3000). Authentication routes are `/login`, `/signup`, `/verify-email`, `/forgot-password`, and `/reset-password`. `/app` requires a valid session.
 
 `pnpm supabase:status` prints the local database URL. Update `DATABASE_URL` in `.env` if the local ports differ from the documented defaults.
 
@@ -41,6 +41,9 @@ Copy `.env.example` to `.env`. Environment values are runtime-validated with Zod
 - `DATABASE_URL` is required for database commands and server boundaries that use PostgreSQL.
 - `REKKO_SEED_ENV` must be `local` or `test`; production seeding is always rejected.
 - Sentry and PostHog variables are optional locally. Both integrations remain disabled when their keys are absent.
+- Google OAuth is optional locally. Configure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for the real provider flow.
+- Resend is optional locally. Without `RESEND_API_KEY`, verification and reset links appear only in the development server log.
+- `EMAIL_VERIFICATION_GRACE_HOURS` is fixed at `72` in production. Set it to `0` locally to validate the post-grace server guard without waiting.
 - Secrets never use a `NEXT_PUBLIC_` prefix. Sentry's browser DSN and PostHog project key are public identifiers, not account secrets.
 
 Do not commit `.env` files or real credentials.

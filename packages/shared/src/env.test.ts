@@ -25,4 +25,21 @@ describe("environment validation", () => {
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     });
   });
+
+  it("allows an immediate grace guard only outside production", () => {
+    expect(
+      parseServerEnv({
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
+        EMAIL_VERIFICATION_GRACE_HOURS: "0",
+        NODE_ENV: "test",
+      }).EMAIL_VERIFICATION_GRACE_HOURS,
+    ).toBe(0);
+    expect(() =>
+      parseServerEnv({
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
+        EMAIL_VERIFICATION_GRACE_HOURS: "0",
+        NODE_ENV: "production",
+      }),
+    ).toThrow("must be 72 in production");
+  });
 });

@@ -1,2 +1,9 @@
 export { createDatabaseClient, type DatabaseClient } from "./client";
-export { schema } from "./schema";
+export {
+  account,
+  rateLimit,
+  schema,
+  session,
+  user,
+  verification,
+} from "./schema";

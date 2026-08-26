@@ -1,48 +1,105 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { headers } from "next/headers";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { parseServerEnv } from "@rekko/shared/env";
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { SessionActions } from "@/components/auth/session-actions";
+import { auth } from "@/modules/auth/auth";
+import {
+  getGraceHoursRemaining,
+  getVerificationAccess,
+} from "@/modules/auth/grace-period";
 
-export const metadata = { title: "App shell" };
+export const metadata = { title: "Sua conta" };
 
-export default function AppShellPage() {
+export default async function AppPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login?next=/app");
+  const env = parseServerEnv(process.env);
+  const now = new Date();
+  const access = getVerificationAccess({
+    createdAt: session.user.createdAt,
+    emailVerified: session.user.emailVerified,
+    graceHours: env.EMAIL_VERIFICATION_GRACE_HOURS,
+    now,
+  });
+  const hours = getGraceHoursRemaining({
+    createdAt: session.user.createdAt,
+    graceHours: env.EMAIL_VERIFICATION_GRACE_HOURS,
+    now,
+  });
   return (
-    <div className="app-shell">
-      <aside className="app-sidebar">
+    <div className="account-shell">
+      <header className="account-header">
         <BrandMark />
-        <button className="workspace-placeholder" type="button" disabled>
-          <span className="workspace-placeholder__mark">R</span>
-          <span>
-            <strong>Workspace</strong>
-            <small>Disponível na Fase 2</small>
-          </span>
-        </button>
-        <AppNavigation />
-        <div className="app-sidebar__footer">
-          <ThemeSwitcher />
-        </div>
-      </aside>
-
-      <main className="app-content">
-        <div className="app-content__heading">
-          <span className="status-dot" aria-hidden="true" />
-          <span>Foundation</span>
-        </div>
-        <h1>A base do seu dia está pronta.</h1>
-        <p>
-          Este shell estabelece navegação, temas e ritmo visual. Dados reais e
-          ações de produto entram somente nas fases correspondentes do roadmap.
-        </p>
-        <div
-          className="timeline-placeholder"
-          aria-label="Prévia abstrata de segmentos de tempo"
-        >
-          <span style={{ width: "28%" }} />
-          <span style={{ width: "15%" }} />
-          <span style={{ width: "40%" }} />
-        </div>
+        <ThemeSwitcher />
+      </header>
+      <main className="account-main">
+        {access === "blocked" ? (
+          <section className="verification-gate">
+            <div
+              className="segment-mark segment-mark--brand"
+              aria-hidden="true"
+            >
+              <span />
+              <span />
+              <span />
+            </div>
+            <h1>Confirme seu email para continuar.</h1>
+            <p>
+              Seu acesso está seguro. Confirme{" "}
+              <strong>{session.user.email}</strong> para entrar no core do
+              Rekko.
+            </p>
+            <Link
+              className="button button--primary"
+              href={`/verify-email?email=${encodeURIComponent(session.user.email)}`}
+            >
+              Confirmar ou reenviar email
+            </Link>
+            <SessionActions />
+          </section>
+        ) : (
+          <>
+            {access === "allowed" && (
+              <aside className="verification-banner">
+                <div>
+                  <strong>
+                    Confirme seu email nos próximos{" "}
+                    {hours <= 24
+                      ? `${hours} horas`
+                      : `${Math.ceil(hours / 24)} dias`}
+                    .
+                  </strong>
+                  <span>
+                    Assim você continua usando o Rekko sem interrupções.
+                  </span>
+                </div>
+                <Link
+                  href={`/verify-email?email=${encodeURIComponent(session.user.email)}`}
+                >
+                  Reenviar confirmação
+                </Link>
+              </aside>
+            )}
+            <section className="account-ready">
+              <span className="account-ready__status">Conta pronta</span>
+              <h1>Olá, {session.user.name}.</h1>
+              <p>
+                Sua autenticação está funcionando. A configuração do Workspace
+                será adicionada na próxima etapa.
+              </p>
+              <div className="account-ready__next">
+                <span>Próxima etapa</span>
+                <strong>Criar seu Workspace</strong>
+                <small>Disponível somente na Fase 2</small>
+              </div>
+              <SessionActions />
+            </section>
+          </>
+        )}
       </main>
-
-      <AppNavigation mobile />
     </div>
   );
 }

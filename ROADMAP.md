@@ -67,31 +67,31 @@ Criar uma base sólida e executável antes de qualquer feature de produto.
 
 ## Entregas
 
-- [ ] Monorepo com pnpm workspaces;
-- [ ] `apps/web`;
-- [ ] `packages/db`;
-- [ ] `packages/shared`;
-- [ ] Next.js App Router;
-- [ ] TypeScript strict;
-- [ ] lint;
-- [ ] formatter;
-- [ ] Vitest;
-- [ ] Playwright;
-- [ ] env validation;
-- [ ] Supabase local;
-- [ ] Drizzle;
-- [ ] primeira migration;
-- [ ] GitHub Actions;
-- [ ] Sentry;
-- [ ] Pino;
-- [ ] PostHog básico;
-- [ ] estrutura inicial de módulos;
-- [ ] design tokens;
-- [ ] Light Mode;
-- [ ] Dark Mode;
-- [ ] seed exclusivamente local/test;
-- [ ] `.env.example`;
-- [ ] README com setup local.
+- [x] Monorepo com pnpm workspaces;
+- [x] `apps/web`;
+- [x] `packages/db`;
+- [x] `packages/shared`;
+- [x] Next.js App Router;
+- [x] TypeScript strict;
+- [x] lint;
+- [x] formatter;
+- [x] Vitest;
+- [x] Playwright;
+- [x] env validation;
+- [x] Supabase local;
+- [x] Drizzle;
+- [x] primeira migration;
+- [x] GitHub Actions;
+- [x] Sentry;
+- [x] Pino;
+- [x] PostHog básico;
+- [x] estrutura inicial de módulos;
+- [x] design tokens;
+- [x] Light Mode;
+- [x] Dark Mode;
+- [x] seed exclusivamente local/test;
+- [x] `.env.example`;
+- [x] README com setup local.
 
 ## UX mínima
 
