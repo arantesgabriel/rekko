@@ -1,0 +1,31 @@
+packages:
+  - apps/*
+  - packages/*
+
+confirmModulesPurge: false
+
+allowBuilds:
+  "@sentry/cli": false
+  core-js: false
+  esbuild: true
+  sharp: true
+  supabase: true
+  unrs-resolver: false
+
+minimumReleaseAgeExclude:
+  - "@next/env@16.3.3"
+  - "@next/eslint-plugin-next@16.3.3"
+  - "@next/swc-darwin-arm64@16.3.3"
+  - "@next/swc-darwin-x64@16.3.3"
+  - "@next/swc-linux-arm64-gnu@16.3.3"
+  - "@next/swc-linux-arm64-musl@16.3.3"
+  - "@next/swc-linux-x64-gnu@16.3.3"
+  - "@next/swc-linux-x64-musl@16.3.3"
+  - "@next/swc-win32-arm64-msvc@16.3.3"
+  - "@next/swc-win32-x64-msvc@16.3.3"
+  - "@posthog/browser-common@0.6.0"
+  - "@posthog/core@1.48.11"
+  - "@posthog/types@1.406.1"
+  - eslint-config-next@16.3.3
+  - next@16.3.3
+  - posthog-js@1.419.4
