@@ -1682,7 +1682,7 @@ html {
 .getting-started h2,
 .phase-note h2,
 .invite-section h2,
-.section-heading h2 {
+.product-shell .section-heading h2 {
   font-size: 20px;
   letter-spacing: -0.015em;
   margin-bottom: 16px;
@@ -1751,12 +1751,12 @@ html {
     auto;
   margin: 0;
 }
-.section-heading {
+.product-shell .section-heading {
   align-items: baseline;
   display: flex;
   justify-content: space-between;
 }
-.section-heading span {
+.product-shell .section-heading span {
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -2120,10 +2120,10 @@ html {
   font-weight: 700;
   min-height: 44px;
 }
-.section-heading > div {
+.product-shell .section-heading > div {
   display: grid;
 }
-.section-heading h2 {
+.product-shell .section-heading h2 {
   margin-bottom: 2px;
 }
 .work-filters {
@@ -2238,11 +2238,11 @@ html {
     max-height: 88vh;
     z-index: var(--z-modal);
   }
-  .section-heading {
+  .product-shell .section-heading {
     align-items: stretch;
     gap: 16px;
   }
-  .section-heading .button {
+  .product-shell .section-heading .button {
     width: 100%;
   }
   .work-filters {
