@@ -5,7 +5,6 @@ import { useEffect } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { AuthReconstructionMark } from "@/components/auth/auth-reconstruction-mark";
 
 export function AuthLayout({ children }: PropsWithChildren) {
   useEffect(() => {
