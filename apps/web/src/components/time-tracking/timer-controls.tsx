@@ -18,6 +18,7 @@ const initialTimerActionState: TimerActionState = {
 
 export function TimerDock({
   timer,
+  targets,
 }: {
   timer: {
     status: "RUNNING" | "PAUSED";
@@ -26,6 +27,22 @@ export function TimerDock({
     durationSeconds: number;
     elapsedSeconds: number;
     openSegmentStartedAt: Date | null;
+  };
+  targets: {
+    projects: {
+      projectId: string;
+      projectName: string;
+      slug: string;
+      workspaceName: string;
+    }[];
+    items: {
+      projectId: string;
+      projectName: string;
+      slug: string;
+      workspaceName: string;
+      workItemId: string;
+      workItemTitle: string;
+    }[];
   };
 }) {
   const [now, setNow] = useState(0);
@@ -101,6 +118,43 @@ export function TimerDock({
             </button>
           </form>
         )}
+        <details className="timer-switcher">
+          <summary className="button button--secondary">Switch</summary>
+          <div className="timer-switcher__panel">
+            <strong>Trocar atividade</strong>
+            {targets.projects.map((target) => (
+              <StartTimerButton
+                key={`project-${target.projectId}`}
+                slug={target.slug}
+                projectId={target.projectId}
+                workItemId={null}
+                activeOnItem={
+                  timer.workItemTitle === null &&
+                  timer.projectName === target.projectName
+                }
+                hasActiveTimer
+              />
+            ))}
+            {targets.items.map((target) => (
+              <div className="timer-switcher__target" key={target.workItemId}>
+                <span>
+                  {target.workspaceName} · {target.projectName}
+                </span>
+                <strong>{target.workItemTitle}</strong>
+                <StartTimerButton
+                  slug={target.slug}
+                  projectId={target.projectId}
+                  workItemId={target.workItemId}
+                  activeOnItem={
+                    timer.workItemTitle === target.workItemTitle &&
+                    timer.projectName === target.projectName
+                  }
+                  hasActiveTimer
+                />
+              </div>
+            ))}
+          </div>
+        </details>
         <form action={finishAction}>
           <button className="button button--secondary" disabled={finishPending}>
             Finish

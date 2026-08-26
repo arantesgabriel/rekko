@@ -75,6 +75,17 @@ export default async function ProjectPage({
           <span className="project-estimate">
             Estimativa total · {formatEstimate(data.project.estimatedMinutes)}
           </span>
+          {!data.project.archivedAt && data.project.status === "ACTIVE" && (
+            <StartTimerButton
+              slug={workspaceSlug}
+              projectId={projectId}
+              workItemId={null}
+              hasActiveTimer={Boolean(activeTimer)}
+              activeOnItem={
+                activeTimer?.projectId === projectId && !activeTimer.workItemId
+              }
+            />
+          )}
         </div>
         {canManage && (
           <details className="project-settings">

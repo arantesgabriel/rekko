@@ -11,7 +11,10 @@ import {
   listUserWorkspaces,
   requireWorkspace,
 } from "@/modules/workspaces/service";
-import { getCurrentTimer } from "@/modules/time-tracking/service";
+import {
+  getCurrentTimer,
+  listTimerTargets,
+} from "@/modules/time-tracking/service";
 
 export default async function WorkspaceLayout({
   children,
@@ -19,10 +22,11 @@ export default async function WorkspaceLayout({
 }: LayoutProps<"/w/[workspaceSlug]">) {
   const { workspaceSlug } = await params;
   const session = await requireCoreSession(`/w/${workspaceSlug}`);
-  const [current, workspaces, timer] = await Promise.all([
+  const [current, workspaces, timer, timerTargets] = await Promise.all([
     requireWorkspace(session.user.id, workspaceSlug),
     listUserWorkspaces(session.user.id),
     getCurrentTimer(session.user.id),
+    listTimerTargets(session.user.id),
   ]);
   return (
     <div className="product-shell">
@@ -77,7 +81,7 @@ export default async function WorkspaceLayout({
         <VerificationBanner user={session.user} />
         {children}
       </main>
-      {timer && <TimerDock timer={timer} />}
+      {timer && <TimerDock timer={timer} targets={timerTargets} />}
       <nav className="mobile-bottom-nav" aria-label="Navegação do Workspace">
         <Link href={`/w/${workspaceSlug}`}>
           <span aria-hidden="true">⌂</span>Today

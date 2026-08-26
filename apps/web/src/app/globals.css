@@ -1411,6 +1411,51 @@ html {
 .timer-dock__actions .button {
   min-height: 40px;
 }
+.timer-switcher {
+  position: relative;
+}
+.timer-switcher > summary {
+  list-style: none;
+}
+.timer-switcher > summary::-webkit-details-marker {
+  display: none;
+}
+.timer-switcher__panel {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  bottom: calc(100% + 0.65rem);
+  box-shadow: var(--shadow-medium);
+  display: grid;
+  gap: 0.5rem;
+  max-height: min(420px, 60vh);
+  min-width: min(360px, calc(100vw - 2rem));
+  overflow: auto;
+  padding: 0.75rem;
+  position: absolute;
+  right: 0;
+}
+.timer-switcher__target {
+  align-items: center;
+  border-top: 1px solid var(--border-default);
+  display: grid;
+  gap: 0.2rem 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-top: 0.5rem;
+}
+.timer-switcher__target > span {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+.timer-switcher__target > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timer-switcher__target .start-timer-action {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
 .timer-dock > p {
   color: var(--danger);
   font-size: 0.75rem;

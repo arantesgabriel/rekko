@@ -1,4 +1,11 @@
-import { project, timeEntry, timeSegment, workItem } from "@rekko/db";
+import {
+  project,
+  timeEntry,
+  timeSegment,
+  workItem,
+  workspace,
+  workspaceMember,
+} from "@rekko/db";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/modules/workspaces/service";
@@ -294,4 +301,61 @@ export async function getCurrentTimer(
     openSegmentStartedAt:
       segments.find((segment) => !segment.endedAt)?.startedAt ?? null,
   };
+}
+
+export async function listTimerTargets(userId: string) {
+  const projects = await db
+    .select({
+      projectId: project.id,
+      projectName: project.name,
+      slug: workspace.slug,
+      workspaceName: workspace.name,
+    })
+    .from(project)
+    .innerJoin(workspace, eq(workspace.id, project.workspaceId))
+    .innerJoin(
+      workspaceMember,
+      and(
+        eq(workspaceMember.workspaceId, project.workspaceId),
+        eq(workspaceMember.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        isNull(project.archivedAt),
+        eq(project.status, "ACTIVE"),
+        isNull(workspace.archivedAt),
+      ),
+    )
+    .orderBy(asc(workspace.name), asc(project.name));
+  const items = await db
+    .select({
+      projectId: project.id,
+      projectName: project.name,
+      slug: workspace.slug,
+      workspaceName: workspace.name,
+      workItemId: workItem.id,
+      workItemTitle: workItem.title,
+    })
+    .from(workItem)
+    .innerJoin(project, eq(project.id, workItem.projectId))
+    .innerJoin(workspace, eq(workspace.id, workItem.workspaceId))
+    .innerJoin(
+      workspaceMember,
+      and(
+        eq(workspaceMember.workspaceId, workItem.workspaceId),
+        eq(workspaceMember.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        isNull(project.archivedAt),
+        eq(project.status, "ACTIVE"),
+        isNull(workItem.archivedAt),
+        eq(workItem.isActive, true),
+        inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
+      ),
+    )
+    .orderBy(asc(workspace.name), asc(project.name), asc(workItem.title));
+  return { projects, items };
 }
