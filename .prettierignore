@@ -1,0 +1,12 @@
+.next
+AGENTS.md
+ARCHITECTURE.md
+CONTEXT.md
+coverage
+DESIGN.md
+node_modules
+playwright-report
+pnpm-lock.yaml
+ROADMAP.md
+test-results
+supabase/.temp

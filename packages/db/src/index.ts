@@ -1,0 +1,21 @@
+export { createDatabaseClient, type DatabaseClient } from "./client";
+export {
+  account,
+  auditLog,
+  estimateSource,
+  project,
+  projectSource,
+  projectStatus,
+  rateLimit,
+  schema,
+  session,
+  user,
+  verification,
+  workspace,
+  workspaceInvitation,
+  workspaceMember,
+  workspaceRole,
+  workItem,
+  workItemSource,
+  workItemStatus,
+} from "./schema";
