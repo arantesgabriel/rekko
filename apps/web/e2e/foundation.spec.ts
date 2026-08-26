@@ -31,7 +31,7 @@ test("signs up, shows grace state, signs out and signs back in", async ({
   await page.goto("/signup");
   await page.getByLabel("Nome").fill("Pessoa E2E");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Senha").fill(password);
+  await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page.getByText("Conta criada. Enviamos um link")).toBeVisible();
   await expect(page).toHaveURL(/\/app/);
@@ -39,7 +39,7 @@ test("signs up, shows grace state, signs out and signs back in", async ({
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Senha").fill(password);
+  await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Olá, Pessoa E2E." }),
