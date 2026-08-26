@@ -6,7 +6,8 @@ export type WorkspacePermission =
   | "invitation:manage"
   | "member:job-title"
   | "member:role"
-  | "member:remove";
+  | "member:remove"
+  | "project:manage";
 
 const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
   {
@@ -16,6 +17,7 @@ const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
       "member:job-title",
       "member:role",
       "member:remove",
+      "project:manage",
     ],
     ADMIN: [
       "workspace:view",
@@ -23,6 +25,7 @@ const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
       "member:job-title",
       "member:role",
       "member:remove",
+      "project:manage",
     ],
     MEMBER: ["workspace:view"],
   };

@@ -33,8 +33,17 @@ export default async function WorkspaceLayout({
         />
         <nav className="product-nav" aria-label="Navegação do Workspace">
           <Link href={`/w/${workspaceSlug}`}>
-            <span aria-hidden="true">⌂</span>Início
+            <span aria-hidden="true">⌂</span>Today
           </Link>
+          <span className="product-nav__disabled">
+            <span aria-hidden="true">━</span>Timeline <small>Em breve</small>
+          </span>
+          <Link href={`/w/${workspaceSlug}/work`}>
+            <span aria-hidden="true">◇</span>Work
+          </Link>
+          <span className="product-nav__disabled">
+            <span aria-hidden="true">↗</span>Insights <small>Em breve</small>
+          </span>
           <Link href={`/w/${workspaceSlug}/members`}>
             <span aria-hidden="true">◎</span>Members
           </Link>
@@ -67,7 +76,10 @@ export default async function WorkspaceLayout({
       </main>
       <nav className="mobile-bottom-nav" aria-label="Navegação do Workspace">
         <Link href={`/w/${workspaceSlug}`}>
-          <span aria-hidden="true">⌂</span>Início
+          <span aria-hidden="true">⌂</span>Today
+        </Link>
+        <Link href={`/w/${workspaceSlug}/work`}>
+          <span aria-hidden="true">◇</span>Work
         </Link>
         <Link href={`/w/${workspaceSlug}/members`}>
           <span aria-hidden="true">◎</span>Members
@@ -78,6 +90,7 @@ export default async function WorkspaceLayout({
           </summary>
           <div>
             <strong>{session.user.name}</strong>
+            <Link href={`/w/${workspaceSlug}/members`}>Members</Link>
             <SessionActions />
           </div>
         </details>

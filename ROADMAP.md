@@ -190,37 +190,37 @@ Estabelecer o domínio multi-tenant antes do restante do produto.
 
 ### Workspace
 
-- [ ] criar Workspace;
-- [ ] Owner automático;
-- [ ] selecionar Workspace ativo;
-- [ ] múltiplos Workspaces por usuário;
-- [ ] Workspace Switcher;
-- [ ] timezone do Workspace;
-- [ ] proteção do último Owner.
+- [x] criar Workspace;
+- [x] Owner automático;
+- [x] selecionar Workspace ativo;
+- [x] múltiplos Workspaces por usuário;
+- [x] Workspace Switcher;
+- [x] timezone do Workspace;
+- [x] proteção do último Owner.
 
 ### Members
 
-- [ ] Owner;
-- [ ] Admin;
-- [ ] Member;
-- [ ] cargo separado da role;
-- [ ] lista de membros;
-- [ ] convite por email;
-- [ ] convite expira em 7 dias;
-- [ ] aceitar convite;
-- [ ] cancelar convite;
-- [ ] reenviar convite;
-- [ ] alterar cargo;
-- [ ] alterar role;
-- [ ] remover membro;
-- [ ] preservar histórico do membro removido.
+- [x] Owner;
+- [x] Admin;
+- [x] Member;
+- [x] cargo separado da role;
+- [x] lista de membros;
+- [x] convite por email;
+- [x] convite expira em 7 dias;
+- [x] aceitar convite;
+- [x] cancelar convite;
+- [x] reenviar convite;
+- [x] alterar cargo;
+- [x] alterar role;
+- [x] remover membro;
+- [x] preservar histórico do membro removido.
 
 ### Onboarding
 
-- [ ] Create Workspace;
-- [ ] convite opcional;
-- [ ] skip explícito;
-- [ ] progresso segmentado.
+- [x] Create Workspace;
+- [x] convite opcional;
+- [x] skip explícito;
+- [x] progresso segmentado.
 
 ## Testes obrigatórios
 
@@ -661,7 +661,7 @@ Validar que o Rekko pode receber usuários reais.
 
 ## Infra
 
-- [ ] Railway production;
+- [ ] Vercel production (Pro or higher);
 - [ ] Supabase production;
 - [ ] staging separado;
 - [ ] production domain;

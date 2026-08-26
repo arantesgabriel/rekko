@@ -36,18 +36,22 @@ export default async function InviteOnboardingPage({
         className="onboarding-panel onboarding-panel--wide"
         aria-labelledby="invite-title"
       >
-        <div className="onboarding-progress" aria-label="Etapa 2 de 2">
+        <div className="onboarding-progress" aria-label="Etapa 2 de 3">
           <span className="is-done" />
           <span className="is-active" />
+          <span />
         </div>
-        <p className="onboarding-step">Etapa 2 de 2 · {current.name}</p>
+        <p className="onboarding-step">Etapa 2 de 3 · {current.name}</p>
         <h1 id="invite-title">Quer trazer seu time?</h1>
         <p>
           Convide alguém agora ou siga em frente. Você poderá voltar a Members
           quando quiser.
         </p>
         <InviteForm slug={workspaceSlug} />
-        <Link className="skip-link" href={`/w/${workspaceSlug}`}>
+        <Link
+          className="skip-link"
+          href={`/onboarding/${workspaceSlug}/project`}
+        >
           Pular por agora
         </Link>
       </section>

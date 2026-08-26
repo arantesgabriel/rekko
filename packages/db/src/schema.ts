@@ -1,6 +1,8 @@
 import {
   bigint,
   boolean,
+  check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -251,9 +253,130 @@ export const auditLog = pgTable(
   ],
 );
 
+export const projectSource = pgEnum("project_source", ["MANUAL", "LINEAR"]);
+export const projectStatus = pgEnum("project_status", ["ACTIVE", "COMPLETED"]);
+export const workItemSource = pgEnum("work_item_source", ["MANUAL", "LINEAR"]);
+export const workItemStatus = pgEnum("work_item_status", [
+  "TODO",
+  "IN_PROGRESS",
+  "DONE",
+]);
+export const estimateSource = pgEnum("estimate_source", [
+  "MANUAL",
+  "LINEAR_DESCRIPTION",
+]);
+
+export const project = pgTable(
+  "projects",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    source: projectSource("source").notNull().default("MANUAL"),
+    status: projectStatus("status").notNull().default("ACTIVE"),
+    estimatedMinutes: integer("estimated_minutes"),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "projects_estimated_minutes_positive",
+      sql`${table.estimatedMinutes} is null or ${table.estimatedMinutes} > 0`,
+    ),
+    index("projects_workspace_idx").on(table.workspaceId),
+    unique("projects_id_workspace_unique").on(table.id, table.workspaceId),
+  ],
+);
+
+export const workItem = pgTable(
+  "work_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    projectId: uuid("project_id").notNull(),
+    source: workItemSource("source").notNull().default("MANUAL"),
+    externalId: text("external_id"),
+    externalIdentifier: text("external_identifier"),
+    externalUrl: text("external_url"),
+    parentWorkItemId: uuid("parent_work_item_id"),
+    title: text("title").notNull(),
+    description: text("description"),
+    status: workItemStatus("status").notNull().default("TODO"),
+    isActive: boolean("is_active").notNull().default(true),
+    estimatedMinutes: integer("estimated_minutes"),
+    estimateSource: estimateSource("estimate_source")
+      .notNull()
+      .default("MANUAL"),
+    sourceCreatedAt: timestamp("source_created_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    sourceUpdatedAt: timestamp("source_updated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    lastSyncedAt: timestamp("last_synced_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "work_items_estimated_minutes_positive",
+      sql`${table.estimatedMinutes} is null or ${table.estimatedMinutes} > 0`,
+    ),
+    check(
+      "work_items_parent_not_self",
+      sql`${table.parentWorkItemId} is null or ${table.parentWorkItemId} <> ${table.id}`,
+    ),
+    foreignKey({
+      columns: [table.projectId, table.workspaceId],
+      foreignColumns: [project.id, project.workspaceId],
+      name: "work_items_project_workspace_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.parentWorkItemId, table.projectId, table.workspaceId],
+      foreignColumns: [table.id, table.projectId, table.workspaceId],
+      name: "work_items_parent_project_workspace_fk",
+    }).onDelete("restrict"),
+    unique("work_items_id_project_workspace_unique").on(
+      table.id,
+      table.projectId,
+      table.workspaceId,
+    ),
+    index("work_items_workspace_project_idx").on(
+      table.workspaceId,
+      table.projectId,
+    ),
+    index("work_items_parent_idx").on(table.parentWorkItemId),
+    index("work_items_external_id_idx").on(table.externalId),
+  ],
+);
+
 export const schema = {
   account,
   auditLog,
+  project,
   rateLimit,
   session,
   user,
@@ -261,4 +384,5 @@ export const schema = {
   workspace,
   workspaceInvitation,
   workspaceMember,
+  workItem,
 };

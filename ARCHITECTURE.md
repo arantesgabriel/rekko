@@ -2709,31 +2709,48 @@ sem valores secretos.
 ## Web application
 
 ```text
-Railway
+Vercel
 ```
 
 Motivos:
 
-- deploy rápido;
-- Next.js Node nativo;
-- GitHub integration;
-- baixo custo inicial;
-- menor complexidade operacional;
-- sem necessidade de adaptar Next.js para outro runtime.
+- Next.js é a plataforma nativa;
+- deploy a partir do GitHub;
+- Preview Deployments para PRs;
+- domínio e TLS gerenciados;
+- baixo esforço operacional no MVP;
+- alinhado ao monorepo `apps/web`.
+
+Plano de produção:
+
+```text
+Vercel Pro (ou superior)
+```
+
+Hobby não é plano de produção do Rekko.
+
+Implicações serverless a respeitar:
+
+- conectar ao Postgres via **pooler** do Supabase (não abrir um processo Postgres “longo” por instância);
+- manter webhook Linear, CSV e sync dentro do timeout da função do plano;
+- não introduzir Redis/fila só para “compensar serverless”;
+- secrets por Environment da Vercel (`Development` / `Preview` / `Production`).
 
 ---
 
 # 91. Por que não Vercel Hobby como produção
 
-Vercel pode ser usado para testes pessoais quando permitido.
+O hosting oficial é Vercel.
 
-Não será o default de produção porque o Hobby possui restrição de uso não comercial.
+Hobby possui restrição de uso não comercial e limites inadequados para um SaaS (timeout, equipe, ambientes).
 
-Caso Rekko venha a usar Vercel comercialmente:
+Produção e staging do Rekko devem usar:
 
 ```text
-usar plano compatível com uso comercial
+plano compatível com uso comercial (Pro ou superior)
 ```
+
+Não usar Hobby como default de produção, mesmo que o deploy “funcione”.
 
 ---
 
@@ -2815,23 +2832,23 @@ mock Linear quando apropriado
 
 ## Staging
 
-- database separado;
-- secrets separados;
-- OAuth callback separado;
+- database separado (`rekko-staging`);
+- secrets no Environment **Preview** da Vercel (ou projeto/staging dedicado);
+- OAuth callback separado e URL estável (domínio `staging.…`, não só URL de preview efêmera para Linear/Google);
 - nunca reutilizar DB de production.
+
+Preview Deployments de PR podem apontar ao banco de staging.
 
 Para reduzir custo:
 
-> staging não precisa ficar permanentemente ativo.
-
-Pode ser deploy sob demanda.
+> um domínio de staging estável é suficiente; não é obrigatório um segundo projeto Vercel.
 
 ---
 
 ## Production
 
-- database próprio;
-- Railway service próprio;
+- database próprio (`rekko-production`);
+- projeto Vercel de produção (Environment **Production**);
 - secrets próprios;
 - Linear OAuth callback de produção;
 - domínio de produção.
@@ -4230,7 +4247,7 @@ Linear selective import
 hybrid webhook + manual sync
 no Redis initially
 CSV synchronous
-Railway web hosting
+Vercel web hosting (Pro or higher)
 Vitest + Playwright
 Sentry
 Pino
@@ -4373,7 +4390,7 @@ Testing:
 Vitest + Playwright
 
 Web hosting:
-Railway
+Vercel (Pro or higher)
 
 Database hosting:
 Supabase
@@ -4453,7 +4470,7 @@ GitHub
 │
 ├── GitHub Actions
 │
-└── Railway
+└── Vercel
      └── Next.js Rekko
 
 Next.js Rekko
@@ -4468,7 +4485,7 @@ Next.js Rekko
 Staging:
 
 ```text
-Railway deploy on demand
+Vercel Preview (stable staging domain)
 +
 Supabase staging project
 ```
@@ -4476,7 +4493,7 @@ Supabase staging project
 Production initial:
 
 ```text
-Railway
+Vercel Production (Pro or higher)
 +
 Supabase production project
 ```
@@ -4675,7 +4692,7 @@ Se houver necessidade, agente deve apontar conflito e solicitar/registrar altera
 
 # 185. Final architecture statement
 
-> O Rekko MVP será um modular monolith full-stack em Next.js e TypeScript, hospedado inicialmente no Railway, utilizando PostgreSQL gerenciado pelo Supabase e Drizzle como camada de dados. Better Auth será responsável por autenticação com email/senha e Google, enquanto autorização e isolamento multi-tenant serão controlados explicitamente pela aplicação através de Workspaces e roles.
+> O Rekko MVP será um modular monolith full-stack em Next.js e TypeScript, hospedado na Vercel (plano comercial Pro ou superior), utilizando PostgreSQL gerenciado pelo Supabase e Drizzle como camada de dados. Better Auth será responsável por autenticação com email/senha e Google, enquanto autorização e isolamento multi-tenant serão controlados explicitamente pela aplicação através de Workspaces e roles.
 
 > Time tracking será server-authoritative, persistido como `TimeEntry + TimeSegments`, garantindo pause/resume correto, continuidade após fechamento do navegador e proteção transacional contra timers simultâneos.
 

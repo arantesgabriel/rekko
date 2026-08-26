@@ -53,13 +53,20 @@ test("authenticated user creates and switches between two Workspaces", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: "Pular por agora" }).click();
   await expect(
-    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+    page.getByRole("heading", {
+      name: "Como você quer organizar seu primeiro projeto?",
+    }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Pular por agora" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Work", exact: true }),
   ).toBeVisible();
   let switcher = page.locator("details.workspace-switcher:visible");
   await switcher.getByLabel("Trocar Workspace").click();
   await switcher.getByRole("link", { name: "Criar Workspace" }).click();
   await page.getByLabel("Nome do Workspace").fill(`Workspace B ${stamp}`);
   await page.getByRole("button", { name: "Criar Workspace" }).click();
+  await page.getByRole("link", { name: "Pular por agora" }).click();
   await page.getByRole("link", { name: "Pular por agora" }).click();
   switcher = page.locator("details.workspace-switcher:visible");
   await switcher.getByLabel("Trocar Workspace").click();
@@ -157,4 +164,48 @@ test("mobile onboarding fits 390 by 844 without horizontal scroll", async ({
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(inviteOverflow).toBeLessThanOrEqual(0);
+});
+
+test("Owner creates a manual Project, Work Items, hierarchy and filters", async ({
+  page,
+}, testInfo) => {
+  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  await signUp(page, {
+    email: `owner-project-${stamp}@example.com`,
+    name: "Owner Project",
+  });
+  await page.getByLabel("Nome do Workspace").fill(`Work ${stamp}`);
+  await page.getByRole("button", { name: "Criar Workspace" }).click();
+  await page.getByRole("link", { name: "Pular por agora" }).click();
+  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.getByLabel("Nome *").fill("AMBLA");
+  await page.getByLabel("Descrição").fill("Projeto manual de teste");
+  await page.getByLabel("Estimativa total").fill("40h");
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await expect(page.getByRole("heading", { name: "AMBLA" })).toBeVisible();
+  await page.getByRole("button", { name: "Criar demanda" }).click();
+  await page.getByLabel("Título *").fill("Authentication");
+  await page.getByLabel("Estimativa", { exact: true }).fill("2h");
+  await page
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .last()
+    .click();
+  await expect(page.getByText("Demanda criada.")).toBeVisible();
+  await page.getByLabel("Título *").fill("Google login");
+  await page
+    .getByLabel("Demanda principal")
+    .selectOption({ label: "Authentication" });
+  await page
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .last()
+    .click();
+  await expect(page.getByText("Google login")).toBeVisible();
+  await page.getByPlaceholder("Buscar por título…").fill("Google");
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(page.getByText("Google login")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });

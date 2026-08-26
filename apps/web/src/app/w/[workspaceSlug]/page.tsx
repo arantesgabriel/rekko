@@ -5,15 +5,17 @@ import {
   listWorkspacePeople,
   requireWorkspace,
 } from "@/modules/workspaces/service";
+import { listProjects } from "@/modules/projects/service";
 
 export default async function WorkspaceHomePage({
   params,
 }: PageProps<"/w/[workspaceSlug]">) {
   const { workspaceSlug } = await params;
   const session = await requireCoreSession(`/w/${workspaceSlug}`);
-  const [current, people] = await Promise.all([
+  const [current, people, work] = await Promise.all([
     requireWorkspace(session.user.id, workspaceSlug),
     listWorkspacePeople(session.user.id, workspaceSlug),
+    listProjects(session.user.id, workspaceSlug),
   ]);
   const invited = people.invitations.some(
     (item) => item.status === "PENDING" || item.status === "ACCEPTED",
@@ -24,10 +26,7 @@ export default async function WorkspaceHomePage({
         <div>
           <p className="page-context">{current.name}</p>
           <h1>Seu Workspace está pronto.</h1>
-          <p>
-            Members e permissões já estão organizados. Projetos serão a próxima
-            etapa da configuração.
-          </p>
+          <p>Organize pessoas, projetos e demandas a partir deste espaço.</p>
         </div>
         <Link
           className="button button--secondary"
@@ -65,6 +64,20 @@ export default async function WorkspaceHomePage({
               <Link href={`/w/${workspaceSlug}/members`}>Convidar</Link>
             )}
           </li>
+          <li className={work.projects.length > 0 ? "is-complete" : ""}>
+            <span>{work.projects.length > 0 ? "✓" : "○"}</span>
+            <div>
+              <strong>Criar seu primeiro projeto</strong>
+              <small>
+                {work.projects.length > 0
+                  ? `${work.projects.length} projeto(s) criado(s)`
+                  : "Organize as primeiras demandas do Workspace"}
+              </small>
+            </div>
+            {work.projects.length === 0 && current.role !== "MEMBER" && (
+              <Link href={`/w/${workspaceSlug}/work/new`}>Criar projeto</Link>
+            )}
+          </li>
         </ol>
       </section>
       <section className="phase-note">
@@ -73,10 +86,10 @@ export default async function WorkspaceHomePage({
           <span />
           <span />
         </div>
-        <h2>Uma base segura antes do trabalho.</h2>
+        <h2>Seu trabalho, com contexto.</h2>
         <p>
-          Este espaço está limitado ao que já existe nesta fase: Workspace,
-          Members e convites. Nenhum Project foi criado automaticamente.
+          Use Work para criar projetos manuais e organizar demandas. O registro
+          de tempo permanece fora desta fase.
         </p>
       </section>
     </div>

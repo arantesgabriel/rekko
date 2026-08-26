@@ -143,7 +143,7 @@ Drizzle
 Better Auth
 Vitest
 Playwright
-Railway
+Vercel
 Sentry
 Pino
 ```
