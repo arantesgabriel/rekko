@@ -1334,6 +1334,145 @@ html {
   }
 }
 
+.timer-dock {
+  align-items: center;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  bottom: 1rem;
+  box-shadow: var(--shadow-medium);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  left: calc(250px + 1rem);
+  padding: 0.8rem 1rem;
+  position: fixed;
+  right: 1rem;
+  z-index: var(--z-dropdown);
+  animation: timer-dock-in var(--motion-medium) var(--ease-ui);
+}
+
+.timer-dock::before {
+  background: var(--brand-violet);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  content: "";
+  height: 2px;
+  left: 1rem;
+  position: absolute;
+  right: 55%;
+  top: -1px;
+}
+
+.timer-dock--paused::before {
+  background: var(--text-muted);
+}
+.timer-dock__context {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.timer-dock__context div {
+  min-width: 0;
+}
+.timer-dock__context small,
+.timer-dock__context span {
+  color: var(--text-muted);
+  display: block;
+  font-size: 0.72rem;
+}
+.timer-dock__context strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timer-status-dot {
+  background: var(--brand-violet);
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 8px;
+  height: 8px;
+  width: 8px;
+}
+.timer-dock--paused .timer-status-dot {
+  background: var(--text-muted);
+}
+.timer-dock__time {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.timer-dock__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.timer-dock__actions .button {
+  min-height: 40px;
+}
+.timer-dock > p {
+  color: var(--danger);
+  font-size: 0.75rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.start-timer-action {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.start-timer-action small {
+  color: var(--danger);
+}
+.timer-working-label {
+  align-items: center;
+  color: var(--brand-violet);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.4rem;
+}
+
+@keyframes timer-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 767px) {
+  .timer-dock {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    left: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    right: 0.75rem;
+  }
+  .timer-dock__context span {
+    display: none;
+  }
+  .timer-dock__time {
+    font-size: 1rem;
+  }
+  .timer-dock__actions {
+    grid-column: 1 / -1;
+  }
+  .timer-dock__actions form,
+  .timer-dock__actions .button {
+    flex: 1;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-dock {
+    animation: none;
+  }
+}
+
 /* Phase 2 — Workspace + Members */
 .onboarding-shell {
   background: var(--bg-canvas);

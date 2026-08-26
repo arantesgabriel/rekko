@@ -248,27 +248,27 @@ Permitir uso real do Rekko sem depender de integração externa.
 
 ### Projects
 
-- [ ] criação de Projeto;
-- [ ] escolha da origem;
-- [ ] projeto manual;
-- [ ] nome;
-- [ ] descrição;
-- [ ] status;
-- [ ] estimativa total opcional;
-- [ ] archive;
-- [ ] Project Cards.
+- [x] criação de Projeto;
+- [x] escolha da origem;
+- [x] projeto manual;
+- [x] nome;
+- [x] descrição;
+- [x] status;
+- [x] estimativa total opcional;
+- [x] archive;
+- [x] Project Cards.
 
 ### Manual Work Items
 
-- [ ] criar Work Item;
-- [ ] editar;
-- [ ] descrição;
-- [ ] status;
-- [ ] estimativa;
-- [ ] parent/sub-item quando aplicável;
-- [ ] Work Item List;
-- [ ] busca básica;
-- [ ] filtros básicos.
+- [x] criar Work Item;
+- [x] editar;
+- [x] descrição;
+- [x] status;
+- [x] estimativa;
+- [x] parent/sub-item quando aplicável;
+- [x] Work Item List;
+- [x] busca básica;
+- [x] filtros básicos.
 
 ## Permissões
 

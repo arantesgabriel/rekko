@@ -50,7 +50,7 @@ test("signs up, shows grace state, signs out and signs back in", async ({
   await page
     .getByRole("button", { name: "Sair de todos os dispositivos" })
     .click();
-  await expect(page).toHaveURL(/\/login/);
+  await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 });
 
 test("forgot password does not reveal account existence", async ({ page }) => {

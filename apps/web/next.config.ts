@@ -21,6 +21,7 @@ const environment = loadEnvConfig(
 parseServerEnv(environment);
 
 const nextConfig: NextConfig = {
+  ...(process.env.REKKO_E2E === "true" ? { distDir: ".next-e2e" } : {}),
   allowedDevOrigins: ["127.0.0.1"],
   poweredByHeader: false,
   reactStrictMode: true,

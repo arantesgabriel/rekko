@@ -373,12 +373,110 @@ export const workItem = pgTable(
   ],
 );
 
+export const timeEntrySource = pgEnum("time_entry_source", ["TIMER", "MANUAL"]);
+export const timeEntryStatus = pgEnum("time_entry_status", [
+  "RUNNING",
+  "PAUSED",
+  "COMPLETED",
+  "ARCHIVED",
+]);
+
+export const timeEntry = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    projectId: uuid("project_id").notNull(),
+    workItemId: uuid("work_item_id"),
+    source: timeEntrySource("source").notNull().default("TIMER"),
+    status: timeEntryStatus("status").notNull(),
+    description: text("description"),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
+    durationSeconds: integer("duration_seconds").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "time_entries_duration_non_negative",
+      sql`${table.durationSeconds} >= 0`,
+    ),
+    foreignKey({
+      columns: [table.projectId, table.workspaceId],
+      foreignColumns: [project.id, project.workspaceId],
+      name: "time_entries_project_workspace_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.workItemId, table.projectId, table.workspaceId],
+      foreignColumns: [workItem.id, workItem.projectId, workItem.workspaceId],
+      name: "time_entries_work_item_project_workspace_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("time_entries_one_active_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} in ('RUNNING', 'PAUSED')`),
+    index("time_entries_user_idx").on(table.userId),
+    index("time_entries_workspace_idx").on(table.workspaceId),
+    index("time_entries_project_idx").on(table.projectId),
+    index("time_entries_work_item_idx").on(table.workItemId),
+  ],
+);
+
+export const timeSegment = pgTable(
+  "time_segments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    timeEntryId: uuid("time_entry_id")
+      .notNull()
+      .references(() => timeEntry.id, { onDelete: "restrict" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "time_segments_end_after_start",
+      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+    ),
+    uniqueIndex("time_segments_one_open_per_entry")
+      .on(table.timeEntryId)
+      .where(sql`${table.endedAt} is null`),
+    index("time_segments_entry_idx").on(table.timeEntryId),
+  ],
+);
+
 export const schema = {
   account,
   auditLog,
   project,
   rateLimit,
   session,
+  timeEntry,
+  timeSegment,
   user,
   verification,
   workspace,

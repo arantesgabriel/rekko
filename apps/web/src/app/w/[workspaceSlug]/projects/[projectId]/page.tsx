@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ProjectForm } from "@/components/projects/project-form";
 import { WorkItemForm } from "@/components/projects/work-item-form";
+import { StartTimerButton } from "@/components/time-tracking/timer-controls";
 import { requireCoreSession } from "@/modules/auth/session";
 import { archiveProjectAction } from "@/modules/projects/actions";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/modules/projects/domain";
 import { ProjectError } from "@/modules/projects/errors";
 import { getProjectPage } from "@/modules/projects/service";
+import { getCurrentTimer } from "@/modules/time-tracking/service";
 
 export default async function ProjectPage({
   params,
@@ -48,6 +50,7 @@ export default async function ProjectPage({
     throw error;
   }
   const canManage = data.context.role !== "MEMBER" && !data.project.archivedAt;
+  const activeTimer = await getCurrentTimer(session.user.id);
   const parents = data.parentOptions.map(({ id, title }) => ({ id, title }));
   const parentTitles = new Map(
     data.parentOptions.map((item) => [item.id, item.title]),
@@ -202,6 +205,15 @@ export default async function ProjectPage({
                 <span className="work-item-estimate">
                   {formatEstimate(item.estimatedMinutes)}
                 </span>
+                {!data.project.archivedAt && item.status !== "DONE" && (
+                  <StartTimerButton
+                    slug={workspaceSlug}
+                    projectId={projectId}
+                    workItemId={item.id}
+                    hasActiveTimer={Boolean(activeTimer)}
+                    activeOnItem={activeTimer?.workItemId === item.id}
+                  />
+                )}
                 {canManage && (
                   <details className="item-editor">
                     <summary aria-label={`Editar ${item.title}`}>

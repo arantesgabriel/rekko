@@ -9,8 +9,10 @@ export function SessionActions() {
   async function signOut(all: boolean) {
     setLoading(all ? "all" : "current");
     try {
-      if (all) await authClient.revokeSessions();
-      else await authClient.signOut();
+      if (all) {
+        await authClient.revokeSessions();
+        await authClient.signOut();
+      } else await authClient.signOut();
     } finally {
       router.push("/login");
       router.refresh();

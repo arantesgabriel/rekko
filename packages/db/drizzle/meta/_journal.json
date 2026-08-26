@@ -50,6 +50,13 @@
       "when": 1787768352076,
       "tag": "0006_public_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787772327251,
+      "tag": "0007_silly_spitfire",
+      "breakpoints": true
     }
   ]
 }

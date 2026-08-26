@@ -67,7 +67,15 @@ test("authenticated user creates and switches between two Workspaces", async ({
   await page.getByLabel("Nome do Workspace").fill(`Workspace B ${stamp}`);
   await page.getByRole("button", { name: "Criar Workspace" }).click();
   await page.getByRole("link", { name: "Pular por agora" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Como você quer organizar seu primeiro projeto?",
+    }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Pular por agora" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Work", exact: true }),
+  ).toBeVisible();
   switcher = page.locator("details.workspace-switcher:visible");
   await switcher.getByLabel("Trocar Workspace").click();
   await switcher.getByRole("link", { name: `Workspace A ${stamp}` }).click();
@@ -183,26 +191,53 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await page.getByLabel("Estimativa total").fill("40h");
   await page.getByRole("button", { name: "Criar projeto" }).click();
   await expect(page.getByRole("heading", { name: "AMBLA" })).toBeVisible();
-  await page.getByRole("button", { name: "Criar demanda" }).click();
-  await page.getByLabel("Título *").fill("Authentication");
-  await page.getByLabel("Estimativa", { exact: true }).fill("2h");
-  await page
+  await page.locator("summary").filter({ hasText: "Criar demanda" }).click();
+  const createItem = page.locator("details.create-item");
+  await createItem.getByLabel("Título *").fill("Authentication");
+  await createItem.getByLabel("Estimativa", { exact: true }).fill("2h");
+  await createItem
     .getByRole("button", { name: "Criar demanda", exact: true })
-    .last()
     .click();
   await expect(page.getByText("Demanda criada.")).toBeVisible();
-  await page.getByLabel("Título *").fill("Google login");
-  await page
+  await createItem.getByLabel("Título *").fill("Google login");
+  await createItem
     .getByLabel("Demanda principal")
     .selectOption({ label: "Authentication" });
-  await page
+  await createItem
     .getByRole("button", { name: "Criar demanda", exact: true })
-    .last()
     .click();
-  await expect(page.getByText("Google login")).toBeVisible();
+  const rowNamed = (name: string) =>
+    page.locator("article.work-item-row").filter({
+      has: page
+        .locator(".work-item-row__main > strong")
+        .filter({ hasText: new RegExp(`^${name}$`) }),
+    });
+  await expect(rowNamed("Google login")).toBeVisible();
+  await createItem.locator("summary").click();
+  const authentication = rowNamed("Authentication");
+  await authentication.getByRole("button", { name: "Start" }).click();
+  await expect(
+    page.getByRole("complementary", { name: "Timer atual" }),
+  ).toContainText("Authentication");
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(
+    page.getByRole("complementary", { name: "Timer atual" }),
+  ).toContainText("Paused");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+  await page.getByRole("button", { name: "Resume" }).click();
+  const googleLogin = rowNamed("Google login");
+  await googleLogin.getByRole("button", { name: "Switch" }).click();
+  await expect(
+    page.getByRole("complementary", { name: "Timer atual" }),
+  ).toContainText("Google login");
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(
+    page.getByRole("complementary", { name: "Timer atual" }),
+  ).toHaveCount(0);
   await page.getByPlaceholder("Buscar por título…").fill("Google");
   await page.getByRole("button", { name: "Aplicar" }).click();
-  await expect(page.getByText("Google login")).toBeVisible();
+  await expect(rowNamed("Google login")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
