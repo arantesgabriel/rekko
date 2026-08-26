@@ -47,6 +47,11 @@ type FieldErrors = {
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
+  const requestedNext = params.get("next");
+  const next =
+    requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/app";
   const [loading, setLoading] = useState<"form" | "google" | false>(false);
   const [existingAccount, setExistingAccount] = useState(false);
   const [message, setMessage] = useState(
@@ -105,7 +110,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const result = await authClient.signIn.email({
           email,
           password,
-          callbackURL: "/app",
+          callbackURL: next,
         });
         if (result.error) {
           setMessage(
@@ -118,7 +123,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           );
           return;
         }
-        router.push("/app");
+        router.push(next);
         router.refresh();
         return;
       }
@@ -128,7 +133,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           email,
           name,
           password,
-          callbackURL: "/app",
+          callbackURL: next,
         });
         if (result.error) {
           const mapped = mapAuthApiError({
@@ -147,7 +152,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         }
         setSuccess(true);
         setMessage("Conta criada. Enviamos um link para confirmar seu email.");
-        setTimeout(() => router.push("/app"), 700);
+        setTimeout(() => router.push(next), 700);
         return;
       }
       if (mode === "forgot") {
@@ -216,7 +221,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/app",
+        callbackURL: next,
         errorCallbackURL: "/login?error=oauth",
       });
       if (result.error) {

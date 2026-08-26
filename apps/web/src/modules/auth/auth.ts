@@ -59,7 +59,12 @@ export const auth = betterAuth({
       allowDifferentEmails: false,
     },
   },
-  rateLimit: { enabled: true, window: 60, max: 10, storage: "database" },
+  rateLimit: {
+    enabled: process.env.REKKO_E2E !== "true",
+    window: 60,
+    max: 10,
+    storage: "database",
+  },
   advanced: {
     cookiePrefix: "rekko",
     useSecureCookies: env.NODE_ENV === "production",

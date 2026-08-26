@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { BrandMark } from "@/components/brand-mark";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export function MarketingNavbar() {

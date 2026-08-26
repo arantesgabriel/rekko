@@ -2,6 +2,8 @@ import { Resend } from "resend";
 
 import { logger } from "@/lib/logger";
 
+import { storeDevelopmentEmail } from "./development-mailbox";
+
 export interface EmailService {
   sendPasswordReset(input: {
     email: string;
@@ -12,6 +14,13 @@ export interface EmailService {
     email: string;
     name: string;
     url: string;
+  }): Promise<void>;
+  sendWorkspaceInvitation(input: {
+    email: string;
+    invitedByName: string;
+    role: string;
+    url: string;
+    workspaceName: string;
   }): Promise<void>;
 }
 
@@ -27,25 +36,42 @@ export function createEmailService(config: {
 
 class DevelopmentEmailService implements EmailService {
   async sendPasswordReset(input: { email: string; name: string; url: string }) {
+    storeDevelopmentEmail({
+      email: input.email,
+      kind: "password-reset",
+      url: input.url,
+    });
     logger.info(
-      {
-        module: "auth",
-        operation: "development_password_reset",
-        email: input.email,
-        url: input.url,
-      },
-      "Development email link",
+      { module: "auth", operation: "development_password_reset" },
+      "Development email captured",
     );
   }
   async sendVerification(input: { email: string; name: string; url: string }) {
+    storeDevelopmentEmail({
+      email: input.email,
+      kind: "verification",
+      url: input.url,
+    });
     logger.info(
-      {
-        module: "auth",
-        operation: "development_email_verification",
-        email: input.email,
-        url: input.url,
-      },
-      "Development email link",
+      { module: "auth", operation: "development_email_verification" },
+      "Development email captured",
+    );
+  }
+  async sendWorkspaceInvitation(input: {
+    email: string;
+    invitedByName: string;
+    role: string;
+    url: string;
+    workspaceName: string;
+  }) {
+    storeDevelopmentEmail({
+      email: input.email,
+      kind: "workspace-invitation",
+      url: input.url,
+    });
+    logger.info(
+      { module: "invitations", operation: "development_workspace_invitation" },
+      "Development email captured",
     );
   }
 }
@@ -81,6 +107,28 @@ class ResendEmailService implements EmailService {
         "Confirme seu email",
         "Confirme seu endereço para continuar usando o Rekko sem interrupções. Você pode acessar sua conta durante os primeiros 3 dias.",
         "Confirmar email",
+        input.url,
+      ),
+    });
+    if (error)
+      throw new Error("Transactional email delivery failed", { cause: error });
+  }
+  async sendWorkspaceInvitation(input: {
+    email: string;
+    invitedByName: string;
+    role: string;
+    url: string;
+    workspaceName: string;
+  }) {
+    const { error } = await this.resend.emails.send({
+      from: this.from,
+      to: input.email,
+      subject: `${input.invitedByName} convidou você para ${input.workspaceName}`,
+      html: authEmail(
+        input.invitedByName,
+        `Entre em ${escapeHtml(input.workspaceName)}`,
+        `Você recebeu um convite para participar deste Workspace como ${escapeHtml(input.role)}. O link é válido por 7 dias.`,
+        "Aceitar convite",
         input.url,
       ),
     });

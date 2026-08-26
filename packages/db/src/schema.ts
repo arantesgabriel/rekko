@@ -3,11 +3,16 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const user = pgTable(
   "user",
@@ -121,4 +126,139 @@ export const rateLimit = pgTable("rate_limit", {
   lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
 
-export const schema = { account, rateLimit, session, user, verification };
+export const workspaceRole = pgEnum("workspace_role", [
+  "OWNER",
+  "ADMIN",
+  "MEMBER",
+]);
+
+export const workspace = pgTable(
+  "workspaces",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    timezone: text("timezone").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("workspaces_slug_unique").on(table.slug),
+    index("workspaces_created_by_idx").on(table.createdByUserId),
+  ],
+);
+
+export const workspaceMember = pgTable(
+  "workspace_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    role: workspaceRole("role").notNull(),
+    jobTitle: text("job_title"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("workspace_members_workspace_user_unique").on(
+      table.workspaceId,
+      table.userId,
+    ),
+    index("workspace_members_user_idx").on(table.userId),
+    index("workspace_members_workspace_role_idx").on(
+      table.workspaceId,
+      table.role,
+    ),
+  ],
+);
+
+export const workspaceInvitation = pgTable(
+  "workspace_invitations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    email: text("email").notNull(),
+    role: workspaceRole("role").notNull(),
+    jobTitle: text("job_title"),
+    tokenHash: text("token_hash").notNull(),
+    invitedByUserId: text("invited_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("workspace_invitations_token_hash_unique").on(table.tokenHash),
+    uniqueIndex("workspace_invitations_pending_email_unique")
+      .on(table.workspaceId, table.email)
+      .where(sql`${table.acceptedAt} is null and ${table.cancelledAt} is null`),
+    index("workspace_invitations_workspace_idx").on(table.workspaceId),
+  ],
+);
+
+export const auditLog = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    action: text("action").notNull(),
+    beforeJson: jsonb("before_json"),
+    afterJson: jsonb("after_json"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("audit_logs_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const schema = {
+  account,
+  auditLog,
+  rateLimit,
+  session,
+  user,
+  verification,
+  workspace,
+  workspaceInvitation,
+  workspaceMember,
+};

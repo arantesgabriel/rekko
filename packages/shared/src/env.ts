@@ -44,7 +44,12 @@ const serverEnvSchema = databaseEnvSchema.extend({
     .optional(),
   RESEND_FROM_EMAIL: z
     .string()
-    .email()
+    .refine(
+      (value) =>
+        z.email().safeParse(value).success ||
+        /^[^<>]+<[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>$/.test(value),
+      "Invalid email address or sender address",
+    )
     .default("Rekko <onboarding@resend.dev>"),
   SENTRY_AUTH_TOKEN: z
     .union([z.string().min(1), emptyStringToUndefined])

@@ -136,33 +136,33 @@ Permitir descoberta do produto, cadastro e acesso seguro.
 
 ### Landing
 
-- [ ] Navbar;
-- [ ] Hero;
-- [ ] tagline oficial;
-- [ ] preview visual inicial;
-- [ ] Track / Reconstruct / Understand;
-- [ ] Linear section;
-- [ ] Workspace section;
-- [ ] Estimated × Actual section;
-- [ ] `Free during beta`;
-- [ ] CTA final;
-- [ ] footer;
-- [ ] motion principal;
-- [ ] responsive;
-- [ ] reduced motion.
+- [x] Navbar;
+- [x] Hero;
+- [x] tagline oficial;
+- [x] preview visual inicial;
+- [x] Track / Reconstruct / Understand;
+- [x] Linear section;
+- [x] Workspace section;
+- [x] Estimated × Actual section;
+- [x] `Free during beta`;
+- [x] CTA final;
+- [x] footer;
+- [x] motion principal;
+- [x] responsive;
+- [x] reduced motion.
 
 ### Auth
 
-- [ ] signup email/password;
-- [ ] login email/password;
-- [ ] Google OAuth;
-- [ ] logout;
-- [ ] email verification;
-- [ ] janela de verificação de 72h;
-- [ ] resend verification;
-- [ ] forgot password;
-- [ ] reset password;
-- [ ] sign out all devices.
+- [x] signup email/password;
+- [x] login email/password;
+- [x] Google OAuth;
+- [x] logout;
+- [x] email verification;
+- [x] janela de verificação de 72h;
+- [x] resend verification;
+- [x] forgot password;
+- [x] reset password;
+- [x] sign out all devices.
 
 ## Critério de saída
 
