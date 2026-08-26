@@ -1,109 +1,98 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import {
+  LinearSelector,
+  MarketingNavbar,
+  ProductDemo,
+} from "./landing-interactions";
+import {
+  FinalItem,
+  FinalSequence,
+  HeroItem,
+  HeroSequence,
+  NarrativeStep,
+  Reveal,
+  ScaleBar,
+  TeamAvatar,
+  TimelineStory,
+} from "./motion";
 
 export function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [reconstructed, setReconstructed] = useState(false);
-  const [selected, setSelected] = useState([true, true, false]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <div className="landing-page">
-      <header className={`marketing-nav${scrolled ? " is-scrolled" : ""}`}>
-        <div className="marketing-nav__inner">
-          <BrandMark />
-          <nav
-            aria-label="Navegação principal"
-            className="marketing-nav__links"
-          >
-            <a href="#product">Produto</a>
-            <a href="#how-it-works">Como funciona</a>
-            <a href="#integrations">Integrações</a>
-          </nav>
-          <div className="marketing-nav__actions">
-            <ThemeSwitcher />
-            <Link className="marketing-nav__login" href="/login">
-              Entrar
-            </Link>
-            <Link className="button button--primary" href="/signup">
-              Começar grátis
-            </Link>
-          </div>
-        </div>
-      </header>
+      <MarketingNavbar />
 
       <main>
-        <section className="hero" aria-labelledby="hero-title">
+        <section className="hero" id="hero" aria-labelledby="hero-title">
           <div className="hero__glow" aria-hidden="true" />
-          <div className="landing-container hero__content">
-            <p className="beta-note">
-              <span /> Free during beta
-            </p>
-            <h1 id="hero-title">
-              Reconstrua seu tempo.
-              <br />
-              Entenda sua jornada.
-            </h1>
-            <p className="hero__copy">
-              Registre o que está fazendo, reconstrua o que ficou pelo caminho e
-              entenda onde suas horas realmente foram usadas.
-            </p>
-            <div className="hero__actions">
-              <Link
-                className="button button--light button--marketing"
-                href="/signup"
-              >
-                Começar grátis <span aria-hidden="true">→</span>
-              </Link>
-              <a
-                className="button button--quiet-light button--marketing"
-                href="#how-it-works"
-              >
-                Ver como funciona
-              </a>
-            </div>
-            <div
-              className="reconstruction-visual"
-              aria-label="Segmentos de tempo se conectando e formando uma timeline"
-            >
-              <div className="reconstruction-visual__rail" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+          <HeroSequence>
+            <HeroItem>
+              <p className="beta-note">
+                <span className="beta-note__mark" aria-hidden="true">
+                  β
+                </span>
+                Grátis durante o beta
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <h1 id="hero-title">
+                Reconstrua seu tempo.
+                <br />
+                Entenda sua jornada.
+              </h1>
+            </HeroItem>
+            <HeroItem>
+              <p className="hero__copy">
+                Registre o que está fazendo, reconstrua o que ficou pelo caminho
+                e entenda onde suas horas realmente foram usadas.
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <div className="hero__actions">
+                <Link
+                  className="button button--light button--marketing"
+                  href="/signup"
+                >
+                  Começar grátis <span aria-hidden="true">→</span>
+                </Link>
+                <a
+                  className="button button--quiet-light button--marketing"
+                  href="#how-it-works"
+                >
+                  Ver como funciona
+                </a>
               </div>
-              <div className="hero-timeline">
-                <div>
-                  <small>08:12</small>
-                  <strong>AMBLA</strong>
-                  <span>Onboarding</span>
-                </div>
-                <div className="hero-timeline__gap">
-                  <small>09:40</small>
-                  <strong>20m</strong>
-                  <span>sem registro</span>
-                </div>
-                <div className="hero-timeline__active">
-                  <small>10:00</small>
-                  <strong>AC-843</strong>
-                  <span>
-                    <i /> 01:27:42
-                  </span>
+            </HeroItem>
+            <HeroItem>
+              <div
+                className="reconstruction-visual"
+                role="img"
+                aria-label="Segmentos de tempo se conectando e formando uma timeline"
+              >
+                <div className="hero-timeline">
+                  <div>
+                    <small>08:12</small>
+                    <strong>AMBLA</strong>
+                    <span>Integração</span>
+                  </div>
+                  <div className="hero-timeline__gap">
+                    <small>09:40</small>
+                    <strong>20m</strong>
+                    <span>sem registro</span>
+                  </div>
+                  <div className="hero-timeline__active">
+                    <small>10:00</small>
+                    <strong>AC-843</strong>
+                    <span>
+                      <i /> 01:27:42
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </HeroItem>
+          </HeroSequence>
+          <div className="hero__wave" aria-hidden="true" />
         </section>
 
         <section
@@ -111,7 +100,7 @@ export function LandingPage() {
           id="product"
           aria-labelledby="product-title"
         >
-          <div className="section-heading section-heading--center">
+          <Reveal className="section-heading section-heading--center">
             <p className="section-label">Um dia, reconstruído</p>
             <h2 id="product-title">
               Sinta como o Rekko transforma tempo em contexto.
@@ -120,8 +109,8 @@ export function LandingPage() {
               Experimente as ações abaixo. Esta demonstração é visual e não cria
               dados reais.
             </p>
-          </div>
-          <div className="product-preview">
+          </Reveal>
+          <Reveal className="product-preview" delay={0.08}>
             <aside
               className="preview-sidebar"
               aria-label="Navegação ilustrativa"
@@ -132,81 +121,8 @@ export function LandingPage() {
               <span>Trabalho</span>
               <span>Insights</span>
             </aside>
-            <div className="preview-main">
-              <div className="preview-main__header">
-                <div>
-                  <small>Quarta-feira, 26 de agosto</small>
-                  <h3>Hoje</h3>
-                </div>
-                <span>3h 42m registradas</span>
-              </div>
-              <div className={`preview-current${running ? " is-running" : ""}`}>
-                <div>
-                  <span className="working-state">
-                    <i /> {running ? "Em andamento" : "Pronto para começar"}
-                  </span>
-                  <strong>AMBLA</strong>
-                  <p>Onboarding flow</p>
-                </div>
-                <div className="preview-timer">
-                  {running ? "01:27:42" : "00:00:00"}
-                </div>
-                <button
-                  className="button button--primary"
-                  type="button"
-                  onClick={() => setRunning((value) => !value)}
-                >
-                  {running ? "Pausar" : "Iniciar timer"}
-                </button>
-              </div>
-              <div
-                className="preview-timeline"
-                aria-label="Timeline de demonstração"
-              >
-                <PreviewEvent
-                  time="08:12"
-                  title="AMBLA"
-                  detail="Onboarding"
-                  duration="1h28"
-                />
-                <PreviewEvent
-                  time="09:40"
-                  title="Daily"
-                  detail="Alinhamento"
-                  duration="20m"
-                />
-                <div
-                  className={`preview-event preview-gap${reconstructed ? " is-reconstructed" : ""}`}
-                >
-                  <time>10:00</time>
-                  <span className="preview-event__rail" />
-                  <div>
-                    <strong>
-                      {reconstructed ? "Reunião" : "32 minutos sem registro"}
-                    </strong>
-                    <span>
-                      {reconstructed
-                        ? "Alinhamento técnico"
-                        : "Quer reconstruir este período?"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReconstructed((value) => !value)}
-                  >
-                    {reconstructed ? "Desfazer" : "Reconstruir"}
-                  </button>
-                </div>
-                <PreviewEvent
-                  current
-                  time="10:32"
-                  title="AidCrusader"
-                  detail="AC-843 · Cloudflare Turnstile"
-                  duration="agora"
-                />
-              </div>
-            </div>
-          </div>
+            <ProductDemo />
+          </Reveal>
         </section>
 
         <section
@@ -215,14 +131,14 @@ export function LandingPage() {
           aria-labelledby="pillars-title"
         >
           <div className="landing-container pillars-layout">
-            <div className="section-heading">
+            <Reveal className="section-heading" direction="left">
               <p className="section-label">Do instante à compreensão</p>
-              <h2 id="pillars-title">Track. Reconstruct. Understand.</h2>
+              <h2 id="pillars-title">Registrar. Reconstruir. Entender.</h2>
               <p>Três movimentos, uma história contínua do seu trabalho.</p>
-            </div>
+            </Reveal>
             <div className="pillar-story">
-              <article>
-                <span className="pillar-index">Track</span>
+              <NarrativeStep index={0}>
+                <span className="pillar-index">Registrar</span>
                 <div className="pillar-demo pillar-demo--track">
                   <i />
                   <strong>AC-843</strong>
@@ -233,9 +149,9 @@ export function LandingPage() {
                   Escolha o trabalho e inicie. O contexto acompanha o tempo
                   desde o primeiro segundo.
                 </p>
-              </article>
-              <article>
-                <span className="pillar-index">Reconstruct</span>
+              </NarrativeStep>
+              <NarrativeStep index={1}>
+                <span className="pillar-index">Reconstruir</span>
                 <div className="pillar-demo pillar-demo--reconstruct">
                   <span />
                   <i />
@@ -246,20 +162,25 @@ export function LandingPage() {
                   Um gap é só um período sem contexto. Reconstrua quando fizer
                   sentido, sem julgamentos.
                 </p>
-              </article>
-              <article>
-                <span className="pillar-index">Understand</span>
+              </NarrativeStep>
+              <NarrativeStep index={2}>
+                <span className="pillar-index">Entender</span>
                 <div className="pillar-demo pillar-demo--insight">
-                  <span style={{ width: "78%" }} />
-                  <span style={{ width: "58%" }} />
-                  <span style={{ width: "35%" }} />
+                  <div>
+                    <span>AMBLA</span>
+                    <strong>3h 12m</strong>
+                  </div>
+                  <div>
+                    <span>AC-843</span>
+                    <strong>1h 28m</strong>
+                  </div>
                 </div>
                 <h3>Veja onde seu dia realmente aconteceu.</h3>
                 <p>
                   Horas por projeto, demanda e estimativa aparecem como
                   respostas claras.
                 </p>
-              </article>
+              </NarrativeStep>
             </div>
           </div>
         </section>
@@ -268,39 +189,15 @@ export function LandingPage() {
           className="story-section landing-container"
           aria-labelledby="story-title"
         >
-          <div className="story-copy">
+          <Reveal className="story-copy" direction="left">
             <p className="section-label">A assinatura Rekko</p>
             <h2 id="story-title">O tempo fragmentado volta a fazer sentido.</h2>
             <p>
               A Timeline conecta atividades, pausas e períodos reconstruídos em
               uma leitura cronológica — não em uma planilha de ponto.
             </p>
-          </div>
-          <div
-            className="timeline-story"
-            aria-label="História visual de reconstrução"
-          >
-            <div>
-              <time>09:40</time>
-              <span />
-              <strong>Daily</strong>
-            </div>
-            <div className="timeline-story__gap">
-              <time>10:00</time>
-              <span />
-              <strong>32m sem registro</strong>
-            </div>
-            <div>
-              <time>10:32</time>
-              <span />
-              <strong>Onboarding</strong>
-            </div>
-            <div className="timeline-story__resolved">
-              <time>10:00</time>
-              <span />
-              <strong>Reunião reconstruída</strong>
-            </div>
-          </div>
+          </Reveal>
+          <TimelineStory />
         </section>
 
         <section
@@ -309,7 +206,7 @@ export function LandingPage() {
           aria-labelledby="linear-title"
         >
           <div className="landing-container split-section">
-            <div className="section-heading">
+            <Reveal className="section-heading" direction="left">
               <p className="section-label">Linear, com intenção</p>
               <h2 id="linear-title">
                 Suas tarefas já existem. O Rekko só conecta o tempo a elas.
@@ -318,43 +215,10 @@ export function LandingPage() {
                 Escolha apenas o que importa. Nada de importar o Workspace
                 inteiro e criar mais ruído.
               </p>
-            </div>
-            <div
-              className="linear-selector"
-              aria-label="Demonstração de seleção específica do Linear"
-            >
-              <div className="linear-selector__top">
-                <strong>Linear</strong>
-                <span>{selected.filter(Boolean).length} selecionadas</span>
-              </div>
-              {[
-                "[EPIC] Cloudflare Turnstile",
-                "AC-844 Login frontend",
-                "AC-845 Login backend",
-              ].map((label, index) => (
-                <label className={index ? "is-child" : ""} key={label}>
-                  <input
-                    type="checkbox"
-                    checked={selected[index]}
-                    onChange={() =>
-                      setSelected((values) =>
-                        values.map((value, itemIndex) =>
-                          itemIndex === index ? !value : value,
-                        ),
-                      )
-                    }
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-              <div className="linear-selector__flow">
-                <span>Linear</span>
-                <i>→</i>
-                <span>Seleção específica</span>
-                <i>→</i>
-                <strong>Rekko</strong>
-              </div>
-            </div>
+            </Reveal>
+            <Reveal direction="right" delay={0.08}>
+              <LinearSelector />
+            </Reveal>
           </div>
         </section>
 
@@ -362,19 +226,19 @@ export function LandingPage() {
           className="workspace-section landing-container"
           aria-labelledby="workspace-title"
         >
-          <div className="workspace-visual" aria-hidden="true">
-            <div className="person person--owner">
-              GA<span>Owner</span>
-            </div>
-            <div className="person">
-              MO<span>Admin</span>
-            </div>
-            <div className="person">
-              JS<span>Member</span>
-            </div>
+          <Reveal className="workspace-visual" direction="left">
+            <TeamAvatar className="person--owner" index={0}>
+              GA<span>Proprietário</span>
+            </TeamAvatar>
+            <TeamAvatar index={1}>
+              MO<span>Administrador</span>
+            </TeamAvatar>
+            <TeamAvatar index={2}>
+              JS<span>Membro</span>
+            </TeamAvatar>
             <div className="workspace-line" />
-          </div>
-          <div className="section-heading">
+          </Reveal>
+          <Reveal className="section-heading" direction="right">
             <p className="section-label">Seu espaço, do seu jeito</p>
             <h2 id="workspace-title">
               Trabalhe sozinho ou reconstrua o tempo junto com seu time.
@@ -383,12 +247,12 @@ export function LandingPage() {
               Um Workspace organiza contexto compartilhado sem transformar
               produtividade em vigilância.
             </p>
-          </div>
+          </Reveal>
         </section>
 
         <section className="estimate-section" aria-labelledby="estimate-title">
           <div className="landing-container estimate-layout">
-            <div className="section-heading">
+            <Reveal className="section-heading" direction="left">
               <p className="section-label">Intenção encontra realidade</p>
               <h2 id="estimate-title">
                 Estimativa é intenção. Tempo real é aprendizado.
@@ -397,100 +261,60 @@ export function LandingPage() {
                 Compare sem julgamento e use a diferença para compreender melhor
                 o trabalho.
               </p>
-            </div>
-            <div className="estimate-visual">
+            </Reveal>
+            <Reveal className="estimate-visual" direction="right" delay={0.08}>
               <div>
                 <span>Estimado</span>
-                <i style={{ width: "62%" }} />
+                <span className="estimate-bar">
+                  <ScaleBar scale={0.62} />
+                </span>
                 <strong>30m</strong>
               </div>
               <div>
                 <span>Registrado</span>
-                <i style={{ width: "86%" }} />
+                <span className="estimate-bar">
+                  <ScaleBar scale={0.86} />
+                </span>
                 <strong>42m</strong>
               </div>
               <p>
                 Diferença <strong>+12m</strong>
               </p>
-            </div>
+            </Reveal>
           </div>
         </section>
 
-        <section
-          className="beta-section landing-container"
-          aria-labelledby="beta-title"
-        >
-          <div>
-            <p className="section-label">Free during beta</p>
-            <h2 id="beta-title">
-              Comece com tudo o que precisa. Sem planos para comparar.
-            </h2>
-            <p>Use o Rekko gratuitamente durante a fase beta.</p>
-          </div>
-          <Link
-            className="button button--primary button--marketing"
-            href="/signup"
-          >
-            Criar minha conta
-          </Link>
-        </section>
-        <section className="final-cta" aria-labelledby="final-title">
-          <div className="landing-container">
-            <div className="segment-mark" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
-            <h2 id="final-title">
-              Seu tempo já aconteceu.
-              <br />O Rekko ajuda você a entendê-lo.
-            </h2>
-            <Link
-              className="button button--light button--marketing"
-              href="/signup"
-            >
-              Começar grátis <span aria-hidden="true">→</span>
-            </Link>
-          </div>
+        <section className="beta-section" aria-labelledby="beta-title">
+          <FinalSequence>
+            <FinalItem>
+              <p className="section-label">Grátis durante o beta</p>
+              <h2 id="beta-title">
+                Comece com tudo o que precisa. Sem planos para comparar.
+              </h2>
+              <p>Use o Rekko gratuitamente durante a fase beta.</p>
+            </FinalItem>
+            <FinalItem>
+              <Link
+                className="button button--light button--marketing"
+                href="/signup"
+              >
+                Começar grátis <span aria-hidden="true">→</span>
+              </Link>
+            </FinalItem>
+          </FinalSequence>
         </section>
       </main>
 
       <footer className="landing-footer">
-        <div className="landing-container">
+        <Reveal className="landing-container">
           <BrandMark />
           <nav aria-label="Links do rodapé">
             <a href="#product">Produto</a>
             <a href="mailto:contato@rekko.app">Contato</a>
           </nav>
           <span>© {new Date().getFullYear()} Rekko</span>
-        </div>
+        </Reveal>
       </footer>
-    </div>
-  );
-}
-
-function PreviewEvent({
-  current = false,
-  detail,
-  duration,
-  time,
-  title,
-}: {
-  current?: boolean;
-  detail: string;
-  duration: string;
-  time: string;
-  title: string;
-}) {
-  return (
-    <div className={`preview-event${current ? " is-current" : ""}`}>
-      <time>{time}</time>
-      <span className="preview-event__rail" />
-      <div>
-        <strong>{title}</strong>
-        <span>{detail}</span>
-      </div>
-      <small>{duration}</small>
     </div>
   );
 }

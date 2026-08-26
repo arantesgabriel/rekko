@@ -7,9 +7,9 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme="light"
       disableTransitionOnChange={false}
-      enableSystem
+      enableSystem={false}
       storageKey="rekko-theme"
     >
       {children}

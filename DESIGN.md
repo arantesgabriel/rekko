@@ -434,7 +434,7 @@ Uso secundário.
 ## Text Muted
 
 ```text
-#8D91A1
+#707586
 ```
 
 ---
@@ -512,7 +512,7 @@ Não utilizar preto absoluto como canvas principal.
 ## Text Muted
 
 ```text
-#747B8F
+#9299AA
 ```
 
 ---
@@ -587,7 +587,7 @@ Exemplo:
 
   --text-primary: #181821;
   --text-secondary: #5E6172;
-  --text-muted: #8D91A1;
+  --text-muted: #707586;
 
   --border-default: #E2E4EC;
   --border-strong: #D2D5E0;
@@ -606,7 +606,7 @@ Exemplo:
 
   --text-primary: #F5F6FA;
   --text-secondary: #A9AEBE;
-  --text-muted: #747B8F;
+  --text-muted: #9299AA;
 
   --border-default: #292E3D;
   --border-strong: #363D50;

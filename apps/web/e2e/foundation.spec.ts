@@ -7,10 +7,10 @@ test("landing communicates the product and navigates", async ({ page }) => {
       name: "Reconstrua seu tempo. Entenda sua jornada.",
     }),
   ).toBeVisible();
-  await expect(page.getByText("Free during beta").first()).toBeVisible();
+  await expect(page.getByText("Grátis durante o beta").first()).toBeVisible();
   await page.getByRole("link", { name: "Ver como funciona" }).click();
   await expect(
-    page.getByRole("heading", { name: "Track. Reconstruct. Understand." }),
+    page.getByRole("heading", { name: "Registrar. Reconstruir. Entender." }),
   ).toBeInViewport();
   await page.goto("/login");
   await expect(
@@ -89,4 +89,43 @@ test("keeps the landing useful with reduced motion", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Pausar" })).toBeVisible();
   await page.getByRole("button", { name: "Reconstruir" }).click();
   await expect(page.getByText("Reunião", { exact: true })).toBeVisible();
+});
+
+test("runs, pauses and resumes the landing timer without resetting", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".preview-timer")).toHaveText("00:00:00");
+  await page.getByRole("button", { name: "Iniciar timer" }).click();
+  await expect(page.locator(".preview-timer")).not.toHaveText("00:00:00", {
+    timeout: 2500,
+  });
+  await page.getByRole("button", { name: "Pausar" }).click();
+  const pausedAt = await page.locator(".preview-timer").innerText();
+  await page.waitForTimeout(1100);
+  await expect(page.locator(".preview-timer")).toHaveText(pausedAt);
+  await page.getByRole("button", { name: "Retomar" }).click();
+  await expect(page.locator(".preview-timer")).not.toHaveText(pausedAt, {
+    timeout: 2500,
+  });
+});
+
+test("provides the complete mobile navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Abrir menu" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Menu principal" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Entrar" }).last()).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Menu principal" })
+      .getByRole("button", { name: /Usar tema/ }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("dialog", { name: "Menu principal" }),
+  ).toBeHidden();
+  await expect(page.getByRole("button", { name: "Abrir menu" })).toBeFocused();
 });
