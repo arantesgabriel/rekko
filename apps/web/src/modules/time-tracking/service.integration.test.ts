@@ -191,6 +191,49 @@ describe.sequential("time tracking with PostgreSQL", () => {
     await finishTimer(owner, clock);
   });
 
+  it("serializes concurrent pause and finish without corrupting segments", async () => {
+    at("2026-08-29T08:00:00Z");
+    await startTimer(
+      { actorUserId: owner, slug, projectId, workItemId: firstItem },
+      clock,
+    );
+    at("2026-08-29T09:00:00Z");
+    const results = await Promise.allSettled([
+      pauseTimer(owner, clock),
+      finishTimer(owner, clock),
+    ]);
+    expect(results.some((result) => result.status === "fulfilled")).toBe(true);
+    const entries = await db
+      .select()
+      .from(timeEntry)
+      .where(eq(timeEntry.userId, owner));
+    expect(entries.every((entry) => entry.durationSeconds >= 0)).toBe(true);
+    const active = await getCurrentTimer(owner, clock);
+    if (active) await finishTimer(owner, clock);
+  });
+
+  it("rolls back the old timer when switch creation cannot complete", async () => {
+    at("2026-08-30T08:00:00Z");
+    await startTimer(
+      { actorUserId: owner, slug, projectId, workItemId: firstItem },
+      clock,
+    );
+    at("2026-08-30T07:59:00Z");
+    await expect(
+      switchTimer(
+        { actorUserId: owner, slug, projectId, workItemId: secondItem },
+        clock,
+      ),
+    ).rejects.toBeDefined();
+    const active = await getCurrentTimer(owner, {
+      now: () => new Date("2026-08-30T08:01:00Z"),
+    });
+    expect(active).toMatchObject({ status: "RUNNING", workItemId: firstItem });
+    await finishTimer(owner, {
+      now: () => new Date("2026-08-30T08:01:00Z"),
+    });
+  });
+
   it("blocks targets without membership", async () => {
     await expect(
       startTimer(
