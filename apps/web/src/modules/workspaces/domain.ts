@@ -1,6 +1,12 @@
 export const workspaceRoles = ["OWNER", "ADMIN", "MEMBER"] as const;
 export type WorkspaceRole = (typeof workspaceRoles)[number];
 
+export const workspaceRoleLabel: Record<WorkspaceRole, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  MEMBER: "Membro",
+};
+
 export type WorkspacePermission =
   | "workspace:view"
   | "invitation:manage"

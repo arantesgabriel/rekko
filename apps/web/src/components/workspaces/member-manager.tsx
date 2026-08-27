@@ -10,7 +10,10 @@ import {
   resendInvitationAction,
   type ActionState,
 } from "@/modules/workspaces/actions";
-import type { WorkspaceRole } from "@/modules/workspaces/domain";
+import {
+  workspaceRoleLabel,
+  type WorkspaceRole,
+} from "@/modules/workspaces/domain";
 
 type Member = {
   id: string;
@@ -42,9 +45,17 @@ export function MemberManager({
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<ActionState | null>(null);
   const canManage = actorRole !== "MEMBER";
-  function run(task: () => Promise<ActionState>) {
+  function run(task: () => Promise<ActionState>): Promise<void> {
     setFeedback(null);
-    startTransition(async () => setFeedback(await task()));
+    return new Promise((resolve) => {
+      startTransition(async () => {
+        try {
+          setFeedback(await task());
+        } finally {
+          resolve();
+        }
+      });
+    });
   }
   return (
     <div className="members-list" aria-busy={pending}>
@@ -58,9 +69,9 @@ export function MemberManager({
       )}
       <div className="members-list__header" aria-hidden="true">
         <span>Nome</span>
-        <span>Email</span>
+        <span>E-mail</span>
         <span>Cargo</span>
-        <span>Role</span>
+        <span>Permissão</span>
         <span>Ações</span>
       </div>
       {members.map((member) => (
@@ -70,15 +81,13 @@ export function MemberManager({
               {member.name.slice(0, 1).toUpperCase()}
             </span>
             <strong>{member.name}</strong>
-            <small>Active</small>
+            <small>Ativo</small>
           </div>
           <span className="member-email">{member.email}</span>
           {canManage ? (
             <form
-              action={(data) =>
-                run(() => changeJobTitleAction(slug, member.id, data))
-              }
               className="inline-field"
+              onSubmit={(event) => event.preventDefault()}
             >
               <label className="sr-only" htmlFor={`job-${member.id}`}>
                 Cargo de {member.name}
@@ -89,55 +98,82 @@ export function MemberManager({
                 id={`job-${member.id}`}
                 maxLength={100}
                 name="jobTitle"
+                onBlur={(event) => {
+                  const next = event.currentTarget.value.trim();
+                  if (next === (member.jobTitle ?? "")) return;
+                  const form = event.currentTarget.form;
+                  if (form)
+                    void run(() =>
+                      changeJobTitleAction(slug, member.id, new FormData(form)),
+                    );
+                }}
                 placeholder="Sem cargo"
               />
-              <button disabled={pending} type="submit">
-                Salvar
-              </button>
             </form>
           ) : (
             <span>{member.jobTitle || "—"}</span>
           )}
-          {canManage ? (
+          {canManage && member.role !== "OWNER" ? (
             <form
-              action={(data) =>
-                run(() => changeRoleAction(slug, member.id, data))
-              }
               className="inline-field"
+              onSubmit={(event) => event.preventDefault()}
             >
               <label className="sr-only" htmlFor={`role-${member.id}`}>
-                Role de {member.name}
+                Permissão de {member.name}
               </label>
               <select
                 defaultValue={member.role}
                 disabled={pending}
                 id={`role-${member.id}`}
                 name="role"
+                onChange={(event) => {
+                  const form = event.currentTarget.form;
+                  if (form)
+                    void run(() =>
+                      changeRoleAction(slug, member.id, new FormData(form)),
+                    );
+                }}
               >
-                <option value="MEMBER">Member</option>
-                <option value="ADMIN">Admin</option>
-                {actorRole === "OWNER" && <option value="OWNER">Owner</option>}
+                <option value="MEMBER">{workspaceRoleLabel.MEMBER}</option>
+                <option value="ADMIN">{workspaceRoleLabel.ADMIN}</option>
+                {actorRole === "OWNER" && (
+                  <option value="OWNER">{workspaceRoleLabel.OWNER}</option>
+                )}
               </select>
-              <button disabled={pending} type="submit">
-                Salvar
-              </button>
             </form>
           ) : (
-            <span className="role-badge">{roleLabel(member.role)}</span>
+            <span className="role-badge">
+              {workspaceRoleLabel[member.role]}
+            </span>
           )}
           <div className="member-actions">
-            {canManage && (
-              <button
-                className="danger-link"
-                disabled={pending}
-                onClick={() => {
-                  if (window.confirm(`Remover ${member.name} deste Workspace?`))
-                    run(() => removeMemberAction(slug, member.id));
-                }}
-                type="button"
-              >
-                Remover
-              </button>
+            {canManage && member.role !== "OWNER" && (
+              <details className="row-actions-menu">
+                <summary
+                  aria-label={`Mais ações para ${member.name}`}
+                  className="button button--ghost button--icon button--sm"
+                  title="Mais ações"
+                >
+                  <span aria-hidden="true">•••</span>
+                </summary>
+                <div className="row-actions-menu__popover">
+                  <button
+                    className="button button--destructive"
+                    disabled={pending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Remover ${member.name} deste Workspace?`,
+                        )
+                      )
+                        run(() => removeMemberAction(slug, member.id));
+                    }}
+                    type="button"
+                  >
+                    Remover membro
+                  </button>
+                </div>
+              </details>
             )}
           </div>
         </article>
@@ -161,11 +197,14 @@ export function MemberManager({
             </div>
             <span className="member-email">{invitation.email}</span>
             <span>{invitation.jobTitle || "—"}</span>
-            <span className="role-badge">{roleLabel(invitation.role)}</span>
+            <span className="role-badge">
+              {workspaceRoleLabel[invitation.role]}
+            </span>
             <div className="member-actions">
               {canManage && invitation.status !== "CANCELLED" && (
                 <>
                   <button
+                    className="button button--link"
                     disabled={pending}
                     onClick={() =>
                       run(() => resendInvitationAction(slug, invitation.id))
@@ -175,7 +214,7 @@ export function MemberManager({
                     Reenviar
                   </button>
                   <button
-                    className="danger-link"
+                    className="button button--link button--destructive"
                     disabled={pending}
                     onClick={() =>
                       run(() => cancelInvitationAction(slug, invitation.id))
@@ -193,13 +232,10 @@ export function MemberManager({
   );
 }
 
-function roleLabel(role: WorkspaceRole) {
-  return role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Member";
-}
 function statusLabel(status: Invitation["status"]) {
   return status === "PENDING"
-    ? "Pending invitation"
+    ? "Convite pendente"
     : status === "EXPIRED"
-      ? "Expired"
-      : "Cancelled";
+      ? "Expirado"
+      : "Cancelado";
 }

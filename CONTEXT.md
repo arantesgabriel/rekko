@@ -1331,15 +1331,19 @@ Reconstrua seu tempo.
 Entenda sua jornada.
 ```
 
-Etapas:
+Após o cadastro, o onboarding do primeiro Workspace possui exatamente três
+etapas:
 
-1. cadastro;
-2. criação do primeiro Workspace;
-3. nome do Workspace;
-4. convite opcional de membros;
-5. criação do primeiro Projeto;
-6. escolha entre `Manual` e `Linear`;
-7. entrada no `Today`.
+1. informar o nome do Workspace;
+2. preparar convites opcionais para o time;
+3. revisar e confirmar.
+
+As duas primeiras etapas mantêm apenas estado temporário. Workspace,
+membership do Owner e convites são criados somente na confirmação final. O
+usuário pode voltar e editar qualquer informação sem perder os dados.
+
+Depois da criação, a configuração de projeto acontece progressivamente dentro
+do produto, sem alongar o onboarding inicial.
 
 O usuário não deve ser obrigado a configurar toda a empresa antes de começar a trabalhar.
 

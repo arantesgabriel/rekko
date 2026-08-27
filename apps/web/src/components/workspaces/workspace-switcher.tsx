@@ -1,16 +1,23 @@
 import Link from "next/link";
 
 export function WorkspaceSwitcher({
+  compact = false,
   currentSlug,
   workspaces,
 }: {
+  compact?: boolean;
   currentSlug: string;
   workspaces: { name: string; slug: string }[];
 }) {
   const current = workspaces.find((item) => item.slug === currentSlug);
   return (
     <details className="workspace-switcher">
-      <summary aria-label="Trocar Workspace">
+      <summary
+        aria-label={
+          compact ? `Workspace ${current?.name ?? ""}` : "Trocar Workspace"
+        }
+        title={compact ? current?.name : undefined}
+      >
         <span className="workspace-avatar" aria-hidden="true">
           {current?.name.slice(0, 1).toUpperCase()}
         </span>

@@ -118,6 +118,99 @@ export async function createWorkspace(input: {
   throw new Error("Unable to create a unique Workspace slug");
 }
 
+export async function completeWorkspaceOnboarding(input: {
+  userId: string;
+  name: string;
+  timezone: string;
+  invitations: {
+    email: string;
+    role: "ADMIN" | "MEMBER";
+    jobTitle: string | null;
+  }[];
+  now?: Date;
+}) {
+  const normalizedInvitations = input.invitations.map((invitation) => ({
+    ...invitation,
+    email: invitation.email.toLowerCase(),
+  }));
+  const [actor] = await db
+    .select({ email: user.email })
+    .from(user)
+    .where(eq(user.id, input.userId))
+    .limit(1);
+  if (
+    actor &&
+    normalizedInvitations.some(
+      (invitation) => invitation.email === actor.email.toLowerCase(),
+    )
+  ) {
+    throw new WorkspaceError("ALREADY_MEMBER");
+  }
+
+  const baseSlug = normalizeWorkspaceSlug(input.name);
+  const now = input.now ?? new Date();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+    try {
+      return await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(workspace)
+          .values({
+            createdByUserId: input.userId,
+            name: input.name,
+            slug,
+            timezone: input.timezone,
+          })
+          .returning({
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug,
+          });
+        if (!created) throw new Error("Workspace insert returned no row");
+
+        await tx.insert(workspaceMember).values({
+          role: "OWNER",
+          userId: input.userId,
+          workspaceId: created.id,
+        });
+
+        const invitations = [];
+        for (const invitation of normalizedInvitations) {
+          const { token, tokenHash } = createInvitationToken();
+          const [createdInvitation] = await tx
+            .insert(workspaceInvitation)
+            .values({
+              email: invitation.email,
+              expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
+              invitedByUserId: input.userId,
+              jobTitle: invitation.jobTitle,
+              role: invitation.role,
+              tokenHash,
+              workspaceId: created.id,
+            })
+            .returning({ id: workspaceInvitation.id });
+          if (!createdInvitation)
+            throw new Error("Invitation insert returned no row");
+          await tx.insert(auditLog).values({
+            action: "invitation_created",
+            actorUserId: input.userId,
+            afterJson: { role: invitation.role },
+            entityId: createdInvitation.id,
+            entityType: "workspace_invitation",
+            workspaceId: created.id,
+          });
+          invitations.push({ ...invitation, token });
+        }
+
+        return { ...created, invitations };
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error) || attempt === 7) throw error;
+    }
+  }
+  throw new Error("Unable to create a unique Workspace slug");
+}
+
 export async function listWorkspacePeople(userId: string, slug: string) {
   const context = await requireWorkspace(userId, slug);
   const [members, invitations] = await Promise.all([

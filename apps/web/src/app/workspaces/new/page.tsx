@@ -1,36 +1,25 @@
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { VerificationBanner } from "@/components/auth/verification-banner";
-import { SessionActions } from "@/components/auth/session-actions";
-import { WorkspaceForm } from "@/components/workspaces/workspace-form";
+import { OnboardingAccountMenu } from "@/components/workspaces/onboarding-account-menu";
+import { OnboardingWizard } from "@/components/workspaces/onboarding-wizard";
 import { requireCoreSession } from "@/modules/auth/session";
+import { getUserTimezone } from "@/modules/workspaces/service";
 
 export const metadata = { title: "Novo Workspace" };
 
 export default async function NewWorkspacePage() {
   const session = await requireCoreSession("/workspaces/new");
+  const timezone = await getUserTimezone(session.user.id);
   return (
     <main className="onboarding-shell">
       <header className="onboarding-header">
         <BrandMark />
         <div className="onboarding-header__actions">
           <ThemeSwitcher />
-          <SessionActions />
+          <OnboardingAccountMenu name={session.user.name} />
         </div>
       </header>
-      <VerificationBanner user={session.user} />
-      <section
-        className="onboarding-panel"
-        aria-labelledby="new-workspace-title"
-      >
-        <p className="onboarding-step">Novo Workspace</p>
-        <h1 id="new-workspace-title">Crie outro espaço de trabalho.</h1>
-        <p>
-          Você poderá alternar entre seus Workspaces sem misturar membros ou
-          permissões.
-        </p>
-        <WorkspaceForm />
-      </section>
+      <OnboardingWizard timezone={timezone} />
     </main>
   );
 }

@@ -29,13 +29,16 @@ export function VerificationBanner({
     <aside className="verification-banner verification-banner--product">
       <div>
         <strong>
-          Confirme seu email nos próximos{" "}
+          Confirme seu e-mail nos próximos{" "}
           {hours <= 24 ? `${hours} horas` : `${Math.ceil(hours / 24)} dias`}.
         </strong>
         <span>Assim você continua usando o Rekko sem interrupções.</span>
       </div>
-      <Link href={`/verify-email?email=${encodeURIComponent(user.email)}`}>
-        Reenviar confirmação
+      <Link
+        className="button button--secondary button--sm"
+        href={`/verify-email?email=${encodeURIComponent(user.email)}`}
+      >
+        Reenviar
       </Link>
     </aside>
   );

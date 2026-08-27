@@ -219,8 +219,8 @@ Estabelecer o domínio multi-tenant antes do restante do produto.
 
 - [x] Create Workspace;
 - [x] convite opcional;
-- [x] skip explícito;
-- [x] progresso segmentado.
+- [x] continuar sem trazer ninguém explícito;
+- [x] progresso no stepper.
 
 ## Testes obrigatórios
 

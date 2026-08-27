@@ -35,10 +35,13 @@ test("signs up, shows grace state, signs out and signs back in", async ({
   await page.getByRole("button", { name: "Criar conta" }).click();
   await expect(page.getByText("Conta criada. Enviamos um link")).toBeVisible();
   await expect(page).toHaveURL(/\/onboarding\/workspace/);
-  await expect(page.getByText(/Confirme seu email nos próximos/)).toBeVisible();
+  await expect(page.getByText(/Confirme seu email nos próximos/)).toHaveCount(
+    0,
+  );
   await expect(
     page.getByRole("heading", { name: "Onde seu tempo acontece?" }),
   ).toBeVisible();
+  await page.getByLabel("Abrir opções da conta").click();
   await page.getByRole("button", { name: "Sair", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   await page.getByLabel("Email").fill(email);
@@ -47,6 +50,7 @@ test("signs up, shows grace state, signs out and signs back in", async ({
   await expect(
     page.getByRole("heading", { name: "Onde seu tempo acontece?" }),
   ).toBeVisible();
+  await page.getByLabel("Abrir opções da conta").click();
   await page
     .getByRole("button", { name: "Sair de todos os dispositivos" })
     .click();

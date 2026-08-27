@@ -3,6 +3,33 @@ import { expect, test } from "@playwright/test";
 test.describe.configure({ mode: "serial" });
 
 const password = "Rekko-workspace-2026";
+const responsiveViewports = [
+  { width: 1920, height: 1080 },
+  { width: 1600, height: 900 },
+  { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 430, height: 932 },
+  { width: 390, height: 844 },
+  { width: 375, height: 812 },
+] as const;
+
+async function expectNoHorizontalOverflow(
+  page: import("@playwright/test").Page,
+) {
+  for (const viewport of responsiveViewports) {
+    await page.setViewportSize(viewport);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    expect(
+      overflow,
+      `${viewport.width}×${viewport.height}`,
+    ).toBeLessThanOrEqual(0);
+  }
+}
 
 async function signUp(
   page: import("@playwright/test").Page,
@@ -23,8 +50,8 @@ async function signOut(page: import("@playwright/test").Page) {
     .filter({ visible: true });
   if ((await visibleSignOut.count()) === 0) {
     await page
-      .locator("details")
-      .filter({ hasText: "Conta" })
+      .locator("details.app-account-menu, details.onboarding-account-menu")
+      .filter({ visible: true })
       .locator("summary")
       .click();
   }
@@ -33,6 +60,46 @@ async function signOut(page: import("@playwright/test").Page) {
     .filter({ visible: true })
     .click();
   await expect(page).toHaveURL(/\/login/);
+}
+
+async function completeOnboarding(
+  page: import("@playwright/test").Page,
+  input: {
+    invitation?: {
+      email: string;
+      jobTitle?: string;
+      role?: "ADMIN" | "MEMBER";
+    };
+    workspaceName: string;
+  },
+) {
+  await page.getByLabel("Nome do workspace").fill(input.workspaceName);
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Quer trazer seu time?" }),
+  ).toBeVisible();
+  if (input.invitation) {
+    await page.getByLabel("E-mail").fill(input.invitation.email);
+    await page
+      .getByLabel("Permissão")
+      .selectOption(input.invitation.role ?? "MEMBER");
+    if (input.invitation.jobTitle) {
+      await page.getByLabel("Cargo").fill(input.invitation.jobTitle);
+    }
+    await page.getByRole("button", { name: "Adicionar convite" }).click();
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  } else {
+    await page
+      .getByRole("button", { name: "Continuar sem trazer ninguém" })
+      .click();
+  }
+  await expect(
+    page.getByRole("heading", { name: "Tudo certo por aqui?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Criar workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+  ).toBeVisible();
 }
 
 test("authenticated user creates and switches between two Workspaces", async ({
@@ -46,36 +113,11 @@ test("authenticated user creates and switches between two Workspaces", async ({
   await expect(
     page.getByRole("heading", { name: "Onde seu tempo acontece?" }),
   ).toBeVisible();
-  await page.getByLabel("Nome do Workspace").fill(`Workspace A ${stamp}`);
-  await page.getByRole("button", { name: "Criar Workspace" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Quer trazer seu time?" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Pular por agora" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Como você quer organizar seu primeiro projeto?",
-    }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Pular por agora" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Work", exact: true }),
-  ).toBeVisible();
+  await completeOnboarding(page, { workspaceName: `Workspace A ${stamp}` });
   let switcher = page.locator("details.workspace-switcher:visible");
   await switcher.getByLabel("Trocar Workspace").click();
   await switcher.getByRole("link", { name: "Criar Workspace" }).click();
-  await page.getByLabel("Nome do Workspace").fill(`Workspace B ${stamp}`);
-  await page.getByRole("button", { name: "Criar Workspace" }).click();
-  await page.getByRole("link", { name: "Pular por agora" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Como você quer organizar seu primeiro projeto?",
-    }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Pular por agora" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Work", exact: true }),
-  ).toBeVisible();
+  await completeOnboarding(page, { workspaceName: `Workspace B ${stamp}` });
   switcher = page.locator("details.workspace-switcher:visible");
   await switcher.getByLabel("Trocar Workspace").click();
   await switcher.getByRole("link", { name: `Workspace A ${stamp}` }).click();
@@ -92,12 +134,10 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   const ownerEmail = `owner-invite-${stamp}@example.com`;
   const memberEmail = `member-invite-${stamp}@example.com`;
   await signUp(page, { email: ownerEmail, name: "Owner Invite" });
-  await page.getByLabel("Nome do Workspace").fill(`Secure Workspace ${stamp}`);
-  await page.getByRole("button", { name: "Criar Workspace" }).click();
-  await page.getByLabel("Email").fill(memberEmail);
-  await page.getByLabel("Cargo").fill("Desenvolvedor Backend");
-  await page.getByRole("button", { name: "Enviar convite" }).click();
-  await expect(page.getByRole("status")).toContainText("Convite enviado");
+  await completeOnboarding(page, {
+    invitation: { email: memberEmail, jobTitle: "Desenvolvedor Backend" },
+    workspaceName: `Secure Workspace ${stamp}`,
+  });
   const mailbox = await request.get("/api/dev/mailbox");
   const payload = (await mailbox.json()) as {
     emails: { email: string; kind: string; url: string }[];
@@ -125,8 +165,8 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   await expect(
     page.getByRole("heading", { name: "Seu Workspace está pronto." }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Members" }).first().click();
-  await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
+  await page.getByRole("link", { name: "Membros" }).first().click();
+  await expect(page.getByRole("heading", { name: "Membros" })).toBeVisible();
   const membersUrl = page.url();
   const membersPath = new URL(membersUrl).pathname;
   await expect(
@@ -142,9 +182,19 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   const memberRow = page
     .locator("article.member-row")
     .filter({ hasText: memberEmail });
-  await memberRow.getByLabel("Role de Member Invite").selectOption("ADMIN");
-  await memberRow.getByRole("button", { name: "Salvar" }).last().click();
-  await expect(page.getByRole("status")).toContainText("Role atualizada");
+  const membersList = page.locator(".members-list");
+  await memberRow
+    .getByLabel("Permissão de Member Invite")
+    .selectOption("ADMIN");
+  await expect(membersList).toHaveAttribute("aria-busy", "true");
+  await expect(membersList).toHaveAttribute("aria-busy", "false");
+  await page.reload();
+  await expect(
+    page
+      .locator("article.member-row")
+      .filter({ hasText: memberEmail })
+      .getByLabel("Permissão de Member Invite"),
+  ).toHaveValue("ADMIN");
 });
 
 test("mobile onboarding fits 390 by 844 without horizontal scroll", async ({
@@ -152,6 +202,7 @@ test("mobile onboarding fits 390 by 844 without horizontal scroll", async ({
 }, testInfo) => {
   const stamp = `${testInfo.project.name}-${Date.now()}`;
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await signUp(page, {
     email: `mobile-workspace-${stamp}@example.com`,
     name: "Mobile Owner",
@@ -159,19 +210,75 @@ test("mobile onboarding fits 390 by 844 without horizontal scroll", async ({
   await expect(
     page.getByRole("heading", { name: "Onde seu tempo acontece?" }),
   ).toBeVisible();
+  await expect(page.getByLabel("Nome do workspace")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Continuar", exact: true }),
+  ).toBeFocused();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
-  await page.getByLabel("Nome do Workspace").fill(`Mobile Workspace ${stamp}`);
-  await page.getByRole("button", { name: "Criar Workspace" }).click();
-  const skip = page.getByRole("link", { name: "Pular por agora" });
-  await skip.scrollIntoViewIfNeeded();
-  await expect(skip).toBeVisible();
+  await page.getByLabel("Nome do workspace").fill(`Mobile Workspace ${stamp}`);
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.locator(".onboarding-stage")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await expect(
+    page.getByRole("button", { name: "Continuar sem trazer ninguém" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Etapa \d de 3/)).toHaveCount(0);
   const inviteOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(inviteOverflow).toBeLessThanOrEqual(0);
+});
+
+test("onboarding preserves edits and sends no invitation before confirmation", async ({
+  page,
+  request,
+}, testInfo) => {
+  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  const invitedEmail = `draft-invite-${stamp}@example.com`;
+  await signUp(page, {
+    email: `draft-owner-${stamp}@example.com`,
+    name: "Draft Owner",
+  });
+  await page.getByLabel("Nome do workspace").fill(`Draft ${stamp}`);
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByLabel("E-mail").fill(invitedEmail);
+  await page.getByLabel("Cargo").fill("Tech Lead");
+  await page.getByRole("button", { name: "Adicionar convite" }).click();
+
+  const mailboxBefore = await request.get("/api/dev/mailbox");
+  const beforePayload = (await mailboxBefore.json()) as {
+    emails: { email: string; kind: string }[];
+  };
+  expect(
+    beforePayload.emails.some(
+      (email) =>
+        email.email === invitedEmail && email.kind === "workspace-invitation",
+    ),
+  ).toBe(false);
+
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page
+    .getByRole("region", { name: "Workspace" })
+    .getByRole("button", { name: "Editar" })
+    .click();
+  await expect(page.getByLabel("Nome do workspace")).toHaveValue(
+    `Draft ${stamp}`,
+  );
+  await page.getByLabel("Nome do workspace").fill(`Edited ${stamp}`);
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.getByText(invitedEmail)).toBeVisible();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.getByText(`Edited ${stamp}`)).toBeVisible();
+  await page.getByRole("button", { name: "Criar workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+  ).toBeVisible();
 });
 
 test("Owner creates a manual Project, Work Items, hierarchy and filters", async ({
@@ -182,9 +289,8 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     email: `owner-project-${stamp}@example.com`,
     name: "Owner Project",
   });
-  await page.getByLabel("Nome do Workspace").fill(`Work ${stamp}`);
-  await page.getByRole("button", { name: "Criar Workspace" }).click();
-  await page.getByRole("link", { name: "Pular por agora" }).click();
+  await completeOnboarding(page, { workspaceName: `Work ${stamp}` });
+  await page.getByRole("link", { name: "Criar projeto" }).first().click();
   await page.getByRole("link", { name: "Criar manualmente" }).click();
   await page.getByLabel("Nome *").fill("AMBLA");
   await page.getByLabel("Descrição").fill("Projeto manual de teste");
@@ -215,32 +321,42 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await expect(rowNamed("Google login")).toBeVisible();
   await createItem.locator("summary").click();
   const authentication = rowNamed("Authentication");
-  await authentication.getByRole("button", { name: "Start" }).click();
+  await authentication.getByRole("button", { name: "Iniciar" }).click();
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toContainText("Authentication");
-  await page.getByRole("button", { name: "Pause" }).click();
+  await page.getByRole("button", { name: "Pausar" }).click();
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
-  ).toContainText("Paused");
+  ).toContainText("Pausado");
   await page.reload();
-  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
-  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.getByRole("button", { name: "Retomar" })).toBeVisible();
+  await page.getByRole("button", { name: "Retomar" }).click();
   const googleLogin = rowNamed("Google login");
-  await googleLogin.getByRole("button", { name: "Switch" }).click();
+  await googleLogin.getByRole("button", { name: "Trocar" }).click();
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toContainText("Google login");
-  await page.getByRole("button", { name: "Finish" }).click();
+  await page.getByRole("button", { name: "Encerrar" }).click();
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toHaveCount(0);
   await page.getByPlaceholder("Buscar por título…").fill("Google");
-  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(page).toHaveURL(/q=Google/);
   await expect(rowNamed("Google login")).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  const overflow = await page.evaluate(
+  await expectNoHorizontalOverflow(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page
+    .locator("details.app-account-menu > summary")
+    .filter({ visible: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Usar tema escuro" })
+    .filter({ visible: true })
+    .click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  const darkOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
-  expect(overflow).toBeLessThanOrEqual(0);
+  expect(darkOverflow).toBeLessThanOrEqual(0);
 });

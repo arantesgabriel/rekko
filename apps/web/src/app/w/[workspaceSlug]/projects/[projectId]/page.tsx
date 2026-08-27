@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 
 import { ProjectForm } from "@/components/projects/project-form";
 import { WorkItemForm } from "@/components/projects/work-item-form";
+import { WorkItemFilters } from "@/components/projects/work-item-filters";
 import { StartTimerButton } from "@/components/time-tracking/timer-controls";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer } from "@/components/ui/page-container";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import { requireCoreSession } from "@/modules/auth/session";
 import { archiveProjectAction } from "@/modules/projects/actions";
 import {
@@ -55,14 +60,61 @@ export default async function ProjectPage({
   const parentTitles = new Map(
     data.parentOptions.map((item) => [item.id, item.title]),
   );
+  const itemCount = data.parentOptions.length;
   return (
-    <div className="product-page">
+    <PageContainer width="lg">
       <Link className="back-link" href={`/w/${workspaceSlug}/work`}>
         ← Todos os projetos
       </Link>
-      <header className="project-header">
-        <div>
-          <div className="project-header__badges">
+      <PageHeader
+        actions={
+          <>
+            {!data.project.archivedAt && data.project.status === "ACTIVE" && (
+              <StartTimerButton
+                slug={workspaceSlug}
+                projectId={projectId}
+                workItemId={null}
+                hasActiveTimer={Boolean(activeTimer)}
+                activeOnItem={
+                  activeTimer?.projectId === projectId &&
+                  !activeTimer.workItemId
+                }
+              />
+            )}
+            {canManage && (
+              <details className="project-settings">
+                <summary className="button button--secondary">
+                  Editar projeto
+                </summary>
+                <div className="project-settings__panel">
+                  <ProjectForm slug={workspaceSlug} project={data.project} />
+                  <form
+                    action={archiveProjectAction.bind(
+                      null,
+                      workspaceSlug,
+                      projectId,
+                    )}
+                  >
+                    <button
+                      className="button button--destructive"
+                      type="submit"
+                    >
+                      Arquivar projeto
+                    </button>
+                  </form>
+                </div>
+              </details>
+            )}
+          </>
+        }
+        description={
+          <>
+            {data.project.description ? `${data.project.description} · ` : null}
+            Estimativa total · {formatEstimate(data.project.estimatedMinutes)}
+          </>
+        }
+        eyebrow={
+          <div className="page-header__badges">
             <span className="source-badge">Manual</span>
             <span
               className={`status-badge status-badge--${data.project.status.toLowerCase()}`}
@@ -70,45 +122,9 @@ export default async function ProjectPage({
               {projectStatusLabel[data.project.status]}
             </span>
           </div>
-          <h1>{data.project.name}</h1>
-          {data.project.description && <p>{data.project.description}</p>}
-          <span className="project-estimate">
-            Estimativa total · {formatEstimate(data.project.estimatedMinutes)}
-          </span>
-          {!data.project.archivedAt && data.project.status === "ACTIVE" && (
-            <StartTimerButton
-              slug={workspaceSlug}
-              projectId={projectId}
-              workItemId={null}
-              hasActiveTimer={Boolean(activeTimer)}
-              activeOnItem={
-                activeTimer?.projectId === projectId && !activeTimer.workItemId
-              }
-            />
-          )}
-        </div>
-        {canManage && (
-          <details className="project-settings">
-            <summary className="button button--secondary">
-              Editar projeto
-            </summary>
-            <div className="project-settings__panel">
-              <ProjectForm slug={workspaceSlug} project={data.project} />
-              <form
-                action={archiveProjectAction.bind(
-                  null,
-                  workspaceSlug,
-                  projectId,
-                )}
-              >
-                <button className="danger-text-button" type="submit">
-                  Arquivar projeto
-                </button>
-              </form>
-            </div>
-          </details>
-        )}
-      </header>
+        }
+        title={data.project.name}
+      />
       {query.created === "1" && (
         <p className="form-message form-message--success" role="status">
           Projeto criado.
@@ -123,75 +139,42 @@ export default async function ProjectPage({
         className="work-items-section"
         aria-labelledby="work-items-title"
       >
-        <div className="section-heading">
-          <div>
-            <h2 id="work-items-title">Demandas</h2>
-            <span>{data.parentOptions.length} no projeto</span>
-          </div>
-          {canManage && (
-            <details className="create-item">
-              <summary className="button button--primary">
-                Criar demanda
-              </summary>
-              <div className="create-item__panel">
-                <h3>Nova demanda</h3>
-                <WorkItemForm
-                  slug={workspaceSlug}
-                  projectId={projectId}
-                  parents={parents}
-                />
-              </div>
-            </details>
-          )}
-        </div>
-        <form className="work-filters" method="get">
-          <label>
-            <span className="sr-only">Buscar demandas</span>
-            <input
-              defaultValue={typeof query.q === "string" ? query.q : ""}
-              name="q"
-              placeholder="Buscar por título…"
-              type="search"
-            />
-          </label>
-          <label>
-            <span className="sr-only">Filtrar por status</span>
-            <select
-              defaultValue={
-                typeof query.status === "string" ? query.status : "ALL"
-              }
-              name="status"
-            >
-              <option value="ALL">Todos os status</option>
-              <option value="TODO">A fazer</option>
-              <option value="IN_PROGRESS">Em andamento</option>
-              <option value="DONE">Concluídas</option>
-            </select>
-          </label>
-          <label>
-            <span className="sr-only">Filtrar por hierarquia</span>
-            <select
-              defaultValue={typeof query.kind === "string" ? query.kind : "ALL"}
-              name="kind"
-            >
-              <option value="ALL">Toda hierarquia</option>
-              <option value="ROOT">Itens principais</option>
-              <option value="SUB_ITEM">Sub-itens</option>
-            </select>
-          </label>
-          <button className="button button--secondary" type="submit">
-            Aplicar
-          </button>
-        </form>
+        <SectionHeader
+          actions={
+            canManage ? (
+              <details className="create-item">
+                <summary className="button button--primary">
+                  Criar demanda
+                </summary>
+                <div className="create-item__panel">
+                  <h3 className="card-title">Nova demanda</h3>
+                  <WorkItemForm
+                    slug={workspaceSlug}
+                    projectId={projectId}
+                    parents={parents}
+                  />
+                </div>
+              </details>
+            ) : undefined
+          }
+          description={`${itemCount} ${itemCount === 1 ? "demanda" : "demandas"}`}
+          id="work-items-title"
+          title="Demandas"
+        />
+        <WorkItemFilters
+          kind={typeof query.kind === "string" ? query.kind : "ALL"}
+          query={typeof query.q === "string" ? query.q : ""}
+          status={typeof query.status === "string" ? query.status : "ALL"}
+        />
         {data.items.length === 0 ? (
-          <div className="items-empty">
-            <h3>Nenhuma demanda neste projeto ainda.</h3>
-            <p>
-              {query.q || query.status || query.kind
+          <EmptyState
+            description={
+              query.q || query.status || query.kind
                 ? "Ajuste a busca ou os filtros para encontrar outras demandas."
-                : "Crie a primeira demanda para começar a organizar o trabalho."}
-            </p>
-          </div>
+                : "Crie a primeira demanda para começar a organizar o trabalho."
+            }
+            title="Nenhuma demanda neste projeto ainda."
+          />
         ) : (
           <div className="work-item-list">
             {data.items.map((item) => (
@@ -205,46 +188,54 @@ export default async function ProjectPage({
                       {parentTitles.get(item.parentWorkItemId) ?? "Sub-item"}
                     </small>
                   )}
-                  <strong>{item.title}</strong>
+                  <strong className="card-title">{item.title}</strong>
                   {item.description && <p>{item.description}</p>}
                 </div>
-                <span
-                  className={`status-badge status-badge--${item.status.toLowerCase()}`}
-                >
-                  {workItemStatusLabel[item.status]}
-                </span>
-                <span className="work-item-estimate">
-                  {formatEstimate(item.estimatedMinutes)}
-                </span>
-                {!data.project.archivedAt && item.status !== "DONE" && (
-                  <StartTimerButton
-                    slug={workspaceSlug}
-                    projectId={projectId}
-                    workItemId={item.id}
-                    hasActiveTimer={Boolean(activeTimer)}
-                    activeOnItem={activeTimer?.workItemId === item.id}
-                  />
-                )}
-                {canManage && (
-                  <details className="item-editor">
-                    <summary aria-label={`Editar ${item.title}`}>
-                      Editar
-                    </summary>
-                    <div>
-                      <WorkItemForm
-                        slug={workspaceSlug}
-                        projectId={projectId}
-                        item={item}
-                        parents={parents}
-                      />
-                    </div>
-                  </details>
-                )}
+                <div className="work-item-row__meta">
+                  <span
+                    className={`status-badge status-badge--${item.status.toLowerCase()}`}
+                  >
+                    {workItemStatusLabel[item.status]}
+                  </span>
+                  <span className="work-item-estimate">
+                    {formatEstimate(item.estimatedMinutes)}
+                  </span>
+                </div>
+                <div className="work-item-row__actions">
+                  {!data.project.archivedAt && item.status !== "DONE" && (
+                    <StartTimerButton
+                      slug={workspaceSlug}
+                      projectId={projectId}
+                      workItemId={item.id}
+                      hasActiveTimer={Boolean(activeTimer)}
+                      activeOnItem={activeTimer?.workItemId === item.id}
+                    />
+                  )}
+                  {canManage && (
+                    <details className="item-editor">
+                      <summary
+                        aria-label={`Mais ações para ${item.title}`}
+                        className="button button--ghost button--icon button--sm"
+                        title="Mais ações"
+                      >
+                        <span aria-hidden="true">•••</span>
+                      </summary>
+                      <div>
+                        <WorkItemForm
+                          slug={workspaceSlug}
+                          projectId={projectId}
+                          item={item}
+                          parents={parents}
+                        />
+                      </div>
+                    </details>
+                  )}
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }

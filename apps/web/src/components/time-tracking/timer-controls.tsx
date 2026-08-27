@@ -89,7 +89,9 @@ export function TimerDock({
       <div className="timer-dock__context">
         <span className="timer-status-dot" aria-hidden="true" />
         <div>
-          <small>{timer.status === "RUNNING" ? "Working" : "Paused"}</small>
+          <small>
+            {timer.status === "RUNNING" ? "Em andamento" : "Pausado"}
+          </small>
           <strong>{timer.workItemTitle ?? timer.projectName}</strong>
           <span>{timer.workItemTitle ? timer.projectName : "Projeto"}</span>
         </div>
@@ -108,18 +110,18 @@ export function TimerDock({
               className="button button--secondary"
               disabled={pausePending}
             >
-              Pause
+              Pausar
             </button>
           </form>
         ) : (
           <form action={resumeAction}>
             <button className="button button--primary" disabled={resumePending}>
-              Resume
+              Retomar
             </button>
           </form>
         )}
         <details className="timer-switcher">
-          <summary className="button button--secondary">Switch</summary>
+          <summary className="button button--secondary">Trocar</summary>
           <div className="timer-switcher__panel">
             <strong>Trocar atividade</strong>
             {targets.projects.map((target) => (
@@ -157,7 +159,7 @@ export function TimerDock({
         </details>
         <form action={finishAction}>
           <button className="button button--secondary" disabled={finishPending}>
-            Finish
+            Encerrar
           </button>
         </form>
       </div>
@@ -190,7 +192,7 @@ export function StartTimerButton({
     return (
       <span className="timer-working-label">
         <span className="timer-status-dot" />
-        Working
+        Em andamento
       </span>
     );
   return (
@@ -199,12 +201,12 @@ export function StartTimerButton({
         <button
           className={
             hasActiveTimer
-              ? "button button--secondary"
-              : "button button--primary"
+              ? "button button--secondary button--sm"
+              : "button button--primary button--sm"
           }
           disabled={pending}
         >
-          {pending ? "Aguarde…" : hasActiveTimer ? "Switch" : "Start"}
+          {pending ? "Aguarde…" : hasActiveTimer ? "Trocar" : "Iniciar"}
         </button>
       </form>
       {state.status === "error" && <small role="alert">{state.message}</small>}

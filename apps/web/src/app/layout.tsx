@@ -1,5 +1,6 @@
 import "@fontsource-variable/manrope";
 import "./globals.css";
+import "./product.css";
 
 import type { Metadata, Viewport } from "next";
 import type { PropsWithChildren } from "react";
@@ -28,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning data-scroll-behavior="smooth">
       <body>
         <ThemeProvider>
           <AnalyticsProvider>{children}</AnalyticsProvider>

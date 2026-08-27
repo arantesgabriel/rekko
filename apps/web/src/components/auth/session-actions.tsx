@@ -1,10 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/modules/auth/auth-client";
 
 export function SessionActions() {
   const router = useRouter();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const [loading, setLoading] = useState<"all" | "current" | null>(null);
   async function signOut(all: boolean) {
     setLoading(all ? "all" : "current");
@@ -14,7 +19,7 @@ export function SessionActions() {
         await authClient.signOut();
       } else await authClient.signOut();
     } finally {
-      router.push("/login");
+      router.replace("/login");
       router.refresh();
     }
   }
@@ -22,7 +27,7 @@ export function SessionActions() {
     <div className="session-actions">
       <button
         className="button button--secondary"
-        disabled={Boolean(loading)}
+        disabled={!mounted || Boolean(loading)}
         onClick={() => signOut(false)}
         type="button"
       >
@@ -30,7 +35,7 @@ export function SessionActions() {
       </button>
       <button
         className="button button--ghost"
-        disabled={Boolean(loading)}
+        disabled={!mounted || Boolean(loading)}
         onClick={() => signOut(true)}
         type="button"
       >
