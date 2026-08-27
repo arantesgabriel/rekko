@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useHydrationSafeReducedMotion } from "@/components/landing/motion";
 
 export function MarketingNavbar() {
   const [overHero, setOverHero] = useState(true);
@@ -111,7 +111,7 @@ export function MarketingNavbar() {
 }
 
 function NavbarBrand({ inverted }: { inverted: boolean }) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

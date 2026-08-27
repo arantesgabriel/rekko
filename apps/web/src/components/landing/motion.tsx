@@ -1,12 +1,13 @@
 "use client";
 
 import {
+  MotionConfig,
   motion,
   useReducedMotion,
   useScroll,
   useTransform,
 } from "motion/react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PropsWithChildren } from "react";
 
 export const motionTokens = {
@@ -18,6 +19,22 @@ export const motionTokens = {
   revealDistance: 32,
 };
 
+export function LandingMotionConfig({ children }: PropsWithChildren) {
+  return <MotionConfig reducedMotion="never">{children}</MotionConfig>;
+}
+
+export function useHydrationSafeReducedMotion() {
+  const prefersReducedMotion = useReducedMotion();
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHydrated(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return hydrated && Boolean(prefersReducedMotion);
+}
+
 export function Reveal({
   children,
   className,
@@ -27,7 +44,7 @@ export function Reveal({
   delay?: number;
   direction?: "up" | "left" | "right";
 }>) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       className={className}
@@ -49,7 +66,7 @@ export function Reveal({
 }
 
 export function HeroSequence({ children }: PropsWithChildren) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       className="landing-container hero__content"
@@ -70,7 +87,7 @@ export function HeroSequence({ children }: PropsWithChildren) {
 }
 
 export function HeroItem({ children }: PropsWithChildren) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       variants={{
@@ -91,7 +108,7 @@ export function NarrativeStep({
   children,
   index,
 }: PropsWithChildren<{ index: number }>) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.article
       initial={{ opacity: 0.82, y: reduced ? 0 : 28 }}
@@ -109,7 +126,7 @@ export function NarrativeStep({
 }
 
 export function TimelineStory() {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   const target = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target,
@@ -157,7 +174,7 @@ function TimelineRow({
   time: string;
   title: string;
 }) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       className={gap ? "timeline-story__gap" : undefined}
@@ -177,7 +194,7 @@ function TimelineRow({
 }
 
 export function ScaleBar({ scale }: { scale: number }) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.i
       initial={{ scaleX: reduced ? scale : 0.08 }}
@@ -196,7 +213,7 @@ export function TeamAvatar({
   className = "",
   index,
 }: PropsWithChildren<{ className?: string; index: number }>) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       className={`person ${className}`}
@@ -215,7 +232,7 @@ export function TeamAvatar({
 }
 
 export function FinalSequence({ children }: PropsWithChildren) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       className="landing-container"
@@ -237,11 +254,11 @@ export function FinalSequence({ children }: PropsWithChildren) {
 }
 
 export function FinalItem({ children }: PropsWithChildren) {
-  const reduced = useReducedMotion();
+  const reduced = useHydrationSafeReducedMotion();
   return (
     <motion.div
       variants={{
-        hidden: { opacity: 0.82, y: reduced ? 0 : 20 },
+        hidden: { opacity: 0.82, y: 0 },
         visible: { opacity: 1, y: 0 },
       }}
       transition={{

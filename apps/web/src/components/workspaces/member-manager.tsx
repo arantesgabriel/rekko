@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 
 import {
   cancelInvitationAction,
@@ -31,6 +31,8 @@ type Invitation = {
   status: "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
 };
 
+const subscribeToHydration = () => () => undefined;
+
 export function MemberManager({
   actorRole,
   invitations,
@@ -42,23 +44,31 @@ export function MemberManager({
   members: Member[];
   slug: string;
 }) {
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<ActionState | null>(null);
   const canManage = actorRole !== "MEMBER";
   function run(task: () => Promise<ActionState>): Promise<void> {
     setFeedback(null);
+    setBusy(true);
     return new Promise((resolve) => {
       startTransition(async () => {
         try {
           setFeedback(await task());
         } finally {
+          setBusy(false);
           resolve();
         }
       });
     });
   }
   return (
-    <div className="members-list" aria-busy={pending}>
+    <div className="members-list" aria-busy={busy || pending}>
       {feedback?.message && (
         <p
           className={`form-message form-message--${feedback.status}`}
@@ -94,7 +104,7 @@ export function MemberManager({
               </label>
               <input
                 defaultValue={member.jobTitle ?? ""}
-                disabled={pending}
+                disabled={!hydrated || busy || pending}
                 id={`job-${member.id}`}
                 maxLength={100}
                 name="jobTitle"
@@ -123,7 +133,7 @@ export function MemberManager({
               </label>
               <select
                 defaultValue={member.role}
-                disabled={pending}
+                disabled={!hydrated || busy || pending}
                 id={`role-${member.id}`}
                 name="role"
                 onChange={(event) => {
@@ -159,7 +169,7 @@ export function MemberManager({
                 <div className="row-actions-menu__popover">
                   <button
                     className="button button--destructive"
-                    disabled={pending}
+                    disabled={!hydrated || busy || pending}
                     onClick={() => {
                       if (
                         window.confirm(
@@ -205,7 +215,7 @@ export function MemberManager({
                 <>
                   <button
                     className="button button--link"
-                    disabled={pending}
+                    disabled={!hydrated || busy || pending}
                     onClick={() =>
                       run(() => resendInvitationAction(slug, invitation.id))
                     }
@@ -215,7 +225,7 @@ export function MemberManager({
                   </button>
                   <button
                     className="button button--link button--destructive"
-                    disabled={pending}
+                    disabled={!hydrated || busy || pending}
                     onClick={() =>
                       run(() => cancelInvitationAction(slug, invitation.id))
                     }

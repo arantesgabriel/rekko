@@ -339,42 +339,42 @@ Entregar o diferencial conceitual central do Rekko.
 
 ### Manual Time
 
-- [ ] lançamento manual;
-- [ ] data;
-- [ ] início;
-- [ ] fim;
-- [ ] Project;
-- [ ] Work Item opcional;
-- [ ] descrição;
-- [ ] cálculo server-side;
-- [ ] detecção de overlap.
+- [x] lançamento manual;
+- [x] data;
+- [x] início;
+- [x] fim;
+- [x] Project;
+- [x] Work Item opcional;
+- [x] descrição;
+- [x] cálculo server-side;
+- [x] detecção de overlap.
 
 ### Timeline
 
-- [ ] Timeline diária;
-- [ ] rail temporal;
-- [ ] Activity Blocks;
-- [ ] duração;
-- [ ] gaps;
-- [ ] active segment;
-- [ ] responsive mobile timeline.
+- [x] Timeline diária;
+- [x] rail temporal;
+- [x] Activity Blocks;
+- [x] duração;
+- [x] gaps;
+- [x] active segment;
+- [x] responsive mobile timeline.
 
 ### Reconstruction
 
-- [ ] Reconstruction Drawer;
-- [ ] preencher gap;
-- [ ] atualizar timeline;
-- [ ] motion de segmentos conectando;
-- [ ] mensagens não julgadoras.
+- [x] Reconstruction Drawer;
+- [x] preencher gap;
+- [x] atualizar timeline;
+- [x] motion de segmentos conectando;
+- [x] mensagens não julgadoras.
 
 ### Today
 
-- [ ] tracked today;
-- [ ] current activity;
-- [ ] quick start;
-- [ ] recentes;
-- [ ] timeline resumida;
-- [ ] zero-state útil.
+- [x] tracked today;
+- [x] current activity;
+- [x] quick start;
+- [x] recentes;
+- [x] timeline resumida;
+- [x] zero-state útil.
 
 ## Critério de saída
 
