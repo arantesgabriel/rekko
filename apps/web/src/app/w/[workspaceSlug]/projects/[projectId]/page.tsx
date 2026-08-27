@@ -55,6 +55,7 @@ export default async function ProjectPage({
     throw error;
   }
   const canManage = data.context.role !== "MEMBER" && !data.project.archivedAt;
+  const isLinear = data.project.source === "LINEAR";
   const activeTimer = await getCurrentTimer(session.user.id);
   const parents = data.parentOptions.map(({ id, title }) => ({ id, title }));
   const parentTitles = new Map(
@@ -115,7 +116,9 @@ export default async function ProjectPage({
         }
         eyebrow={
           <div className="page-header__badges">
-            <span className="source-badge">Manual</span>
+            <span className="source-badge">
+              {isLinear ? "Linear" : "Manual"}
+            </span>
             <span
               className={`status-badge status-badge--${data.project.status.toLowerCase()}`}
             >
@@ -141,7 +144,14 @@ export default async function ProjectPage({
       >
         <SectionHeader
           actions={
-            canManage ? (
+            !data.project.archivedAt && isLinear ? (
+              <Link
+                className="button button--primary"
+                href={`/w/${workspaceSlug}/work/new?source=linear&existingProjectId=${projectId}`}
+              >
+                Adicionar demandas do Linear
+              </Link>
+            ) : canManage ? (
               <details className="create-item">
                 <summary className="button button--primary">
                   Criar demanda
@@ -202,16 +212,28 @@ export default async function ProjectPage({
                   </span>
                 </div>
                 <div className="work-item-row__actions">
-                  {!data.project.archivedAt && item.status !== "DONE" && (
-                    <StartTimerButton
-                      slug={workspaceSlug}
-                      projectId={projectId}
-                      workItemId={item.id}
-                      hasActiveTimer={Boolean(activeTimer)}
-                      activeOnItem={activeTimer?.workItemId === item.id}
-                    />
-                  )}
-                  {canManage && (
+                  {!data.project.archivedAt &&
+                    item.status !== "DONE" &&
+                    item.isTrackable && (
+                      <StartTimerButton
+                        slug={workspaceSlug}
+                        projectId={projectId}
+                        workItemId={item.id}
+                        hasActiveTimer={Boolean(activeTimer)}
+                        activeOnItem={activeTimer?.workItemId === item.id}
+                      />
+                    )}
+                  {item.source === "LINEAR" && item.externalUrl ? (
+                    <a
+                      className="button button--ghost button--sm"
+                      href={item.externalUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Abrir no Linear
+                    </a>
+                  ) : null}
+                  {canManage && item.source === "MANUAL" && (
                     <details className="item-editor">
                       <summary
                         aria-label={`Mais ações para ${item.title}`}

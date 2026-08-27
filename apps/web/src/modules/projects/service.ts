@@ -224,7 +224,11 @@ async function validateMutableProject(
     "project:manage",
   );
   const [record] = await db
-    .select({ id: project.id, archivedAt: project.archivedAt })
+    .select({
+      id: project.id,
+      archivedAt: project.archivedAt,
+      source: project.source,
+    })
     .from(project)
     .where(
       and(eq(project.id, input.projectId), eq(project.workspaceId, context.id)),
@@ -232,6 +236,7 @@ async function validateMutableProject(
     .limit(1);
   if (!record) throw new ProjectError("PROJECT_NOT_FOUND");
   if (record.archivedAt) throw new ProjectError("PROJECT_ARCHIVED");
+  if (record.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
   return context;
 }
 
@@ -245,6 +250,7 @@ async function validateParent(input: WorkItemMutation & { itemId?: string }) {
       and(
         eq(workItem.workspaceId, context.id),
         eq(workItem.projectId, input.projectId),
+        eq(workItem.source, "MANUAL"),
         isNull(workItem.archivedAt),
       ),
     );

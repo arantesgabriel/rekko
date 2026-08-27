@@ -115,6 +115,25 @@ export function MembersIcon({ className }: IconProps) {
   );
 }
 
+export function IntegrationsIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d="M7 3.5v4M13 3.5v4M5 7.5h10v1.8a5 5 0 0 1-5 5v2.2"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
 export function MenuIcon({ className }: IconProps) {
   return (
     <svg

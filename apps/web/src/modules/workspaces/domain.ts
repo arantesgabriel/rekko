@@ -13,7 +13,9 @@ export type WorkspacePermission =
   | "member:job-title"
   | "member:role"
   | "member:remove"
-  | "project:manage";
+  | "project:manage"
+  | "linear:manage"
+  | "linear:import";
 
 const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
   {
@@ -24,6 +26,8 @@ const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
       "member:role",
       "member:remove",
       "project:manage",
+      "linear:manage",
+      "linear:import",
     ],
     ADMIN: [
       "workspace:view",
@@ -32,8 +36,10 @@ const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
       "member:role",
       "member:remove",
       "project:manage",
+      "linear:manage",
+      "linear:import",
     ],
-    MEMBER: ["workspace:view"],
+    MEMBER: ["workspace:view", "linear:import"],
   };
 
 export function hasWorkspacePermission(

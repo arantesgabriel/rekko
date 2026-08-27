@@ -56,6 +56,7 @@ async function validateTarget(input: ManualInput) {
           eq(workItem.projectId, input.projectId),
           eq(workItem.workspaceId, context.id),
           eq(workItem.isActive, true),
+          eq(workItem.isTrackable, true),
           isNull(workItem.archivedAt),
           ne(workItem.status, "DONE"),
         ),
@@ -283,6 +284,7 @@ export async function listManualTimeTargets(userId: string, slug: string) {
       and(
         eq(workItem.workspaceId, context.id),
         eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
         ne(workItem.status, "DONE"),
         isNull(workItem.archivedAt),
       ),

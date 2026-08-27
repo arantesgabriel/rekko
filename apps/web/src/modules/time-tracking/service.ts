@@ -47,6 +47,7 @@ async function validateTarget(input: Target) {
           eq(workItem.workspaceId, context.id),
           isNull(workItem.archivedAt),
           eq(workItem.isActive, true),
+          eq(workItem.isTrackable, true),
           inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
         ),
       )
@@ -353,6 +354,7 @@ export async function listTimerTargets(userId: string) {
         eq(project.status, "ACTIVE"),
         isNull(workItem.archivedAt),
         eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
         inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
       ),
     )

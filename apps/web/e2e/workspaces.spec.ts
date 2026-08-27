@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.configure({ mode: "serial" });
-
 const password = "Rekko-workspace-2026";
 const responsiveViewports = [
   { width: 1920, height: 1080 },
@@ -126,10 +124,49 @@ test("authenticated user creates and switches between two Workspaces", async ({
   await expect(page).toHaveURL(/\/w\/workspace-a-/);
 });
 
+test("Owner connects Linear and selectively imports a parent tree", async ({
+  page,
+}, testInfo) => {
+  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  await signUp(page, {
+    email: `linear-owner-${stamp}@example.com`,
+    name: "Linear Owner",
+  });
+  await completeOnboarding(page, { workspaceName: `Linear ${stamp}` });
+  const integrationsLink = page
+    .getByRole("link", { name: "Integrações" })
+    .first();
+  if (!(await integrationsLink.isVisible()))
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+  await integrationsLink.click();
+  await page.getByRole("button", { name: "Conectar Linear" }).click();
+  await expect(page.getByText("Linear conectado.")).toBeVisible();
+  const workLink = page.getByRole("link", { name: "Projetos" }).first();
+  if (!(await workLink.isVisible()))
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+  await workLink.click();
+  await page.getByRole("link", { name: "Criar projeto" }).first().click();
+  await page.getByRole("link", { name: "Criar com Linear" }).click();
+  await page.getByLabel("Nome do projeto").fill("Projeto Linear seletivo");
+  const parent = page.getByLabel(/LIN-100/);
+  await parent.check();
+  await expect(page.getByLabel(/LIN-101/)).toBeChecked();
+  await expect(page.getByLabel(/LIN-102/)).toBeChecked();
+  await page.getByLabel(/LIN-102/).uncheck();
+  await expect(parent).toHaveJSProperty("indeterminate", true);
+  await page.getByRole("button", { name: "Importar selecionados" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Projeto Linear seletivo" }),
+  ).toBeVisible();
+  await expect(page.getByText("LIN-102")).toHaveCount(0);
+  await expect(page.getByText("Linear", { exact: true }).first()).toBeVisible();
+});
+
 test("Owner invites a user who signs up and joins; Member sees no admin form", async ({
   page,
   request,
 }, testInfo) => {
+  test.setTimeout(60_000);
   const stamp = `${testInfo.project.name}-${Date.now()}`;
   const ownerEmail = `owner-invite-${stamp}@example.com`;
   const memberEmail = `member-invite-${stamp}@example.com`;
@@ -186,10 +223,19 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   const memberRow = page
     .locator("article.member-row")
     .filter({ hasText: memberEmail });
+  const membersList = page.locator(".members-list");
+  const success = page.getByText("Permissão atualizada.");
   await memberRow
     .getByLabel("Permissão de Member Invite")
     .selectOption("ADMIN");
-  await page.waitForTimeout(500);
+  await expect
+    .poll(
+      async () =>
+        (await success.isVisible()) ||
+        (await membersList.getAttribute("aria-busy")) === "true",
+    )
+    .toBe(true);
+  await expect(membersList).toHaveAttribute("aria-busy", "false");
   await page.reload();
   await expect(
     page

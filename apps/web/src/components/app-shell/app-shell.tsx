@@ -11,6 +11,7 @@ import {
   CollapseIcon,
   ExpandIcon,
   HomeIcon,
+  IntegrationsIcon,
   InsightsIcon,
   MembersIcon,
   MenuIcon,
@@ -225,6 +226,13 @@ function SidebarBody({
           href={`${home}/members`}
           icon={<MembersIcon />}
           label="Membros"
+        />
+        <SidebarItem
+          collapsed={collapsed}
+          current={pathname.startsWith(`${home}/integrations`)}
+          href={`${home}/integrations`}
+          icon={<IntegrationsIcon />}
+          label="Integrações"
         />
       </nav>
       <div className="app-sidebar__footer">
