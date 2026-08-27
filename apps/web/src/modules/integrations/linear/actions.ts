@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCoreSession } from "@/modules/auth/session";
-import { connectLinear, disconnectLinear, syncLinearProject } from "./service";
-import { importLinearIssues } from "./service";
+import {
+  connectLinear,
+  disconnectLinear,
+  importLinearIssues,
+  LinearIntegrationError,
+  syncLinearProject,
+} from "./service";
 import { project } from "@rekko/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -30,17 +35,26 @@ export async function importLinearIssuesAction(
   });
   if (!parsed.success)
     redirect(`/w/${slug}/work/new?source=linear&error=selection`);
-  const result = await importLinearIssues({
-    issueIds: parsed.data.issueIds,
-    ...(parsed.data.existingProjectId
-      ? { existingProjectId: parsed.data.existingProjectId }
-      : {}),
-    ...(parsed.data.projectName
-      ? { projectName: parsed.data.projectName }
-      : {}),
-    slug,
-    userId: session.user.id,
-  });
+  let result;
+  try {
+    result = await importLinearIssues({
+      issueIds: parsed.data.issueIds,
+      ...(parsed.data.existingProjectId
+        ? { existingProjectId: parsed.data.existingProjectId }
+        : {}),
+      ...(parsed.data.projectName
+        ? { projectName: parsed.data.projectName }
+        : {}),
+      slug,
+      userId: session.user.id,
+    });
+  } catch (error) {
+    if (error instanceof LinearIntegrationError)
+      redirect(
+        `/w/${slug}/work/new?source=linear&error=${error.code.toLowerCase()}`,
+      );
+    throw error;
+  }
   revalidatePath(`/w/${slug}`);
   redirect(`/w/${slug}/projects/${result.projectId}?linear=imported`);
 }

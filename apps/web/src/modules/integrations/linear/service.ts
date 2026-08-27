@@ -181,10 +181,37 @@ export async function browseLinearIssues(input: {
   slug: string;
   userId: string;
 }): Promise<LinearPage<LinearIssue>> {
-  const { gateway } = input.gateway
-    ? { gateway: input.gateway }
-    : await resolveGateway(input.userId, input.slug, "linear:import");
-  return gateway.browseIssues(input.filters);
+  const workspace = await requireWorkspace(
+    input.userId,
+    input.slug,
+    "linear:import",
+  );
+  const resolved = await resolveConnection(workspace.id);
+  const gateway =
+    input.gateway ??
+    (process.env.REKKO_E2E === "true"
+      ? new FakeLinearGateway()
+      : await createGatewayForConnection(resolved.connection));
+  const page = await gateway.browseIssues(input.filters);
+  if (!page.items.length) return page;
+  const imported = await db
+    .select({ externalId: workItem.externalId })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.workspaceId, workspace.id),
+        eq(workItem.linearConnectionId, resolved.connection.id),
+        inArray(
+          workItem.externalId,
+          page.items.map((item) => item.id),
+        ),
+      ),
+    );
+  const importedIds = new Set(imported.map((item) => item.externalId));
+  return {
+    ...page,
+    items: page.items.filter((item) => !importedIds.has(item.id)),
+  };
 }
 
 export async function importLinearIssues(input: {
@@ -501,22 +528,6 @@ async function getIssueOrRequireReconnect(
     }
     throw error;
   }
-}
-
-async function resolveGateway(
-  userId: string,
-  slug: string,
-  permission: "linear:import" | "linear:manage",
-) {
-  const workspace = await requireWorkspace(userId, slug, permission);
-  const resolved = await resolveConnection(workspace.id);
-  return {
-    ...resolved,
-    gateway:
-      process.env.REKKO_E2E === "true"
-        ? new FakeLinearGateway()
-        : await createGatewayForConnection(resolved.connection),
-  };
 }
 
 async function createGatewayForConnection(
