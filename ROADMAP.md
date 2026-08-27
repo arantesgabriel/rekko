@@ -292,26 +292,26 @@ Implementar o coração operacional do Rekko.
 
 ### Timer
 
-- [ ] Start;
-- [ ] Pause;
-- [ ] Resume;
-- [ ] Finish;
-- [ ] Switch;
-- [ ] Global Timer Dock;
-- [ ] apenas um timer ativo por usuário;
-- [ ] constraint no PostgreSQL;
-- [ ] Clock abstraction;
-- [ ] estado persistido no servidor;
-- [ ] timer continua após fechar navegador;
-- [ ] cross-device fetch do timer atual.
+- [x] Start;
+- [x] Pause;
+- [x] Resume;
+- [x] Finish;
+- [x] Switch;
+- [x] Global Timer Dock;
+- [x] apenas um timer ativo por usuário;
+- [x] constraint no PostgreSQL;
+- [x] Clock abstraction;
+- [x] estado persistido no servidor;
+- [x] timer continua após fechar navegador;
+- [x] cross-device fetch do timer atual.
 
 ### Time model
 
-- [ ] TimeEntry;
-- [ ] TimeSegment;
-- [ ] duração materializada;
-- [ ] transações;
-- [ ] atomic Switch.
+- [x] TimeEntry;
+- [x] TimeSegment;
+- [x] duração materializada;
+- [x] transações;
+- [x] atomic Switch.
 
 ## Testes obrigatórios
 

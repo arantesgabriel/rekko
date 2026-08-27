@@ -198,7 +198,8 @@ function SidebarBody({
         />
         <SidebarItem
           collapsed={collapsed}
-          disabled
+          current={pathname === home}
+          href={home}
           icon={<TimelineIcon />}
           label="Timeline"
         />

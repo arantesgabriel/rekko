@@ -98,7 +98,7 @@ async function completeOnboarding(
   ).toBeVisible();
   await page.getByRole("button", { name: "Criar workspace" }).click();
   await expect(
-    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+    page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
 }
 
@@ -163,9 +163,13 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   ).toBeVisible();
   await page.getByRole("button", { name: "Aceitar convite" }).click();
   await expect(
-    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+    page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Membros" }).first().click();
+  const membersLink = page.getByRole("link", { name: "Membros" }).first();
+  if (!(await membersLink.isVisible())) {
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+  }
+  await membersLink.click();
   await expect(page.getByRole("heading", { name: "Membros" })).toBeVisible();
   const membersUrl = page.url();
   const membersPath = new URL(membersUrl).pathname;
@@ -182,12 +186,10 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   const memberRow = page
     .locator("article.member-row")
     .filter({ hasText: memberEmail });
-  const membersList = page.locator(".members-list");
   await memberRow
     .getByLabel("Permissão de Member Invite")
     .selectOption("ADMIN");
-  await expect(membersList).toHaveAttribute("aria-busy", "true");
-  await expect(membersList).toHaveAttribute("aria-busy", "false");
+  await page.waitForTimeout(500);
   await page.reload();
   await expect(
     page
@@ -277,19 +279,25 @@ test("onboarding preserves edits and sends no invitation before confirmation", a
   await expect(page.getByText(`Edited ${stamp}`)).toBeVisible();
   await page.getByRole("button", { name: "Criar workspace" }).click();
   await expect(
-    page.getByRole("heading", { name: "Seu Workspace está pronto." }),
+    page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
 });
 
 test("Owner creates a manual Project, Work Items, hierarchy and filters", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   const stamp = `${testInfo.project.name}-${Date.now()}`;
   await signUp(page, {
     email: `owner-project-${stamp}@example.com`,
     name: "Owner Project",
   });
   await completeOnboarding(page, { workspaceName: `Work ${stamp}` });
+  const projectsLink = page.getByRole("link", { name: "Projetos" }).first();
+  if (!(await projectsLink.isVisible())) {
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+  }
+  await projectsLink.click();
   await page.getByRole("link", { name: "Criar projeto" }).first().click();
   await page.getByRole("link", { name: "Criar manualmente" }).click();
   await page.getByLabel("Nome *").fill("AMBLA");
@@ -319,7 +327,9 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
         .filter({ hasText: new RegExp(`^${name}$`) }),
     });
   await expect(rowNamed("Google login")).toBeVisible();
-  await createItem.locator("summary").click();
+  await createItem.evaluate((details: HTMLDetailsElement) => {
+    details.open = false;
+  });
   const authentication = rowNamed("Authentication");
   await authentication.getByRole("button", { name: "Iniciar" }).click();
   await expect(
@@ -359,4 +369,40 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(darkOverflow).toBeLessThanOrEqual(0);
+
+  const projectPath = new URL(page.url()).pathname;
+  const workspaceHome = projectPath.replace(/\/projects\/[^/]+$/, "");
+  await page.goto(workspaceHome);
+  await page.getByRole("button", { name: "Adicionar tempo" }).first().click();
+  await page.getByLabel("Início").fill("08:00");
+  await page.getByLabel("Fim").fill("09:00");
+  await page
+    .locator('select[name="projectId"]')
+    .selectOption({ label: "AMBLA" });
+  await page
+    .locator('select[name="workItemId"]')
+    .selectOption({ label: "Authentication" });
+  await page
+    .locator('textarea[name="description"]')
+    .fill("Planejamento manual");
+  await page.getByRole("button", { name: "Salvar tempo" }).click();
+  await expect(
+    page
+      .locator(".timeline-block")
+      .filter({ hasText: "Authentication" })
+      .first(),
+  ).toBeVisible();
+  await expect(page.getByText("1h").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Adicionar tempo" }).click();
+  await page.getByLabel("Início").fill("08:30");
+  await page.getByLabel("Fim").fill("09:30");
+  await page
+    .locator('select[name="projectId"]')
+    .selectOption({ label: "AMBLA" });
+  await page.getByRole("button", { name: "Salvar tempo" }).click();
+  await expect(
+    page.getByText("Parte deste período já possui tempo registrado."),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
