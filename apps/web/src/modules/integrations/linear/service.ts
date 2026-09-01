@@ -1,10 +1,11 @@
-import { auditLog, linearConnection, project, workItem } from "@rekko/db";
+import { linearConnection, project, workItem } from "@rekko/db";
 import { parseEstimateFromDescription } from "@rekko/shared";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { parseServerEnv } from "@rekko/shared/env";
 
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/modules/workspaces/service";
+import { recordAudit } from "@/modules/audit/service";
 import { AesGcmEncryptionService } from "./encryption";
 import {
   HttpLinearGateway,
@@ -112,7 +113,7 @@ export async function connectLinear(input: {
           })
           .returning({ id: linearConnection.id });
     if (!connection) throw new LinearIntegrationError("NOT_CONNECTED");
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: existing ? "linear_reconnected" : "linear_connected",
       actorUserId: input.userId,
       afterJson: {
@@ -163,7 +164,7 @@ export async function disconnectLinear(input: {
         updatedAt: new Date(),
       })
       .where(eq(linearConnection.id, connection.id));
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: "linear_disconnected",
       actorUserId: input.userId,
       beforeJson: { status: connection.status },

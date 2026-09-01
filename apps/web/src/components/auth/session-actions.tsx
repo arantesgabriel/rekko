@@ -11,20 +11,27 @@ export function SessionActions() {
     () => false,
   );
   const [loading, setLoading] = useState<"all" | "current" | null>(null);
+  const [error, setError] = useState<string | null>(null);
   async function signOut(all: boolean) {
     setLoading(all ? "all" : "current");
+    setError(null);
     try {
       if (all) {
-        await authClient.revokeSessions();
+        const result = await authClient.revokeSessions();
+        if (result.error) throw new Error("Unable to revoke sessions");
         await authClient.signOut();
       } else await authClient.signOut();
-    } finally {
       router.replace("/login");
       router.refresh();
+    } catch {
+      setError("Não conseguimos encerrar a sessão agora. Tente novamente.");
+    } finally {
+      setLoading(null);
     }
   }
   return (
     <div className="session-actions">
+      {error ? <p role="alert">{error}</p> : null}
       <button
         className="button button--secondary"
         disabled={!mounted || Boolean(loading)}

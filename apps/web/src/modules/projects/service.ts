@@ -1,4 +1,4 @@
-import { auditLog, project, workItem } from "@rekko/db";
+import { project, workItem } from "@rekko/db";
 import {
   and,
   asc,
@@ -12,6 +12,7 @@ import {
 
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/modules/workspaces/service";
+import { recordAudit } from "@/modules/audit/service";
 
 import { createsParentCycle } from "./domain";
 import { ProjectError } from "./errors";
@@ -192,7 +193,7 @@ export async function archiveProject(input: {
         status: project.status,
       });
     if (!archived) throw new ProjectError("PROJECT_NOT_FOUND");
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       workspaceId: context.id,
       actorUserId: input.actorUserId,
       entityType: "project",

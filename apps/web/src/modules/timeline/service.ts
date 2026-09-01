@@ -1,13 +1,10 @@
-import {
-  auditLog,
-  project,
-  timeEntry,
-  timeSegment,
-  user,
-  workItem,
-} from "@rekko/db";
+import { project, timeEntry, timeSegment, user, workItem } from "@rekko/db";
 import { and, asc, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import {
+  buildTimeEntryAuditSnapshot,
+  recordAudit,
+} from "@/modules/audit/service";
 import { requireWorkspace } from "@/modules/workspaces/service";
 import type { Clock } from "@/modules/time-tracking/clock";
 import { systemClock } from "@/modules/time-tracking/clock";
@@ -85,6 +82,8 @@ export async function saveManualTime(
       .where(
         and(
           eq(timeSegment.userId, input.actorUserId),
+          eq(timeSegment.workspaceId, context.id),
+          ne(timeEntry.status, "ARCHIVED"),
           input.entryId
             ? ne(timeSegment.timeEntryId, input.entryId)
             : undefined,
@@ -113,6 +112,12 @@ export async function saveManualTime(
       if (!existing) throw new ManualTimeError("ENTRY_NOT_FOUND");
       if (existing.source !== "MANUAL" || existing.status !== "COMPLETED")
         throw new ManualTimeError("ENTRY_NOT_EDITABLE");
+      const [existingSegment] = await tx
+        .select()
+        .from(timeSegment)
+        .where(eq(timeSegment.timeEntryId, existing.id))
+        .limit(1);
+      if (!existingSegment) throw new ManualTimeError("ENTRY_NOT_EDITABLE");
       await tx
         .update(timeEntry)
         .set({
@@ -129,24 +134,40 @@ export async function saveManualTime(
         .update(timeSegment)
         .set({ startedAt: input.start, endedAt: input.end })
         .where(eq(timeSegment.timeEntryId, existing.id));
-      await tx.insert(auditLog).values({
+      await recordAudit(tx, {
         workspaceId: context.id,
         actorUserId: input.actorUserId,
         entityType: "time_entry",
         entityId: existing.id,
         action: "time_entry_updated",
-        beforeJson: {
+        beforeJson: buildTimeEntryAuditSnapshot({
+          userId: existing.userId,
           projectId: existing.projectId,
           workItemId: existing.workItemId,
+          source: existing.source,
+          status: existing.status,
           startedAt: existing.startedAt,
           finishedAt: existing.finishedAt,
-        },
-        afterJson: {
+          durationSeconds: existing.durationSeconds,
+          archivedAt: existing.archivedAt,
+          segmentId: existingSegment.id,
+          segmentStartedAt: existingSegment.startedAt,
+          segmentEndedAt: existingSegment.endedAt,
+        }),
+        afterJson: buildTimeEntryAuditSnapshot({
+          userId: existing.userId,
           projectId: input.projectId,
           workItemId: input.workItemId,
+          source: existing.source,
+          status: existing.status,
           startedAt: input.start,
           finishedAt: input.end,
-        },
+          durationSeconds,
+          archivedAt: existing.archivedAt,
+          segmentId: existingSegment.id,
+          segmentStartedAt: input.start,
+          segmentEndedAt: input.end,
+        }),
       });
       return existing.id;
     }

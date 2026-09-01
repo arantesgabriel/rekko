@@ -1,5 +1,4 @@
 import {
-  auditLog,
   user,
   workspace,
   workspaceInvitation,
@@ -8,6 +7,7 @@ import {
 import { and, asc, count, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { recordAudit } from "@/modules/audit/service";
 import {
   createInvitationToken,
   hashInvitationToken,
@@ -191,7 +191,7 @@ export async function completeWorkspaceOnboarding(input: {
             .returning({ id: workspaceInvitation.id });
           if (!createdInvitation)
             throw new Error("Invitation insert returned no row");
-          await tx.insert(auditLog).values({
+          await recordAudit(tx, {
             action: "invitation_created",
             actorUserId: input.userId,
             afterJson: { role: invitation.role },
@@ -311,7 +311,7 @@ export async function createInvitation(input: {
     const createdInvitation = rows[0];
     if (!createdInvitation)
       throw new Error("Invitation insert returned no row");
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: "invitation_created",
       actorUserId: input.actorUserId,
       afterJson: { role: input.role },
@@ -387,7 +387,7 @@ export async function cancelInvitation(input: {
       )
       .returning({ id: workspaceInvitation.id });
     if (!cancelled) throw new WorkspaceError("INVITATION_INVALID");
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: "invitation_cancelled",
       actorUserId: input.actorUserId,
       entityId: cancelled.id,
@@ -519,7 +519,7 @@ export async function changeMemberRole(input: {
       .update(workspaceMember)
       .set({ role: input.nextRole, updatedAt: new Date() })
       .where(eq(workspaceMember.id, target.id));
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: "role_changed",
       actorUserId: input.actorUserId,
       beforeJson: { role: target.role },
@@ -595,7 +595,7 @@ export async function removeMember(input: {
       if ((owners?.value ?? 0) <= 1) throw new WorkspaceError("LAST_OWNER");
     }
     await tx.delete(workspaceMember).where(eq(workspaceMember.id, target.id));
-    await tx.insert(auditLog).values({
+    await recordAudit(tx, {
       action: "member_removed",
       actorUserId: input.actorUserId,
       beforeJson: { role: target.role },

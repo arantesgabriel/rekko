@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -80,7 +80,14 @@ export function TodayView({
     reconstruction?: boolean;
   }>(null);
   const [state, action, pending] = useActionState(
-    saveManualTimeAction.bind(null, slug),
+    async (previous: ManualTimeActionState, formData: FormData) => {
+      const next = await saveManualTimeAction(slug, previous, formData);
+      if (next.status === "success") {
+        setEditor(null);
+        router.refresh();
+      }
+      return next;
+    },
     initialState,
   );
   const [projectId, setProjectId] = useState("");
@@ -88,9 +95,6 @@ export function TodayView({
     () => targets.items.filter((item) => item.projectId === projectId),
     [targets.items, projectId],
   );
-  useEffect(() => {
-    if (state.status === "success") window.location.reload();
-  }, [state.status]);
   function openEditor(value: NonNullable<typeof editor>) {
     setProjectId(value.projectId ?? targets.projects[0]?.id ?? "");
     setEditor(value);

@@ -9,18 +9,21 @@ export const workspaceRoleLabel: Record<WorkspaceRole, string> = {
 
 export type WorkspacePermission =
   | "workspace:view"
+  | "workspace:settings"
   | "invitation:manage"
   | "member:job-title"
   | "member:role"
   | "member:remove"
   | "project:manage"
   | "linear:manage"
-  | "linear:import";
+  | "linear:import"
+  | "time:correct";
 
 const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
   {
     OWNER: [
       "workspace:view",
+      "workspace:settings",
       "invitation:manage",
       "member:job-title",
       "member:role",
@@ -28,9 +31,11 @@ const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
       "project:manage",
       "linear:manage",
       "linear:import",
+      "time:correct",
     ],
     ADMIN: [
       "workspace:view",
+      "workspace:settings",
       "invitation:manage",
       "member:job-title",
       "member:role",

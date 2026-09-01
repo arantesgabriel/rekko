@@ -9,6 +9,18 @@ import {
 } from "./domain";
 
 describe("workspace permission matrix", () => {
+  it("keeps settings workspace-wide for Owner and Admin", () => {
+    expect(hasWorkspacePermission("OWNER", "workspace:settings")).toBe(true);
+    expect(hasWorkspacePermission("ADMIN", "workspace:settings")).toBe(true);
+    expect(hasWorkspacePermission("MEMBER", "workspace:settings")).toBe(false);
+  });
+
+  it("limits corrections of another person's time to Owner", () => {
+    expect(hasWorkspacePermission("OWNER", "time:correct")).toBe(true);
+    expect(hasWorkspacePermission("ADMIN", "time:correct")).toBe(false);
+    expect(hasWorkspacePermission("MEMBER", "time:correct")).toBe(false);
+  });
+
   it("allows Owner and Admin to invite, but never Member", () => {
     expect(hasWorkspacePermission("OWNER", "invitation:manage")).toBe(true);
     expect(hasWorkspacePermission("ADMIN", "invitation:manage")).toBe(true);
