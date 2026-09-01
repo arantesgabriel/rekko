@@ -406,60 +406,60 @@ Conectar o tempo ao trabalho já existente no Linear.
 
 ### OAuth
 
-- [ ] conectar Linear por Workspace;
-- [ ] Owner/Admin conecta;
-- [ ] tokens AES-256-GCM;
-- [ ] scopes mínimos;
-- [ ] disconnect;
-- [ ] reconnect state.
+- [x] conectar Linear por Workspace;
+- [x] Owner/Admin conecta;
+- [x] tokens AES-256-GCM;
+- [x] scopes mínimos;
+- [x] disconnect;
+- [x] reconnect state.
 
 ### Browse
 
-- [ ] GraphQL client isolado;
-- [ ] paginação;
-- [ ] Search;
-- [ ] Team filter;
-- [ ] Project filter;
-- [ ] Status filter;
-- [ ] Assignee filter.
+- [x] GraphQL client isolado;
+- [x] paginação;
+- [x] Search;
+- [x] Team filter;
+- [x] Project filter;
+- [x] Status filter;
+- [x] Assignee filter.
 
 ### Selective Import
 
-- [ ] árvore parent/sub-issue;
-- [ ] checkbox;
-- [ ] indeterminate;
-- [ ] seleção múltipla;
-- [ ] ocultar Done por padrão;
-- [ ] importar somente selecionados;
-- [ ] parent contextual;
-- [ ] sticky selected count.
+- [x] árvore parent/sub-issue;
+- [x] checkbox;
+- [x] indeterminate;
+- [x] seleção múltipla;
+- [x] ocultar Done por padrão;
+- [x] importar somente selecionados;
+- [x] parent contextual;
+- [x] sticky selected count.
 
 ### Estimate Parser
 
-- [ ] `Estimativa 30m`;
-- [ ] `15m`;
-- [ ] `1h`;
-- [ ] `1h30`;
-- [ ] `1h 30m`;
-- [ ] `2h 15m`;
-- [ ] normalização em minutos;
-- [ ] testes unitários extensos.
+- [x] `Estimativa 30m`;
+- [x] `15m`;
+- [x] `1h`;
+- [x] `1h30`;
+- [x] `1h 30m`;
+- [x] `2h 15m`;
+- [x] normalização em minutos;
+- [x] testes unitários extensos.
 
 ### Sync
 
-- [ ] Sync now;
-- [ ] Linear webhook endpoint;
-- [ ] HMAC;
-- [ ] timestamp;
-- [ ] delivery id;
-- [ ] idempotência;
-- [ ] atualização de title;
-- [ ] description;
-- [ ] status;
-- [ ] parent;
-- [ ] assignee;
-- [ ] estimate;
-- [ ] archive externo preservando histórico.
+- [x] Sync now;
+- [x] Linear webhook endpoint;
+- [x] HMAC;
+- [x] timestamp;
+- [x] delivery id;
+- [x] idempotência;
+- [x] atualização de title;
+- [x] description;
+- [x] status;
+- [x] parent;
+- [x] assignee;
+- [x] estimate;
+- [x] archive externo preservando histórico.
 
 ### Estimate source of truth UX
 
@@ -504,22 +504,22 @@ Transformar horas registradas em compreensão.
 
 ### Insights
 
-- [ ] tracked today;
-- [ ] tracked week;
-- [ ] hours by Project;
-- [ ] hours by Work Item;
-- [ ] horizontal bar charts;
-- [ ] filters básicos.
+- [x] tracked today;
+- [x] tracked week;
+- [x] hours by Project;
+- [x] hours by Work Item;
+- [x] horizontal bar charts;
+- [x] filters básicos.
 
 ### Estimated × Actual
 
-- [ ] Work Item comparison;
-- [ ] Project aggregate;
-- [ ] estimated;
-- [ ] tracked;
-- [ ] difference;
-- [ ] linguagem neutra;
-- [ ] sem gauges.
+- [x] Work Item comparison;
+- [x] Project aggregate;
+- [x] estimated;
+- [x] tracked;
+- [x] difference;
+- [x] linguagem neutra;
+- [x] sem gauges.
 
 ## Critério de saída
 
@@ -535,18 +535,18 @@ Permitir uso prático das horas fora do Rekko.
 
 ## Entregas
 
-- [ ] export page/action;
-- [ ] período;
-- [ ] colaborador;
-- [ ] projeto;
-- [ ] demanda;
-- [ ] CSV UTF-8;
-- [ ] BOM para Excel;
-- [ ] HH:mm;
-- [ ] decimal hours;
-- [ ] Owner/Admin exportam todos;
-- [ ] Member exporta somente si;
-- [ ] Workspace timezone.
+- [x] export page/action;
+- [x] período;
+- [x] colaborador;
+- [x] projeto;
+- [x] demanda;
+- [x] CSV UTF-8;
+- [x] BOM para Excel;
+- [x] HH:mm;
+- [x] decimal hours;
+- [x] Owner/Admin exportam todos;
+- [x] Member exporta somente si;
+- [x] Workspace timezone.
 
 Relação principal:
 
@@ -562,11 +562,11 @@ Horas trabalhadas
 
 ## Testes obrigatórios
 
-- Member tentando exportar outro usuário;
-- filtro por Workspace;
-- timezone;
-- decimal calculation;
-- CSV escaping.
+- [x] Member tentando exportar outro usuário;
+- [x] filtro por Workspace;
+- [x] timezone;
+- [x] decimal calculation;
+- [x] CSV escaping.
 
 ---
 
