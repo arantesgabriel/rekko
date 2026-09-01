@@ -1,8 +1,10 @@
 import { TodayView } from "@/components/timeline/today-view";
 import { PageContainer } from "@/components/ui/page-container";
 import { requireCoreSession } from "@/modules/auth/session";
+import { getLinearConnection } from "@/modules/integrations/linear/service";
 import {
   getDailyTimeline,
+  getGettingStartedProgress,
   listManualTimeTargets,
 } from "@/modules/timeline/service";
 
@@ -19,13 +21,15 @@ export default async function TodayPage({
     typeof query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.date)
       ? query.date
       : undefined;
-  const [timeline, targets] = await Promise.all([
+  const [timeline, targets, gettingStarted, linear] = await Promise.all([
     getDailyTimeline({
       userId: session.user.id,
       slug: workspaceSlug,
       ...(requestedDate ? { date: requestedDate } : {}),
     }),
     listManualTimeTargets(session.user.id, workspaceSlug),
+    getGettingStartedProgress(session.user.id, workspaceSlug),
+    getLinearConnection({ slug: workspaceSlug, userId: session.user.id }),
   ]);
   return (
     <PageContainer width="lg">
@@ -38,6 +42,10 @@ export default async function TodayPage({
         trackedSeconds={timeline.trackedSeconds}
         isToday={timeline.isToday}
         targets={targets}
+        gettingStarted={{
+          ...gettingStarted,
+          hasLinear: linear.connection?.status === "CONNECTED",
+        }}
       />
     </PageContainer>
   );

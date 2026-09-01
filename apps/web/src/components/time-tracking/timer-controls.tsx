@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   finishTimerAction,
   pauseTimerAction,
@@ -45,17 +46,33 @@ export function TimerDock({
     }[];
   };
 }) {
+  const router = useRouter();
   const [now, setNow] = useState(0);
   const [pauseState, pauseAction, pausePending] = useActionState(
-    pauseTimerAction,
+    async (previous: TimerActionState, formData: FormData) => {
+      void formData;
+      const next = await pauseTimerAction(previous);
+      if (next.status === "success") router.refresh();
+      return next;
+    },
     initialTimerActionState,
   );
   const [resumeState, resumeAction, resumePending] = useActionState(
-    resumeTimerAction,
+    async (previous: TimerActionState, formData: FormData) => {
+      void formData;
+      const next = await resumeTimerAction(previous);
+      if (next.status === "success") router.refresh();
+      return next;
+    },
     initialTimerActionState,
   );
   const [finishState, finishAction, finishPending] = useActionState(
-    finishTimerAction,
+    async (previous: TimerActionState, formData: FormData) => {
+      void formData;
+      const next = await finishTimerAction(previous);
+      if (next.status === "success") router.refresh();
+      return next;
+    },
     initialTimerActionState,
   );
   useEffect(() => {
@@ -109,13 +126,18 @@ export function TimerDock({
             <button
               className="button button--secondary"
               disabled={pausePending}
+              type="submit"
             >
               Pausar
             </button>
           </form>
         ) : (
           <form action={resumeAction}>
-            <button className="button button--primary" disabled={resumePending}>
+            <button
+              className="button button--primary"
+              disabled={resumePending}
+              type="submit"
+            >
               Retomar
             </button>
           </form>
@@ -158,7 +180,11 @@ export function TimerDock({
           </div>
         </details>
         <form action={finishAction}>
-          <button className="button button--secondary" disabled={finishPending}>
+          <button
+            className="button button--secondary"
+            disabled={finishPending}
+            type="submit"
+          >
             Encerrar
           </button>
         </form>
@@ -181,11 +207,17 @@ export function StartTimerButton({
   activeOnItem: boolean;
   hasActiveTimer: boolean;
 }) {
+  const router = useRouter();
   const action = hasActiveTimer
     ? switchTimerAction.bind(null, slug, projectId, workItemId)
     : startTimerAction.bind(null, slug, projectId, workItemId);
   const [state, formAction, pending] = useActionState(
-    action,
+    async (previous: TimerActionState, formData: FormData) => {
+      void formData;
+      const next = await action(previous);
+      if (next.status === "success") router.refresh();
+      return next;
+    },
     initialTimerActionState,
   );
   if (activeOnItem)
@@ -205,6 +237,7 @@ export function StartTimerButton({
               : "button button--primary button--sm"
           }
           disabled={pending}
+          type="submit"
         >
           {pending ? "Aguarde…" : hasActiveTimer ? "Trocar" : "Iniciar"}
         </button>

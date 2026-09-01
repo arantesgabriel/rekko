@@ -48,19 +48,19 @@ export function InsightsView({ data }: { data: InsightsResult }) {
         <>
           <section className="insights-summary" aria-label="Resumo do período">
             <Metric
-              label="Tracked"
+              label="Registrado"
               value={formatDuration(aggregation.trackedSeconds)}
             />
             {aggregation.comparison ? (
               <>
                 <Metric
-                  label="Estimated"
+                  label="Estimado"
                   value={formatEstimate(
                     aggregation.comparison.estimatedMinutes,
                   )}
                 />
                 <Metric
-                  label="Difference"
+                  label="Diferença"
                   value={formatDifference(
                     aggregation.comparison.differenceSeconds,
                   )}
@@ -69,7 +69,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
             ) : null}
           </section>
 
-          <InsightSection title="Hours by Project">
+          <InsightSection title="Horas por projeto">
             <BarList
               ariaLabel="Horas registradas por projeto"
               items={aggregation.projects.map((project) => ({
@@ -82,7 +82,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
             />
           </InsightSection>
 
-          <InsightSection title="Hours by Work Item">
+          <InsightSection title="Horas por demanda">
             <BarList
               ariaLabel="Horas registradas por demanda"
               items={aggregation.workItems.map((item) => ({
@@ -99,7 +99,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
 
           <InsightSection
             description="A comparação usa a estimativa do próprio Project quando disponível. Caso contrário, considera apenas Work Items estimados com tempo registrado no período."
-            title="Estimated vs Actual"
+            title="Estimado × registrado"
           >
             <div className="insights-comparison-summary">
               {aggregation.comparison ? (
@@ -310,14 +310,14 @@ function ComparisonRow({
       </div>
       <div className="insights-comparison-row__values">
         <div>
-          <span>Estimated</span>
+          <span>Estimado</span>
           <strong>{formatEstimate(estimated)}</strong>
           <i
             style={{ "--bar-ratio": (estimated * 60) / max } as CSSProperties}
           />
         </div>
         <div>
-          <span>Tracked</span>
+          <span>Registrado</span>
           <strong>{formatDuration(tracked)}</strong>
           <i
             data-kind="tracked"

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -46,23 +53,6 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerPath, setDrawerPath] = useState(pathname);
-  const drawerTitleId = useId();
-
-  if (drawerPath !== pathname) {
-    setDrawerPath(pathname);
-    setDrawerOpen(false);
-  }
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setDrawerOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [drawerOpen]);
 
   function persistCollapsed(next: boolean) {
     setCollapsed(next);
@@ -87,31 +77,79 @@ export function AppShell({
         />
       </aside>
       <div className="app-shell__column">
-        <header className="app-mobile-header">
-          <button
-            aria-expanded={drawerOpen}
-            aria-label="Abrir menu"
-            className="button button--ghost button--icon"
-            onClick={() => setDrawerOpen(true)}
-            type="button"
-          >
-            <MenuIcon />
-          </button>
-          <WorkspaceSwitcher
-            currentSlug={workspaceSlug}
-            workspaces={workspaces}
-          />
-          <AppAccountMenu
-            compact
-            name={userName}
-            roleLabel={userRoleLabel}
-            workspaceSlug={workspaceSlug}
-          />
-        </header>
+        <MobileShellControls
+          key={pathname}
+          pathname={pathname}
+          userName={userName}
+          userRoleLabel={userRoleLabel}
+          workspaces={workspaces}
+          workspaceSlug={workspaceSlug}
+        />
         {banner ? <div className="app-notice">{banner}</div> : null}
         <div className="app-shell__scroll">{children}</div>
         {timer}
+        <MobileBottomNav pathname={pathname} workspaceSlug={workspaceSlug} />
       </div>
+    </div>
+  );
+}
+
+function MobileShellControls({
+  pathname,
+  userName,
+  userRoleLabel,
+  workspaces,
+  workspaceSlug,
+}: {
+  pathname: string;
+  userName: string;
+  userRoleLabel: string;
+  workspaces: WorkspaceOption[];
+  workspaceSlug: string;
+}) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const drawerTitleId = useId();
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    drawerCloseRef.current?.focus();
+    const menuButton = menuButtonRef.current;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setDrawerOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      menuButton?.focus();
+    };
+  }, [drawerOpen]);
+
+  return (
+    <>
+      <header className="app-mobile-header">
+        <button
+          aria-expanded={drawerOpen}
+          aria-label="Abrir menu"
+          className="button button--ghost button--icon"
+          onClick={() => setDrawerOpen(true)}
+          ref={menuButtonRef}
+          type="button"
+        >
+          <MenuIcon />
+        </button>
+        <WorkspaceSwitcher
+          currentSlug={workspaceSlug}
+          workspaces={workspaces}
+        />
+        <AppAccountMenu
+          compact
+          name={userName}
+          roleLabel={userRoleLabel}
+          workspaceSlug={workspaceSlug}
+        />
+      </header>
       {drawerOpen ? (
         <div className="app-drawer-backdrop">
           <button
@@ -131,6 +169,7 @@ export function AppShell({
             </h2>
             <SidebarBody
               collapsed={false}
+              closeRef={drawerCloseRef}
               onClose={() => setDrawerOpen(false)}
               pathname={pathname}
               userName={userName}
@@ -141,12 +180,13 @@ export function AppShell({
           </aside>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
 function SidebarBody({
   collapsed,
+  closeRef,
   onClose,
   onToggle,
   pathname,
@@ -156,6 +196,7 @@ function SidebarBody({
   workspaceSlug,
 }: {
   collapsed: boolean;
+  closeRef?: RefObject<HTMLButtonElement | null>;
   onClose?: () => void;
   onToggle?: () => void;
   pathname: string;
@@ -165,6 +206,7 @@ function SidebarBody({
   workspaceSlug: string;
 }) {
   const home = `/w/${workspaceSlug}`;
+  const sidebarItemBehavior = onClose ? { onClick: onClose } : {};
   return (
     <>
       <div className="app-sidebar__top">
@@ -184,6 +226,7 @@ function SidebarBody({
             aria-label="Fechar menu"
             className="app-sidebar__collapse"
             onClick={onClose}
+            ref={closeRef}
             type="button"
           >
             <CollapseIcon />
@@ -205,10 +248,11 @@ function SidebarBody({
         />
         <SidebarItem
           collapsed={collapsed}
-          current={pathname === home}
-          href={home}
+          current={false}
+          href={`${home}#timeline-title`}
           icon={<TimelineIcon />}
           label="Timeline"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
@@ -219,6 +263,7 @@ function SidebarBody({
           href={`${home}/work`}
           icon={<ProjectsIcon />}
           label="Projetos"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
@@ -226,6 +271,7 @@ function SidebarBody({
           href={`${home}/insights`}
           icon={<InsightsIcon />}
           label="Insights"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
@@ -233,6 +279,7 @@ function SidebarBody({
           href={`${home}/reports`}
           icon={<ReportsIcon />}
           label="Relatórios"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
@@ -240,6 +287,7 @@ function SidebarBody({
           href={`${home}/members`}
           icon={<MembersIcon />}
           label="Membros"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
@@ -247,6 +295,7 @@ function SidebarBody({
           href={`${home}/integrations`}
           icon={<IntegrationsIcon />}
           label="Integrações"
+          {...sidebarItemBehavior}
         />
       </nav>
       <div className="app-sidebar__footer">
@@ -268,6 +317,7 @@ function SidebarItem({
   href,
   icon,
   label,
+  onClick,
 }: {
   collapsed: boolean;
   current?: boolean;
@@ -275,6 +325,7 @@ function SidebarItem({
   href?: string;
   icon: ReactNode;
   label: string;
+  onClick?: () => void;
 }) {
   const content = (
     <>
@@ -299,8 +350,62 @@ function SidebarItem({
       className="app-nav-item"
       href={href}
       title={collapsed ? label : undefined}
+      {...(onClick ? { onClick } : {})}
     >
       {content}
     </Link>
+  );
+}
+
+function MobileBottomNav({
+  pathname,
+  workspaceSlug,
+}: {
+  pathname: string;
+  workspaceSlug: string;
+}) {
+  const home = `/w/${workspaceSlug}`;
+  const items = [
+    {
+      current: pathname === home,
+      href: home,
+      icon: <HomeIcon />,
+      label: "Hoje",
+    },
+    {
+      current: false,
+      href: `${home}#timeline-title`,
+      icon: <TimelineIcon />,
+      label: "Timeline",
+    },
+    {
+      current:
+        pathname.startsWith(`${home}/work`) ||
+        pathname.startsWith(`${home}/projects`),
+      href: `${home}/work`,
+      icon: <ProjectsIcon />,
+      label: "Projetos",
+    },
+    {
+      current: pathname.startsWith(`${home}/insights`),
+      href: `${home}/insights`,
+      icon: <InsightsIcon />,
+      label: "Insights",
+    },
+  ];
+  return (
+    <nav className="app-bottom-nav" aria-label="Navegação principal">
+      {items.map((item) => (
+        <Link
+          aria-current={item.current ? "page" : undefined}
+          className="app-bottom-nav__item"
+          href={item.href}
+          key={item.label}
+        >
+          <span className="app-bottom-nav__icon">{item.icon}</span>
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </nav>
   );
 }

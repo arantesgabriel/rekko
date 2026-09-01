@@ -1,5 +1,24 @@
-import { project, timeEntry, timeSegment, user, workItem } from "@rekko/db";
-import { and, asc, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
+import {
+  project,
+  timeEntry,
+  timeSegment,
+  user,
+  workItem,
+  workspaceInvitation,
+  workspaceMember,
+} from "@rekko/db";
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  isNotNull,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   buildTimeEntryAuditSnapshot,
@@ -312,4 +331,61 @@ export async function listManualTimeTargets(userId: string, slug: string) {
     )
     .orderBy(asc(workItem.title));
   return { projects, items };
+}
+
+export async function getGettingStartedProgress(userId: string, slug: string) {
+  const context = await requireWorkspace(userId, slug);
+  const [member, invitation, trackedTask, manualEntry] = await Promise.all([
+    db
+      .select({ id: workspaceMember.id })
+      .from(workspaceMember)
+      .where(
+        and(
+          eq(workspaceMember.workspaceId, context.id),
+          ne(workspaceMember.userId, userId),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: workspaceInvitation.id })
+      .from(workspaceInvitation)
+      .where(
+        and(
+          eq(workspaceInvitation.workspaceId, context.id),
+          isNull(workspaceInvitation.acceptedAt),
+          isNull(workspaceInvitation.cancelledAt),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: timeEntry.id })
+      .from(timeEntry)
+      .where(
+        and(
+          eq(timeEntry.userId, userId),
+          eq(timeEntry.workspaceId, context.id),
+          eq(timeEntry.source, "TIMER"),
+          isNotNull(timeEntry.workItemId),
+          ne(timeEntry.status, "ARCHIVED"),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: timeEntry.id })
+      .from(timeEntry)
+      .where(
+        and(
+          eq(timeEntry.userId, userId),
+          eq(timeEntry.workspaceId, context.id),
+          eq(timeEntry.source, "MANUAL"),
+          ne(timeEntry.status, "ARCHIVED"),
+        ),
+      )
+      .limit(1),
+  ]);
+  return {
+    hasInvite: member.length > 0 || invitation.length > 0,
+    hasManualEntry: manualEntry.length > 0,
+    hasTrackedTask: trackedTask.length > 0,
+  };
 }

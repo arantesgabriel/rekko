@@ -343,10 +343,21 @@ describe.sequential("reports with PostgreSQL", () => {
     expect(filtered.totalSeconds).toBe(60 * 60);
     expect(filtered.rows[0]).toEqual(
       expect.objectContaining({
+        workItemId,
         source: "TIMER",
         durationSeconds: 60 * 60,
       }),
     );
+
+    const filteredExport = await exportTimeReportCsv({
+      userId: ids.admin,
+      slug: firstSlug,
+      query: { ...reportPeriod, workItemId },
+      now: reportNow,
+    });
+    expect(filteredExport.rowCount).toBe(1);
+    expect(filteredExport.csv).toContain('"Demanda concluída"');
+    expect(filteredExport.csv).not.toContain("Reports Owner");
 
     const exported = await exportTimeReportCsv({
       userId: ids.owner,

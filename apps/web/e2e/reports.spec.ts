@@ -56,6 +56,7 @@ async function addManualTime(
   projectName: string,
   start: string,
   end: string,
+  workItemName?: string,
 ) {
   const workspacePath = workspaceRoot(page);
   await page.goto(workspacePath);
@@ -65,7 +66,13 @@ async function addManualTime(
   await page
     .locator('select[name="projectId"]')
     .selectOption({ label: projectName });
+  if (workItemName) {
+    await page.locator('select[name="workItemId"]').selectOption({
+      label: workItemName,
+    });
+  }
   await page.getByRole("button", { name: "Salvar tempo" }).click();
+  await expect(page.locator(".time-drawer")).toHaveCount(0);
   await expect(page.locator(".timeline-block").first()).toBeVisible();
 }
 
@@ -310,4 +317,58 @@ test("Reports shows a neutral empty state", async ({ page }, testInfo) => {
   await expect(
     page.getByRole("button", { name: "Exportar CSV" }),
   ).toBeVisible();
+});
+
+test("demand filter excludes project-only entries from screen and CSV", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  const projectName = `Demand Filter ${stamp}`;
+  const workItemName = `card teste ${stamp}`;
+  await signUp(page, {
+    email: `reports-demand-filter-${stamp}@example.com`,
+    name: "Demand Filter Owner",
+  });
+  await completeOnboarding(page, `Demand Filter ${stamp}`);
+  const workspacePath = new URL(page.url()).pathname;
+  await createProject(page, projectName);
+
+  await page.goto(`${workspacePath}/work`);
+  await page.getByRole("link", { name: projectName }).click();
+  await page.locator("details.create-item > summary").click();
+  await page.getByLabel("Título *").fill(workItemName);
+  await page.getByRole("button", { name: "Criar demanda" }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Demandas" })
+      .locator("strong.card-title")
+      .filter({ hasText: workItemName }),
+  ).toBeVisible();
+
+  await addManualTime(page, projectName, "08:00", "09:00");
+  await addManualTime(page, projectName, "09:00", "10:00", workItemName);
+
+  await page.goto(`${workspacePath}/reports`);
+  await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
+  await page.getByLabel("Demanda").selectOption({ label: workItemName });
+  await page.getByRole("button", { name: "Aplicar filtros" }).click();
+  await expect(page).toHaveURL(/workItemId=/);
+  await expect(page.locator(".reports-table tbody tr")).toHaveCount(1);
+  await expect(page.locator(".reports-table tbody tr")).toContainText(
+    workItemName,
+  );
+  await expect(page.locator(".reports-table tbody tr")).not.toContainText(
+    "Sem demanda",
+  );
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exportar CSV" }).click(),
+  ]);
+  const csv = await readFile((await download.path())!);
+  const csvText = csv.toString("utf8");
+  expect(csvText).toContain(workItemName);
+  expect(csvText).not.toContain("Sem demanda");
+  expect(csvText.match(/\r\n/g)?.length).toBe(2);
 });

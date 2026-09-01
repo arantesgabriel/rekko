@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { GettingStarted } from "@/components/timeline/getting-started";
 import {
   saveManualTimeAction,
   type ManualTimeActionState,
@@ -59,6 +60,7 @@ export function TodayView({
   trackedSeconds,
   isToday,
   targets,
+  gettingStarted,
 }: {
   slug: string;
   date: string;
@@ -68,6 +70,12 @@ export function TodayView({
   trackedSeconds: number;
   isToday: boolean;
   targets: Target;
+  gettingStarted?: {
+    hasInvite: boolean;
+    hasLinear: boolean;
+    hasManualEntry: boolean;
+    hasTrackedTask: boolean;
+  };
 }) {
   const router = useRouter();
   const [editor, setEditor] = useState<null | {
@@ -157,6 +165,9 @@ export function TodayView({
           Adicionar tempo
         </button>
       </section>
+      {isToday && gettingStarted ? (
+        <GettingStarted progress={gettingStarted} slug={slug} />
+      ) : null}
       <section className="timeline-section" aria-labelledby="timeline-title">
         <div className="timeline-heading">
           <div>

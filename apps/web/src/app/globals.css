@@ -1688,8 +1688,7 @@ html {
   .timer-dock {
     gap: var(--space-2);
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: var(--space-3) var(--space-4)
-      calc(var(--space-3) + env(safe-area-inset-bottom));
+    padding: var(--space-3) var(--space-4);
   }
   .timer-dock__context span {
     display: none;

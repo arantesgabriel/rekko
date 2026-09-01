@@ -578,19 +578,19 @@ Completar governança mínima do MVP.
 
 ## Entregas
 
-- [ ] audit log backend;
-- [ ] time entry changes auditadas;
-- [ ] role changes;
-- [ ] member removal;
-- [ ] project archive;
-- [ ] integration connect/disconnect;
-- [ ] Owner corrigir horas alheias;
-- [ ] Admin apenas visualizar;
-- [ ] Member apenas editar próprias horas;
-- [ ] Workspace settings;
-- [ ] User settings;
-- [ ] theme setting;
-- [ ] session management.
+- [x] audit log backend;
+- [x] time entry changes auditadas;
+- [x] role changes;
+- [x] member removal;
+- [x] project archive;
+- [x] integration connect/disconnect;
+- [x] Owner corrigir horas alheias;
+- [x] Admin apenas visualizar;
+- [x] Member apenas editar próprias horas;
+- [x] Workspace settings;
+- [x] User settings;
+- [x] theme setting;
+- [x] session management.
 
 Audit UI completa continua fora do MVP.
 
@@ -604,40 +604,42 @@ Transformar um produto funcional em um produto pronto para beta.
 
 ## UX/UI
 
-- [ ] motion pass;
-- [ ] Today polish;
-- [ ] Timeline polish;
-- [ ] Reconstruction motion;
-- [ ] Global Timer Dock polish;
-- [ ] Sidebar transitions;
-- [ ] theme transition;
-- [ ] mobile pass;
-- [ ] tablet pass;
-- [ ] keyboard navigation;
-- [ ] focus states;
-- [ ] accessibility review;
-- [ ] reduced motion;
-- [ ] loading states;
-- [ ] empty states;
-- [ ] errors;
-- [ ] copy review.
+- [x] motion pass;
+- [x] Today polish;
+- [x] Timeline polish;
+- [x] Reconstruction motion;
+- [x] Global Timer Dock polish;
+- [x] Sidebar transitions;
+- [x] theme transition;
+- [x] mobile pass;
+- [x] tablet pass;
+- [x] keyboard navigation;
+- [x] focus states;
+- [x] accessibility review;
+- [x] reduced motion;
+- [x] loading states;
+- [x] empty states;
+- [x] errors;
+- [x] copy review.
 
 ### Getting Started
 
-- [ ] checklist;
-- [ ] dismiss;
-- [ ] progress;
-- [ ] primeira task;
-- [ ] primeira reconstruction.
+- [x] checklist;
+- [x] dismiss;
+- [x] progress;
+- [x] primeira task;
+- [x] primeira reconstruction.
 
 ### Landing polish
 
-- [ ] Hero reconstruction animation;
-- [ ] interactive/product preview;
-- [ ] responsive;
-- [ ] performance;
-- [ ] SEO metadata;
-- [ ] social metadata.
+- [x] Hero reconstruction animation;
+- [x] interactive/product preview;
+- [x] responsive;
+- [x] performance;
+- [x] SEO metadata;
+- [x] social metadata.
+
+> Status: Fase 10 concluída após validação estática, testes automatizados e inspeção visual em Light/Dark, desktop, tablet e mobile.
 
 ---
 
