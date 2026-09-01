@@ -57,6 +57,7 @@ export async function saveManualTimeAction(
       description: parsed.data.description,
     });
     revalidatePath(`/w/${slug}`);
+    revalidatePath(`/w/${slug}/insights`);
     return {
       status: "success",
       message: parsed.data.entryId ? "Tempo atualizado." : "Tempo adicionado.",

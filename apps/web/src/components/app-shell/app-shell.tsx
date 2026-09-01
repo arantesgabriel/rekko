@@ -16,6 +16,7 @@ import {
   MembersIcon,
   MenuIcon,
   ProjectsIcon,
+  ReportsIcon,
   TimelineIcon,
 } from "@/components/app-shell/icons";
 
@@ -100,7 +101,12 @@ export function AppShell({
             currentSlug={workspaceSlug}
             workspaces={workspaces}
           />
-          <AppAccountMenu compact name={userName} roleLabel={userRoleLabel} />
+          <AppAccountMenu
+            compact
+            name={userName}
+            roleLabel={userRoleLabel}
+            workspaceSlug={workspaceSlug}
+          />
         </header>
         {banner ? <div className="app-notice">{banner}</div> : null}
         <div className="app-shell__scroll">{children}</div>
@@ -216,9 +222,17 @@ function SidebarBody({
         />
         <SidebarItem
           collapsed={collapsed}
-          disabled
+          current={pathname.startsWith(`${home}/insights`)}
+          href={`${home}/insights`}
           icon={<InsightsIcon />}
           label="Insights"
+        />
+        <SidebarItem
+          collapsed={collapsed}
+          current={pathname.startsWith(`${home}/reports`)}
+          href={`${home}/reports`}
+          icon={<ReportsIcon />}
+          label="Relatórios"
         />
         <SidebarItem
           collapsed={collapsed}
@@ -240,6 +254,7 @@ function SidebarBody({
           compact={collapsed}
           name={userName}
           roleLabel={userRoleLabel}
+          workspaceSlug={workspaceSlug}
         />
       </div>
     </>

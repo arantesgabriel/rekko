@@ -56,6 +56,7 @@ export async function importLinearIssuesAction(
     throw error;
   }
   revalidatePath(`/w/${slug}`);
+  revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/projects/${result.projectId}?linear=imported`);
 }
 
@@ -63,6 +64,7 @@ export async function disconnectLinearAction(slug: string) {
   const session = await requireCoreSession(`/w/${slug}/integrations`);
   await disconnectLinear({ slug, userId: session.user.id });
   revalidatePath(`/w/${slug}`);
+  revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/integrations?linear=disconnected`);
 }
 
@@ -82,6 +84,7 @@ export async function connectLinearE2EAction(slug: string) {
     userId: session.user.id,
   });
   revalidatePath(`/w/${slug}`);
+  revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/integrations?linear=connected`);
 }
 
@@ -109,5 +112,6 @@ export async function syncLinearAction(slug: string) {
       userId: session.user.id,
     });
   revalidatePath(`/w/${slug}`);
+  revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/integrations?linear=synced`);
 }

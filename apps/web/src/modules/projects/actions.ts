@@ -63,6 +63,7 @@ export async function updateProjectAction(
     });
     revalidatePath(`/w/${slug}/work`);
     revalidatePath(`/w/${slug}/projects/${projectId}`);
+    revalidatePath(`/w/${slug}/insights`);
     return successState("Projeto atualizado.");
   } catch (error) {
     return mappedError(error);
@@ -81,6 +82,7 @@ export async function archiveProjectAction(slug: string, projectId: string) {
     redirect(`/w/${slug}/projects/${projectId}?error=archive`);
   }
   revalidatePath(`/w/${slug}/work`);
+  revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/work?archived=1`);
 }
 
@@ -103,6 +105,7 @@ export async function createWorkItemAction(
     });
     revalidatePath(`/w/${slug}/projects/${projectId}`);
     revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/insights`);
     return successState("Demanda criada.");
   } catch (error) {
     return mappedError(error);
@@ -129,6 +132,7 @@ export async function updateWorkItemAction(
       ...parsed.data,
     });
     revalidatePath(`/w/${slug}/projects/${projectId}`);
+    revalidatePath(`/w/${slug}/insights`);
     return successState("Demanda atualizada.");
   } catch (error) {
     return mappedError(error);
