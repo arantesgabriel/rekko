@@ -219,8 +219,8 @@ Estabelecer o domínio multi-tenant antes do restante do produto.
 
 - [x] Create Workspace;
 - [x] convite opcional;
-- [x] skip explícito;
-- [x] progresso segmentado.
+- [x] continuar sem trazer ninguém explícito;
+- [x] progresso no stepper.
 
 ## Testes obrigatórios
 
@@ -248,27 +248,27 @@ Permitir uso real do Rekko sem depender de integração externa.
 
 ### Projects
 
-- [ ] criação de Projeto;
-- [ ] escolha da origem;
-- [ ] projeto manual;
-- [ ] nome;
-- [ ] descrição;
-- [ ] status;
-- [ ] estimativa total opcional;
-- [ ] archive;
-- [ ] Project Cards.
+- [x] criação de Projeto;
+- [x] escolha da origem;
+- [x] projeto manual;
+- [x] nome;
+- [x] descrição;
+- [x] status;
+- [x] estimativa total opcional;
+- [x] archive;
+- [x] Project Cards.
 
 ### Manual Work Items
 
-- [ ] criar Work Item;
-- [ ] editar;
-- [ ] descrição;
-- [ ] status;
-- [ ] estimativa;
-- [ ] parent/sub-item quando aplicável;
-- [ ] Work Item List;
-- [ ] busca básica;
-- [ ] filtros básicos.
+- [x] criar Work Item;
+- [x] editar;
+- [x] descrição;
+- [x] status;
+- [x] estimativa;
+- [x] parent/sub-item quando aplicável;
+- [x] Work Item List;
+- [x] busca básica;
+- [x] filtros básicos.
 
 ## Permissões
 
@@ -292,26 +292,26 @@ Implementar o coração operacional do Rekko.
 
 ### Timer
 
-- [ ] Start;
-- [ ] Pause;
-- [ ] Resume;
-- [ ] Finish;
-- [ ] Switch;
-- [ ] Global Timer Dock;
-- [ ] apenas um timer ativo por usuário;
-- [ ] constraint no PostgreSQL;
-- [ ] Clock abstraction;
-- [ ] estado persistido no servidor;
-- [ ] timer continua após fechar navegador;
-- [ ] cross-device fetch do timer atual.
+- [x] Start;
+- [x] Pause;
+- [x] Resume;
+- [x] Finish;
+- [x] Switch;
+- [x] Global Timer Dock;
+- [x] apenas um timer ativo por usuário;
+- [x] constraint no PostgreSQL;
+- [x] Clock abstraction;
+- [x] estado persistido no servidor;
+- [x] timer continua após fechar navegador;
+- [x] cross-device fetch do timer atual.
 
 ### Time model
 
-- [ ] TimeEntry;
-- [ ] TimeSegment;
-- [ ] duração materializada;
-- [ ] transações;
-- [ ] atomic Switch.
+- [x] TimeEntry;
+- [x] TimeSegment;
+- [x] duração materializada;
+- [x] transações;
+- [x] atomic Switch.
 
 ## Testes obrigatórios
 
@@ -339,42 +339,42 @@ Entregar o diferencial conceitual central do Rekko.
 
 ### Manual Time
 
-- [ ] lançamento manual;
-- [ ] data;
-- [ ] início;
-- [ ] fim;
-- [ ] Project;
-- [ ] Work Item opcional;
-- [ ] descrição;
-- [ ] cálculo server-side;
-- [ ] detecção de overlap.
+- [x] lançamento manual;
+- [x] data;
+- [x] início;
+- [x] fim;
+- [x] Project;
+- [x] Work Item opcional;
+- [x] descrição;
+- [x] cálculo server-side;
+- [x] detecção de overlap.
 
 ### Timeline
 
-- [ ] Timeline diária;
-- [ ] rail temporal;
-- [ ] Activity Blocks;
-- [ ] duração;
-- [ ] gaps;
-- [ ] active segment;
-- [ ] responsive mobile timeline.
+- [x] Timeline diária;
+- [x] rail temporal;
+- [x] Activity Blocks;
+- [x] duração;
+- [x] gaps;
+- [x] active segment;
+- [x] responsive mobile timeline.
 
 ### Reconstruction
 
-- [ ] Reconstruction Drawer;
-- [ ] preencher gap;
-- [ ] atualizar timeline;
-- [ ] motion de segmentos conectando;
-- [ ] mensagens não julgadoras.
+- [x] Reconstruction Drawer;
+- [x] preencher gap;
+- [x] atualizar timeline;
+- [x] motion de segmentos conectando;
+- [x] mensagens não julgadoras.
 
 ### Today
 
-- [ ] tracked today;
-- [ ] current activity;
-- [ ] quick start;
-- [ ] recentes;
-- [ ] timeline resumida;
-- [ ] zero-state útil.
+- [x] tracked today;
+- [x] current activity;
+- [x] quick start;
+- [x] recentes;
+- [x] timeline resumida;
+- [x] zero-state útil.
 
 ## Critério de saída
 
@@ -406,60 +406,60 @@ Conectar o tempo ao trabalho já existente no Linear.
 
 ### OAuth
 
-- [ ] conectar Linear por Workspace;
-- [ ] Owner/Admin conecta;
-- [ ] tokens AES-256-GCM;
-- [ ] scopes mínimos;
-- [ ] disconnect;
-- [ ] reconnect state.
+- [x] conectar Linear por Workspace;
+- [x] Owner/Admin conecta;
+- [x] tokens AES-256-GCM;
+- [x] scopes mínimos;
+- [x] disconnect;
+- [x] reconnect state.
 
 ### Browse
 
-- [ ] GraphQL client isolado;
-- [ ] paginação;
-- [ ] Search;
-- [ ] Team filter;
-- [ ] Project filter;
-- [ ] Status filter;
-- [ ] Assignee filter.
+- [x] GraphQL client isolado;
+- [x] paginação;
+- [x] Search;
+- [x] Team filter;
+- [x] Project filter;
+- [x] Status filter;
+- [x] Assignee filter.
 
 ### Selective Import
 
-- [ ] árvore parent/sub-issue;
-- [ ] checkbox;
-- [ ] indeterminate;
-- [ ] seleção múltipla;
-- [ ] ocultar Done por padrão;
-- [ ] importar somente selecionados;
-- [ ] parent contextual;
-- [ ] sticky selected count.
+- [x] árvore parent/sub-issue;
+- [x] checkbox;
+- [x] indeterminate;
+- [x] seleção múltipla;
+- [x] ocultar Done por padrão;
+- [x] importar somente selecionados;
+- [x] parent contextual;
+- [x] sticky selected count.
 
 ### Estimate Parser
 
-- [ ] `Estimativa 30m`;
-- [ ] `15m`;
-- [ ] `1h`;
-- [ ] `1h30`;
-- [ ] `1h 30m`;
-- [ ] `2h 15m`;
-- [ ] normalização em minutos;
-- [ ] testes unitários extensos.
+- [x] `Estimativa 30m`;
+- [x] `15m`;
+- [x] `1h`;
+- [x] `1h30`;
+- [x] `1h 30m`;
+- [x] `2h 15m`;
+- [x] normalização em minutos;
+- [x] testes unitários extensos.
 
 ### Sync
 
-- [ ] Sync now;
-- [ ] Linear webhook endpoint;
-- [ ] HMAC;
-- [ ] timestamp;
-- [ ] delivery id;
-- [ ] idempotência;
-- [ ] atualização de title;
-- [ ] description;
-- [ ] status;
-- [ ] parent;
-- [ ] assignee;
-- [ ] estimate;
-- [ ] archive externo preservando histórico.
+- [x] Sync now;
+- [x] Linear webhook endpoint;
+- [x] HMAC;
+- [x] timestamp;
+- [x] delivery id;
+- [x] idempotência;
+- [x] atualização de title;
+- [x] description;
+- [x] status;
+- [x] parent;
+- [x] assignee;
+- [x] estimate;
+- [x] archive externo preservando histórico.
 
 ### Estimate source of truth UX
 
@@ -504,22 +504,22 @@ Transformar horas registradas em compreensão.
 
 ### Insights
 
-- [ ] tracked today;
-- [ ] tracked week;
-- [ ] hours by Project;
-- [ ] hours by Work Item;
-- [ ] horizontal bar charts;
-- [ ] filters básicos.
+- [x] tracked today;
+- [x] tracked week;
+- [x] hours by Project;
+- [x] hours by Work Item;
+- [x] horizontal bar charts;
+- [x] filters básicos.
 
 ### Estimated × Actual
 
-- [ ] Work Item comparison;
-- [ ] Project aggregate;
-- [ ] estimated;
-- [ ] tracked;
-- [ ] difference;
-- [ ] linguagem neutra;
-- [ ] sem gauges.
+- [x] Work Item comparison;
+- [x] Project aggregate;
+- [x] estimated;
+- [x] tracked;
+- [x] difference;
+- [x] linguagem neutra;
+- [x] sem gauges.
 
 ## Critério de saída
 
@@ -535,18 +535,18 @@ Permitir uso prático das horas fora do Rekko.
 
 ## Entregas
 
-- [ ] export page/action;
-- [ ] período;
-- [ ] colaborador;
-- [ ] projeto;
-- [ ] demanda;
-- [ ] CSV UTF-8;
-- [ ] BOM para Excel;
-- [ ] HH:mm;
-- [ ] decimal hours;
-- [ ] Owner/Admin exportam todos;
-- [ ] Member exporta somente si;
-- [ ] Workspace timezone.
+- [x] export page/action;
+- [x] período;
+- [x] colaborador;
+- [x] projeto;
+- [x] demanda;
+- [x] CSV UTF-8;
+- [x] BOM para Excel;
+- [x] HH:mm;
+- [x] decimal hours;
+- [x] Owner/Admin exportam todos;
+- [x] Member exporta somente si;
+- [x] Workspace timezone.
 
 Relação principal:
 
@@ -562,11 +562,11 @@ Horas trabalhadas
 
 ## Testes obrigatórios
 
-- Member tentando exportar outro usuário;
-- filtro por Workspace;
-- timezone;
-- decimal calculation;
-- CSV escaping.
+- [x] Member tentando exportar outro usuário;
+- [x] filtro por Workspace;
+- [x] timezone;
+- [x] decimal calculation;
+- [x] CSV escaping.
 
 ---
 
@@ -578,19 +578,19 @@ Completar governança mínima do MVP.
 
 ## Entregas
 
-- [ ] audit log backend;
-- [ ] time entry changes auditadas;
-- [ ] role changes;
-- [ ] member removal;
-- [ ] project archive;
-- [ ] integration connect/disconnect;
-- [ ] Owner corrigir horas alheias;
-- [ ] Admin apenas visualizar;
-- [ ] Member apenas editar próprias horas;
-- [ ] Workspace settings;
-- [ ] User settings;
-- [ ] theme setting;
-- [ ] session management.
+- [x] audit log backend;
+- [x] time entry changes auditadas;
+- [x] role changes;
+- [x] member removal;
+- [x] project archive;
+- [x] integration connect/disconnect;
+- [x] Owner corrigir horas alheias;
+- [x] Admin apenas visualizar;
+- [x] Member apenas editar próprias horas;
+- [x] Workspace settings;
+- [x] User settings;
+- [x] theme setting;
+- [x] session management.
 
 Audit UI completa continua fora do MVP.
 
@@ -604,40 +604,42 @@ Transformar um produto funcional em um produto pronto para beta.
 
 ## UX/UI
 
-- [ ] motion pass;
-- [ ] Today polish;
-- [ ] Timeline polish;
-- [ ] Reconstruction motion;
-- [ ] Global Timer Dock polish;
-- [ ] Sidebar transitions;
-- [ ] theme transition;
-- [ ] mobile pass;
-- [ ] tablet pass;
-- [ ] keyboard navigation;
-- [ ] focus states;
-- [ ] accessibility review;
-- [ ] reduced motion;
-- [ ] loading states;
-- [ ] empty states;
-- [ ] errors;
-- [ ] copy review.
+- [x] motion pass;
+- [x] Today polish;
+- [x] Timeline polish;
+- [x] Reconstruction motion;
+- [x] Global Timer Dock polish;
+- [x] Sidebar transitions;
+- [x] theme transition;
+- [x] mobile pass;
+- [x] tablet pass;
+- [x] keyboard navigation;
+- [x] focus states;
+- [x] accessibility review;
+- [x] reduced motion;
+- [x] loading states;
+- [x] empty states;
+- [x] errors;
+- [x] copy review.
 
 ### Getting Started
 
-- [ ] checklist;
-- [ ] dismiss;
-- [ ] progress;
-- [ ] primeira task;
-- [ ] primeira reconstruction.
+- [x] checklist;
+- [x] dismiss;
+- [x] progress;
+- [x] primeira task;
+- [x] primeira reconstruction.
 
 ### Landing polish
 
-- [ ] Hero reconstruction animation;
-- [ ] interactive/product preview;
-- [ ] responsive;
-- [ ] performance;
-- [ ] SEO metadata;
-- [ ] social metadata.
+- [x] Hero reconstruction animation;
+- [x] interactive/product preview;
+- [x] responsive;
+- [x] performance;
+- [x] SEO metadata;
+- [x] social metadata.
+
+> Status: Fase 10 concluída após validação estática, testes automatizados e inspeção visual em Light/Dark, desktop, tablet e mobile.
 
 ---
 

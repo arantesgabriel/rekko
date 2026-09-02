@@ -1,26 +1,40 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/modules/auth/auth-client";
 
 export function SessionActions() {
   const router = useRouter();
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const [loading, setLoading] = useState<"all" | "current" | null>(null);
+  const [error, setError] = useState<string | null>(null);
   async function signOut(all: boolean) {
     setLoading(all ? "all" : "current");
+    setError(null);
     try {
-      if (all) await authClient.revokeSessions();
-      else await authClient.signOut();
-    } finally {
-      router.push("/login");
+      if (all) {
+        const result = await authClient.revokeSessions();
+        if (result.error) throw new Error("Unable to revoke sessions");
+        await authClient.signOut();
+      } else await authClient.signOut();
+      router.replace("/login");
       router.refresh();
+    } catch {
+      setError("Não conseguimos encerrar a sessão agora. Tente novamente.");
+    } finally {
+      setLoading(null);
     }
   }
   return (
     <div className="session-actions">
+      {error ? <p role="alert">{error}</p> : null}
       <button
         className="button button--secondary"
-        disabled={Boolean(loading)}
+        disabled={!mounted || Boolean(loading)}
         onClick={() => signOut(false)}
         type="button"
       >
@@ -28,7 +42,7 @@ export function SessionActions() {
       </button>
       <button
         className="button button--ghost"
-        disabled={Boolean(loading)}
+        disabled={!mounted || Boolean(loading)}
         onClick={() => signOut(true)}
         type="button"
       >

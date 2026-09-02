@@ -16,6 +16,7 @@ import {
   acceptInvitation,
   cancelInvitation,
   changeMemberRole,
+  completeWorkspaceOnboarding,
   createInvitation,
   createWorkspace,
   listUserWorkspaces,
@@ -89,6 +90,64 @@ describe.sequential("workspace application service with PostgreSQL", () => {
     expect(memberships.find((item) => item.id === first.id)?.role).toBe(
       "OWNER",
     );
+  });
+
+  it("commits onboarding Workspace, Owner and invitations in one transaction", async () => {
+    const onboarded = await completeWorkspaceOnboarding({
+      invitations: [
+        {
+          email: `designer-${suffix}@rekko.test`,
+          jobTitle: "Product Designer",
+          role: "MEMBER",
+        },
+        {
+          email: `lead-${suffix}@rekko.test`,
+          jobTitle: "Tech Lead",
+          role: "ADMIN",
+        },
+      ],
+      name: `Onboarding ${suffix}`,
+      timezone: "America/Sao_Paulo",
+      userId: users.owner,
+    });
+    createdWorkspaceIds.push(onboarded.id);
+    const [members, invitations, events] = await Promise.all([
+      db
+        .select()
+        .from(workspaceMember)
+        .where(eq(workspaceMember.workspaceId, onboarded.id)),
+      db
+        .select()
+        .from(workspaceInvitation)
+        .where(eq(workspaceInvitation.workspaceId, onboarded.id)),
+      db.select().from(auditLog).where(eq(auditLog.workspaceId, onboarded.id)),
+    ]);
+    expect(members).toHaveLength(1);
+    expect(members[0]?.role).toBe("OWNER");
+    expect(invitations).toHaveLength(2);
+    expect(
+      events.filter((event) => event.action === "invitation_created"),
+    ).toHaveLength(2);
+  });
+
+  it("rolls back the whole onboarding transaction when an invitation fails", async () => {
+    const name = `Rollback ${suffix}`;
+    await expect(
+      completeWorkspaceOnboarding({
+        invitations: [
+          { email: emails.admin, jobTitle: null, role: "MEMBER" },
+          { email: emails.admin, jobTitle: null, role: "ADMIN" },
+        ],
+        name,
+        timezone: "UTC",
+        userId: users.owner,
+      }),
+    ).rejects.toBeDefined();
+    const records = await db
+      .select({ id: workspace.id })
+      .from(workspace)
+      .where(eq(workspace.name, name));
+    expect(records).toHaveLength(0);
   });
 
   it("enforces tenant isolation even when the slug is known", async () => {

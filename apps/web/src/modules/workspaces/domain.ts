@@ -1,33 +1,50 @@
 export const workspaceRoles = ["OWNER", "ADMIN", "MEMBER"] as const;
 export type WorkspaceRole = (typeof workspaceRoles)[number];
 
+export const workspaceRoleLabel: Record<WorkspaceRole, string> = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  MEMBER: "Membro",
+};
+
 export type WorkspacePermission =
   | "workspace:view"
+  | "workspace:settings"
   | "invitation:manage"
   | "member:job-title"
   | "member:role"
   | "member:remove"
-  | "project:manage";
+  | "project:manage"
+  | "linear:manage"
+  | "linear:import"
+  | "time:correct";
 
 const permissionMatrix: Record<WorkspaceRole, readonly WorkspacePermission[]> =
   {
     OWNER: [
       "workspace:view",
+      "workspace:settings",
       "invitation:manage",
       "member:job-title",
       "member:role",
       "member:remove",
       "project:manage",
+      "linear:manage",
+      "linear:import",
+      "time:correct",
     ],
     ADMIN: [
       "workspace:view",
+      "workspace:settings",
       "invitation:manage",
       "member:job-title",
       "member:role",
       "member:remove",
       "project:manage",
+      "linear:manage",
+      "linear:import",
     ],
-    MEMBER: ["workspace:view"],
+    MEMBER: ["workspace:view", "linear:import"],
   };
 
 export function hasWorkspacePermission(

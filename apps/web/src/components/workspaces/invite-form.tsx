@@ -26,7 +26,7 @@ export function InviteForm({
       className={compact ? "invite-form invite-form--compact" : "invite-form"}
     >
       <div className="field-group">
-        <label htmlFor={`invite-email-${compact}`}>Email</label>
+        <label htmlFor={`invite-email-${compact}`}>E-mail</label>
         <input
           id={`invite-email-${compact}`}
           name="email"
@@ -36,11 +36,11 @@ export function InviteForm({
         />
       </div>
       <div className="field-group">
-        <label htmlFor={`invite-role-${compact}`}>Role</label>
+        <label htmlFor={`invite-role-${compact}`}>Permissão</label>
         <select defaultValue="MEMBER" id={`invite-role-${compact}`} name="role">
-          <option value="MEMBER">Member</option>
-          <option value="ADMIN">Admin</option>
-          <option value="OWNER">Owner</option>
+          <option value="MEMBER">Membro</option>
+          <option value="ADMIN">Administrador</option>
+          <option value="OWNER">Proprietário</option>
         </select>
       </div>
       <div className="field-group">

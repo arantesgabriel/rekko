@@ -36,6 +36,16 @@ const serverEnvSchema = databaseEnvSchema.extend({
   GOOGLE_CLIENT_SECRET: z
     .union([z.string().min(1), emptyStringToUndefined])
     .optional(),
+  LINEAR_CLIENT_ID: z
+    .union([z.string().min(1), emptyStringToUndefined])
+    .optional(),
+  LINEAR_CLIENT_SECRET: z
+    .union([z.string().min(1), emptyStringToUndefined])
+    .optional(),
+  LINEAR_REDIRECT_URI: optionalUrl,
+  LINEAR_WEBHOOK_SECRET: z
+    .union([z.string().min(32), emptyStringToUndefined])
+    .optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -51,6 +61,10 @@ const serverEnvSchema = databaseEnvSchema.extend({
       "Invalid email address or sender address",
     )
     .default("Rekko <onboarding@resend.dev>"),
+  REKKO_ENCRYPTION_KEY_V1: z
+    .union([z.string().min(1), emptyStringToUndefined])
+    .optional(),
+  REKKO_ENCRYPTION_KEY_VERSION: z.coerce.number().int().positive().default(1),
   SENTRY_AUTH_TOKEN: z
     .union([z.string().min(1), emptyStringToUndefined])
     .optional(),

@@ -13,6 +13,19 @@ export async function requireSession(next = "/app") {
 
 export async function requireCoreSession(next = "/app") {
   const session = await requireSession(next);
+  if (!(await hasCoreAccess(session))) redirect("/app?verification=required");
+  return session;
+}
+
+export async function getCoreSession() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session || !(await hasCoreAccess(session))) return null;
+  return session;
+}
+
+async function hasCoreAccess(
+  session: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>,
+) {
   const env = parseServerEnv(process.env);
   const access = getVerificationAccess({
     createdAt: session.user.createdAt,
@@ -20,6 +33,5 @@ export async function requireCoreSession(next = "/app") {
     graceHours: env.EMAIL_VERIFICATION_GRACE_HOURS,
     now: new Date(),
   });
-  if (access === "blocked") redirect("/app?verification=required");
-  return session;
+  return access !== "blocked";
 }

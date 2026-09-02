@@ -6,3 +6,7 @@ export {
   type PublicEnv,
   type ServerEnv,
 } from "./env";
+export {
+  parseEstimateFromDescription,
+  type EstimateParseResult,
+} from "./estimate-parser";

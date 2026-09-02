@@ -27,7 +27,7 @@ export const workspaceErrorMessage: Record<WorkspaceErrorCode, string> = {
   INVITATION_EXPIRED: "Este convite expirou. Peça um novo envio.",
   INVITATION_INVALID: "Este convite não é válido.",
   INVITATION_USED: "Este convite já foi aceito.",
-  LAST_OWNER: "O Workspace precisa continuar com pelo menos um Owner.",
+  LAST_OWNER: "O Workspace precisa continuar com pelo menos um proprietário.",
   MEMBER_NOT_FOUND: "Não encontramos este membro no Workspace.",
   WORKSPACE_NOT_FOUND: "Workspace não encontrado.",
 };

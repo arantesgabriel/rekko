@@ -750,23 +750,25 @@ Line-height:
 ## Page title
 
 ```text
-28–32px
-600–700
+30px
+600
 -0.02em
+line-height 1.2
 ```
 
 ## Section title
 
 ```text
-20–24px
+20px
 600
 -0.015em
+line-height 1.3
 ```
 
 ## Card title
 
 ```text
-15–17px
+16px
 600
 ```
 
@@ -777,26 +779,56 @@ Line-height:
 ## Body
 
 ```text
-15px
-400
-1.55
-```
-
-## Secondary
-
-```text
 14px
 400
 1.5
 ```
 
+## Body small
+
+```text
+13px
+400
+1.5
+```
+
+## Label
+
+```text
+12px
+500
+```
+
 ## Caption
 
 ```text
-12–13px
+12px
 500
 1.4
 ```
+
+A interface de produto usa apenas esta escala.
+
+Não introduzir tamanhos intermediários (17, 19, 21, 23, 27, 31) sem atualizar este documento.
+
+Pesos predominantes:
+
+```text
+400
+500
+600
+```
+
+Reservar `700` para situações realmente necessárias.
+
+Idioma da UI de produto no MVP:
+
+```text
+pt-BR
+```
+
+Labels operacionais (Iniciar, Pausar, Encerrar, Membros, Permissão) seguem português.
+Nomes de áreas de produto (Timeline, Insights) permanecem quando são termos oficiais do Rekko.
 
 ---
 
@@ -977,55 +1009,67 @@ Dark Mode usa sombras menos perceptíveis e mais contraste de surface/border.
 Desktop:
 
 ```text
-┌──────────────┬──────────────────────────────────────┐
-│              │                                      │
-│   Sidebar    │             Main Content             │
-│              │                                      │
-│              │                                      │
-└──────────────┴──────────────────────────────────────┘
+viewport 100dvh
+├ sidebar fixa (não rola com o conteúdo)
+└ main column
+   ├ header mobile (apenas <1024)
+   ├ aviso opcional
+   ├ conteúdo com scroll próprio
+   └ timer dock (quando ativo)
 ```
 
 Sidebar:
 
 ```text
-expanded: ~240px
-collapsed: ~72px
+expanded desktop grande: 252px
+expanded notebook: 228–240px
+collapsed: 68px
+```
+
+A preferência expanded/collapsed é persistida em cookie.
+
+Em tablet/mobile (<1024) a sidebar vira drawer acionado pelo header.
+
+Container de página:
+
+```text
+default: 960px
+wide: 1080px
+narrow: 640px
+padding desktop: 32px
+padding notebook: 24px
+padding mobile: 16px
 ```
 
 ---
 
 # 26. Sidebar
 
-A sidebar será recolhível.
+A sidebar será recolhível e permanece fixa durante o scroll.
 
 Topo:
 
 ```text
-[ Rekko / Workspace ▼ ]
+[ Rekko ] [ recolher ]
+[ Workspace ▼ ]
 ```
 
 Itens:
 
 ```text
-Today
+Hoje
 Timeline
-Work
+Projetos
 Insights
-```
-
-Área de Workspace:
-
-```text
-Members
-Integrations
-Settings
+Membros
 ```
 
 Rodapé:
 
 ```text
-Profile
-Theme
+Conta
+Tema
+Sair
 ```
 
 O Workspace Switcher fica no topo.
@@ -1085,7 +1129,7 @@ O timer ativo deve acompanhar o usuário por toda a aplicação.
 
 Desktop:
 
-> dock compacto fixado próximo à base da área principal/sidebar.
+> dock compacto na base da coluna principal, depois da sidebar.
 
 Composição:
 
@@ -1093,8 +1137,11 @@ Composição:
 ●  AMBLA / Onboarding
    01:27:42
 
-[ Pause ] [ Switch ] [ Finish ]
+[ Pausar ] [ Trocar ] [ Encerrar ]
 ```
+
+O dock faz parte do App Shell: não é `position: fixed` sobre o viewport inteiro.
+A coluna principal reserva a altura do timer, então o conteúdo não fica coberto.
 
 Quando o espaço for reduzido:
 
@@ -2005,19 +2052,15 @@ Nunca exigir configuração completa da empresa antes de usar.
 ```text
 Account
 ↓
-Create Workspace
+Workspace name (temporary)
 ↓
-Invite team (optional)
+Invite team (optional, temporary)
 ↓
-Create Project
-    ├── Manual
-    └── Linear
+Review and confirm
 ↓
-If Linear:
-    connect
-    select cards
+Create Workspace + Owner + invitations
 ↓
-Today
+Workspace home
 ```
 
 ---
@@ -2029,17 +2072,22 @@ Visual:
 ```text
 rekko logo
 
-Step 2 of 4
-━━━━━━━━━━━━━━
+01 Workspace ───── 02 Time ───── 03 Confirmar
 
 Main question
+Supporting copy
 
 Content
 
-Back        Continue
+← Voltar                    Continuar
 ```
 
-Utilizar uma área central, sem sidebar completa.
+O stepper é a única representação de progresso. Não repetir `Etapa X de 3`
+nem o nome do Workspace abaixo do indicador.
+
+Utilizar uma área central de 720–760px. Header no topo; o card do wizard
+fica centralizado no espaço restante da viewport. O banner de confirmação de
+email aparece no produto após o login, não no onboarding.
 
 ---
 
@@ -2047,20 +2095,26 @@ Utilizar uma área central, sem sidebar completa.
 
 Não utilizar bolinhas numeradas gigantes.
 
-Usar:
+Usar um stepper delicado, de orientação, não como elemento principal:
 
 ```text
-thin segmented progress
+01 Workspace ───── 02 Time ───── 03 Confirmar
 ```
 
-Exemplo:
+Estados:
+
+- concluído: violeta suave, sem competir com a etapa atual;
+- atual: círculo violeta sólido e texto forte;
+- futuro: cinza de baixo contraste.
+
+O indicador possui sempre exatamente três estados: concluído, ativo e futuro.
+No mobile, compactar para números e conectores, com o nome da etapa atual
+abaixo uma única vez:
 
 ```text
-━━━━━━  ━━━━━━  ━━━━━━  ━━━━━━
-  done    now
+01 ───── 02 ───── 03
+        Time
 ```
-
-A própria barra pode remeter à reconstrução.
 
 ---
 
@@ -2072,19 +2126,21 @@ Pergunta:
 
 Supporting:
 
-> Crie um Workspace para organizar projetos, tarefas e pessoas.
+> Crie seu workspace para organizar seu time, projetos e registros de tempo.
 
 Input:
 
 ```text
-Workspace name
+Nome do workspace
 ```
 
 CTA:
 
 ```text
-[ Criar Workspace ]
+[ Continuar ]
 ```
+
+Continuar não persiste dados.
 
 ---
 
@@ -2099,43 +2155,49 @@ Headline:
 Campos:
 
 ```text
-Email
-Role
+E-mail
+Permissão
 Cargo
 ```
 
 Permitir múltiplos convites.
 
-Link claro:
-
-```text
-Pular por agora
-```
-
-Nunca esconder skip.
+O convite é opcional. Sem convites na lista, o CTA da etapa é
+`Continuar sem trazer ninguém`. Com pelo menos um convite, o CTA é `Continuar`.
+`Adicionar convite` é ação secundária.
 
 ---
 
-# 75. Project onboarding
+# 75. Review onboarding
 
 Pergunta:
 
-> **Como você quer organizar seu primeiro projeto?**
+> **Tudo certo por aqui?**
 
-Opções:
+Mostrar uma revisão compacta:
 
 ```text
-Create manually
-Connect Linear
+Workspace                              Editar
+nome do workspace
+
+Time                                   Adicionar
+Nenhuma pessoa adicionada
 ```
 
-Visual:
+Não repetir o rótulo `Nome` quando o único dado do Workspace for o nome.
 
-duas opções grandes, mas não cards decorativos excessivos.
+CTA final:
+
+```text
+Criar workspace
+```
+
+Este é o único ponto de persistência. Durante o processamento, bloquear
+submits repetidos; em erro, manter todos os dados e permitir nova tentativa.
 
 ---
 
-# 76. Linear onboarding
+# 76. Linear import after onboarding
 
 Depois de conectar:
 

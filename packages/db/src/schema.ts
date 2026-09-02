@@ -265,6 +265,121 @@ export const estimateSource = pgEnum("estimate_source", [
   "MANUAL",
   "LINEAR_DESCRIPTION",
 ]);
+export const linearConnectionStatus = pgEnum("linear_connection_status", [
+  "CONNECTED",
+  "RECONNECT_REQUIRED",
+  "DISCONNECTED",
+]);
+export const integrationEventStatus = pgEnum("integration_event_status", [
+  "RECEIVED",
+  "PROCESSED",
+  "IGNORED",
+  "FAILED",
+]);
+
+export const linearConnection = pgTable(
+  "linear_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    externalWorkspaceId: text("external_workspace_id").notNull(),
+    externalWorkspaceName: text("external_workspace_name").notNull(),
+    accessTokenCiphertext: text("access_token_ciphertext"),
+    accessTokenNonce: text("access_token_nonce"),
+    accessTokenAuthTag: text("access_token_auth_tag"),
+    refreshTokenCiphertext: text("refresh_token_ciphertext"),
+    refreshTokenNonce: text("refresh_token_nonce"),
+    refreshTokenAuthTag: text("refresh_token_auth_tag"),
+    tokenExpiresAt: timestamp("token_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    encryptionKeyVersion: integer("encryption_key_version").notNull(),
+    scopes: text("scopes")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    status: linearConnectionStatus("status").notNull().default("CONNECTED"),
+    connectedByUserId: text("connected_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    lastSyncedAt: timestamp("last_synced_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    disconnectedAt: timestamp("disconnected_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    unique("linear_connections_id_workspace_unique").on(
+      table.id,
+      table.workspaceId,
+    ),
+    uniqueIndex("linear_connections_active_workspace_unique")
+      .on(table.workspaceId)
+      .where(sql`${table.status} <> 'DISCONNECTED'`),
+    unique("linear_connections_workspace_external_unique").on(
+      table.workspaceId,
+      table.externalWorkspaceId,
+    ),
+    index("linear_connections_external_workspace_idx").on(
+      table.externalWorkspaceId,
+    ),
+  ],
+);
+
+export const integrationEvent = pgTable(
+  "integration_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    connectionId: uuid("connection_id").notNull(),
+    provider: text("provider").notNull(),
+    deliveryId: text("delivery_id").notNull(),
+    eventType: text("event_type").notNull(),
+    externalEntityId: text("external_entity_id"),
+    sourceUpdatedAt: timestamp("source_updated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    status: integrationEventStatus("status").notNull().default("RECEIVED"),
+    errorCode: text("error_code"),
+    receivedAt: timestamp("received_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    processedAt: timestamp("processed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.connectionId, table.workspaceId],
+      foreignColumns: [linearConnection.id, linearConnection.workspaceId],
+      name: "integration_events_connection_workspace_fk",
+    }).onDelete("restrict"),
+    unique("integration_events_provider_delivery_unique").on(
+      table.provider,
+      table.deliveryId,
+    ),
+    index("integration_events_connection_received_idx").on(
+      table.connectionId,
+      table.receivedAt,
+    ),
+  ],
+);
 
 export const project = pgTable(
   "projects",
@@ -273,6 +388,8 @@ export const project = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspace.id, { onDelete: "restrict" }),
+    linearConnectionId: uuid("linear_connection_id"),
+    externalProjectId: text("external_project_id"),
     name: text("name").notNull(),
     description: text("description"),
     source: projectSource("source").notNull().default("MANUAL"),
@@ -295,6 +412,11 @@ export const project = pgTable(
       sql`${table.estimatedMinutes} is null or ${table.estimatedMinutes} > 0`,
     ),
     index("projects_workspace_idx").on(table.workspaceId),
+    foreignKey({
+      columns: [table.linearConnectionId, table.workspaceId],
+      foreignColumns: [linearConnection.id, linearConnection.workspaceId],
+      name: "projects_linear_connection_workspace_fk",
+    }).onDelete("restrict"),
     unique("projects_id_workspace_unique").on(table.id, table.workspaceId),
   ],
 );
@@ -307,6 +429,7 @@ export const workItem = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: "restrict" }),
     projectId: uuid("project_id").notNull(),
+    linearConnectionId: uuid("linear_connection_id"),
     source: workItemSource("source").notNull().default("MANUAL"),
     externalId: text("external_id"),
     externalIdentifier: text("external_identifier"),
@@ -316,10 +439,13 @@ export const workItem = pgTable(
     description: text("description"),
     status: workItemStatus("status").notNull().default("TODO"),
     isActive: boolean("is_active").notNull().default(true),
+    isTrackable: boolean("is_trackable").notNull().default(true),
     estimatedMinutes: integer("estimated_minutes"),
     estimateSource: estimateSource("estimate_source")
       .notNull()
       .default("MANUAL"),
+    assigneeExternalId: text("assignee_external_id"),
+    assigneeName: text("assignee_name"),
     sourceCreatedAt: timestamp("source_created_at", {
       mode: "date",
       withTimezone: true,
@@ -355,6 +481,11 @@ export const workItem = pgTable(
       name: "work_items_project_workspace_fk",
     }).onDelete("restrict"),
     foreignKey({
+      columns: [table.linearConnectionId, table.workspaceId],
+      foreignColumns: [linearConnection.id, linearConnection.workspaceId],
+      name: "work_items_linear_connection_workspace_fk",
+    }).onDelete("restrict"),
+    foreignKey({
       columns: [table.parentWorkItemId, table.projectId, table.workspaceId],
       foreignColumns: [table.id, table.projectId, table.workspaceId],
       name: "work_items_parent_project_workspace_fk",
@@ -370,6 +501,107 @@ export const workItem = pgTable(
     ),
     index("work_items_parent_idx").on(table.parentWorkItemId),
     index("work_items_external_id_idx").on(table.externalId),
+    uniqueIndex("work_items_linear_external_unique")
+      .on(table.linearConnectionId, table.externalId)
+      .where(
+        sql`${table.linearConnectionId} is not null and ${table.externalId} is not null`,
+      ),
+  ],
+);
+
+export const timeEntrySource = pgEnum("time_entry_source", ["TIMER", "MANUAL"]);
+export const timeEntryStatus = pgEnum("time_entry_status", [
+  "RUNNING",
+  "PAUSED",
+  "COMPLETED",
+  "ARCHIVED",
+]);
+
+export const timeEntry = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    projectId: uuid("project_id").notNull(),
+    workItemId: uuid("work_item_id"),
+    source: timeEntrySource("source").notNull().default("TIMER"),
+    status: timeEntryStatus("status").notNull(),
+    description: text("description"),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
+    durationSeconds: integer("duration_seconds").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "time_entries_duration_non_negative",
+      sql`${table.durationSeconds} >= 0`,
+    ),
+    foreignKey({
+      columns: [table.projectId, table.workspaceId],
+      foreignColumns: [project.id, project.workspaceId],
+      name: "time_entries_project_workspace_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.workItemId, table.projectId, table.workspaceId],
+      foreignColumns: [workItem.id, workItem.projectId, workItem.workspaceId],
+      name: "time_entries_work_item_project_workspace_fk",
+    }).onDelete("restrict"),
+    uniqueIndex("time_entries_one_active_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} in ('RUNNING', 'PAUSED')`),
+    index("time_entries_user_idx").on(table.userId),
+    index("time_entries_workspace_idx").on(table.workspaceId),
+    index("time_entries_project_idx").on(table.projectId),
+    index("time_entries_work_item_idx").on(table.workItemId),
+  ],
+);
+
+export const timeSegment = pgTable(
+  "time_segments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    timeEntryId: uuid("time_entry_id")
+      .notNull()
+      .references(() => timeEntry.id, { onDelete: "restrict" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "restrict" }),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "time_segments_end_after_start",
+      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+    ),
+    uniqueIndex("time_segments_one_open_per_entry")
+      .on(table.timeEntryId)
+      .where(sql`${table.endedAt} is null`),
+    index("time_segments_entry_idx").on(table.timeEntryId),
   ],
 );
 
@@ -379,6 +611,8 @@ export const schema = {
   project,
   rateLimit,
   session,
+  timeEntry,
+  timeSegment,
   user,
   verification,
   workspace,

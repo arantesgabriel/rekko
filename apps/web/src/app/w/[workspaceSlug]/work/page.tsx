@@ -1,8 +1,13 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer } from "@/components/ui/page-container";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireCoreSession } from "@/modules/auth/session";
 import { formatEstimate, projectStatusLabel } from "@/modules/projects/domain";
 import { listProjects } from "@/modules/projects/service";
+
+export const metadata = { title: "Projetos" };
 
 export default async function WorkPage({
   params,
@@ -20,47 +25,46 @@ export default async function WorkPage({
   );
   const canManage = context.role !== "MEMBER";
   return (
-    <div className="product-page">
-      <header className="page-header">
-        <div>
-          <p className="page-context">{context.name}</p>
-          <h1>Work</h1>
-          <p>Projetos e demandas que dão contexto ao trabalho do Workspace.</p>
-        </div>
-        {canManage && (
-          <Link
-            className="button button--primary"
-            href={`/w/${workspaceSlug}/work/new`}
-          >
-            Criar projeto
-          </Link>
-        )}
-      </header>
-      {query.archived === "1" && (
-        <p className="form-message form-message--success" role="status">
-          Projeto arquivado.
-        </p>
-      )}
-      {projects.length === 0 ? (
-        <section className="work-empty">
-          <div className="segment-mark segment-mark--brand" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <h2>Nenhum projeto ainda.</h2>
-          <p>Organize seu trabalho criando um projeto manualmente.</p>
-          {canManage ? (
+    <PageContainer width="lg">
+      <PageHeader
+        actions={
+          canManage ? (
             <Link
               className="button button--primary"
               href={`/w/${workspaceSlug}/work/new`}
             >
               Criar projeto
             </Link>
-          ) : (
-            <small>Owner ou Admin pode criar o primeiro projeto.</small>
-          )}
-        </section>
+          ) : undefined
+        }
+        description="Projetos e demandas que dão contexto ao trabalho do Workspace."
+        eyebrow={context.name}
+        title="Projetos"
+      />
+      {query.archived === "1" && (
+        <p className="form-message form-message--success" role="status">
+          Projeto arquivado.
+        </p>
+      )}
+      {projects.length === 0 ? (
+        <EmptyState
+          actions={
+            canManage ? (
+              <Link
+                className="button button--primary"
+                href={`/w/${workspaceSlug}/work/new`}
+              >
+                Criar projeto
+              </Link>
+            ) : (
+              <small>
+                Proprietário ou administrador pode criar o primeiro projeto.
+              </small>
+            )
+          }
+          description="Organize seu trabalho criando um projeto manualmente."
+          title="Nenhum projeto ainda."
+        />
       ) : (
         <section className="project-grid" aria-label="Projetos ativos">
           {projects.map((item) => (
@@ -78,7 +82,7 @@ export default async function WorkPage({
                 </span>
               </div>
               <div>
-                <h2>{item.name}</h2>
+                <h2 className="card-title">{item.name}</h2>
                 {item.description && <p>{item.description}</p>}
               </div>
               <dl>
@@ -95,6 +99,6 @@ export default async function WorkPage({
           ))}
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

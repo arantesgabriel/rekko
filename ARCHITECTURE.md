@@ -3904,6 +3904,12 @@ Workspace não precisa ser criado dentro da mesma transação do auth provider.
 
 Onboarding deve ser retomável.
 
+No wizard de criação de Workspace, as etapas de nome e time não persistem
+dados. A confirmação final deve criar Workspace, membership do Owner e
+convites em uma única transação de banco. O envio de email acontece após o
+commit: falha do provider não apaga o convite persistido e deve permitir
+reenvio posterior.
+
 ---
 
 # 154. Onboarding state
@@ -3920,6 +3926,11 @@ user has no workspace
 ```
 
 Evitar flag redundante se o estado puder ser derivado de dados reais.
+
+O estado temporário entre as três etapas do wizard vive no cliente enquanto a
+página está aberta. A retomada server-side continua derivada do estado real:
+usuário sem Workspace retorna ao início; usuário com Workspace entra no
+produto.
 
 ---
 

@@ -10,6 +10,7 @@ import { requireCoreSession } from "@/modules/auth/session";
 
 import { workspaceErrorMessage, WorkspaceError } from "./errors";
 import {
+  completeOnboardingSchema,
   createWorkspaceSchema,
   invitationSchema,
   jobTitleSchema,
@@ -20,6 +21,7 @@ import {
   cancelInvitation,
   changeMemberJobTitle,
   changeMemberRole,
+  completeWorkspaceOnboarding,
   createInvitation,
   createWorkspace,
   getUserTimezone,
@@ -31,6 +33,54 @@ export type ActionState = {
   message: string;
   status: "error" | "idle" | "success" | "warning";
 };
+
+export async function completeOnboardingAction(
+  _state: ActionState,
+  formData: FormData,
+) {
+  const session = await requireCoreSession("/onboarding/workspace");
+  let invitations: unknown = [];
+  try {
+    invitations = JSON.parse(String(formData.get("invitations") ?? "[]"));
+  } catch {
+    return errorState("Não conseguimos ler os convites. Revise os dados.");
+  }
+  const parsed = completeOnboardingSchema.safeParse({
+    invitations,
+    name: formData.get("name"),
+    timezone: formData.get("timezone"),
+  });
+  if (!parsed.success)
+    return errorState("Revise o nome do workspace e os convites.");
+
+  let created: Awaited<ReturnType<typeof completeWorkspaceOnboarding>>;
+  try {
+    created = await completeWorkspaceOnboarding({
+      userId: session.user.id,
+      ...parsed.data,
+    });
+  } catch (error) {
+    return mappedError(error);
+  }
+
+  const deliveryResults = await Promise.allSettled(
+    created.invitations.map((invitation) =>
+      sendInvitationEmail({
+        email: invitation.email,
+        invitedByName: session.user.name,
+        role: invitation.role,
+        token: invitation.token,
+        workspaceName: created.name,
+      }),
+    ),
+  );
+  const deliveryFailed = deliveryResults.some(
+    (result) => result.status === "rejected" || !result.value,
+  );
+  redirect(
+    `/w/${created.slug}${deliveryFailed ? "?convites=envio-pendente" : ""}`,
+  );
+}
 
 export async function createWorkspaceAction(
   _state: ActionState,
@@ -141,7 +191,7 @@ export async function changeRoleAction(
 ) {
   const session = await requireCoreSession(`/w/${slug}/members`);
   const parsed = roleSchema.safeParse({ role: formData.get("role") });
-  if (!parsed.success) return errorState("Selecione uma role válida.");
+  if (!parsed.success) return errorState("Selecione uma permissão válida.");
   try {
     await changeMemberRole({
       actorUserId: session.user.id,
@@ -150,7 +200,7 @@ export async function changeRoleAction(
       slug,
     });
     revalidatePath(`/w/${slug}/members`);
-    return successState("Role atualizada.");
+    return successState("Permissão atualizada.");
   } catch (error) {
     return mappedError(error);
   }

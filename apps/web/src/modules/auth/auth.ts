@@ -72,6 +72,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     env.NEXT_PUBLIC_APP_URL,
     env.BETTER_AUTH_URL,
+    ...(process.env.REKKO_E2E === "true" ? ["http://127.0.0.1:3100"] : []),
     ...(env.NODE_ENV === "production" ? [] : ["http://127.0.0.1:3000"]),
   ],
 });
