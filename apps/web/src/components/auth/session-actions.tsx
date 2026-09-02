@@ -3,7 +3,11 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/modules/auth/auth-client";
 
-export function SessionActions() {
+export function SessionActions({
+  variant = "default",
+}: {
+  variant?: "default" | "verification";
+}) {
   const router = useRouter();
   const mounted = useSyncExternalStore(
     () => () => undefined,
@@ -29,6 +33,36 @@ export function SessionActions() {
       setLoading(null);
     }
   }
+
+  if (variant === "verification") {
+    return (
+      <div className="session-actions session-actions--verification">
+        {error ? <p role="alert">{error}</p> : null}
+        <button
+          className="button button--ghost"
+          disabled={!mounted || Boolean(loading)}
+          onClick={() => signOut(false)}
+          type="button"
+        >
+          {loading === "current" ? "Saindo…" : "Usar outra conta"}
+        </button>
+        <details className="session-actions__more">
+          <summary>Mais opções de sessão</summary>
+          <button
+            className="button button--ghost"
+            disabled={!mounted || Boolean(loading)}
+            onClick={() => signOut(true)}
+            type="button"
+          >
+            {loading === "all"
+              ? "Encerrando sessões…"
+              : "Sair de todos os dispositivos"}
+          </button>
+        </details>
+      </div>
+    );
+  }
+
   return (
     <div className="session-actions">
       {error ? <p role="alert">{error}</p> : null}

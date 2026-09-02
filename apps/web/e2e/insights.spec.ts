@@ -75,19 +75,28 @@ test("shows personal tracked time and estimated versus actual", async ({
   await expect(page).toHaveURL(new RegExp(`${workspacePath}/insights$`));
   await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
   const summary = page.getByRole("region", { name: "Resumo do período" });
-  await expect(summary.getByText("Registrado", { exact: true })).toBeVisible();
+  await expect(
+    summary.getByText("Tempo registrado", { exact: true }),
+  ).toBeVisible();
   await expect(summary.getByText("1h 30m", { exact: true })).toBeVisible();
-  await expect(summary.getByText("Estimado", { exact: true })).toBeVisible();
+  await expect(
+    summary.getByText("Tempo estimado", { exact: true }),
+  ).toBeVisible();
   await expect(summary.getByText("Diferença", { exact: true })).toBeVisible();
   await expect(summary.getByText("+30m", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Horas por projeto" }),
+    page.getByRole("heading", { name: "Tempo por projeto" }),
   ).toBeVisible();
   await expect(
     page
-      .getByRole("list", { name: "Horas registradas por projeto" })
+      .getByRole("list", { name: "Tempo registrado por projeto" })
       .getByText("Insights Project", { exact: true }),
   ).toBeVisible();
+  const trend = page.getByRole("region", {
+    name: "Tempo ao longo do período",
+  });
+  await trend.getByRole("button").first().focus();
+  await expect(page.getByRole("status")).toContainText("Registrado");
 
   await openFilters(page);
   await page
@@ -128,6 +137,6 @@ test("shows the empty state without empty charts", async ({
     page.getByText("Nenhum tempo registrado neste período."),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Horas por projeto" }),
+    page.getByRole("heading", { name: "Tempo por projeto" }),
   ).toHaveCount(0);
 });

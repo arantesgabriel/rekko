@@ -82,6 +82,36 @@ describe("insights domain", () => {
     ).toBe(result.trackedSeconds);
   });
 
+  it("returns a daily series for the selected window", () => {
+    const window = periodWindow(
+      "this_week",
+      "America/Sao_Paulo",
+      new Date("2026-09-09T12:00:00.000Z"),
+    );
+    const result = aggregateInsightSegments(
+      [
+        {
+          ...project,
+          startedAt: new Date("2026-09-07T12:00:00.000Z"),
+          endedAt: new Date("2026-09-07T13:30:00.000Z"),
+        },
+        {
+          ...project,
+          startedAt: new Date("2026-09-08T14:00:00.000Z"),
+          endedAt: new Date("2026-09-08T15:00:00.000Z"),
+        },
+      ],
+      window,
+      new Date("2026-09-09T12:00:00.000Z"),
+      "America/Sao_Paulo",
+    );
+    expect(result.days).toHaveLength(7);
+    expect(result.days.slice(0, 2)).toEqual([
+      { date: "2026-09-07", trackedSeconds: 90 * 60 },
+      { date: "2026-09-08", trackedSeconds: 60 * 60 },
+    ]);
+  });
+
   it("does not compare unestimated time against zero", () => {
     const window = {
       start: new Date("2026-09-07T00:00:00.000Z"),

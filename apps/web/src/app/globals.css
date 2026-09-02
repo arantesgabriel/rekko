@@ -3605,6 +3605,298 @@ html {
   margin-bottom: 2rem;
 }
 
+/* Email verification is an operational auth state, not a marketing split-screen. */
+.auth-experience--verification {
+  background: var(--bg-canvas);
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-y: auto;
+}
+
+.auth-experience--verification .auth-header {
+  min-height: 72px;
+  padding: 12px clamp(20px, 4vw, 32px);
+}
+
+.auth-experience--verification .auth-experience__main {
+  align-content: center;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 100%;
+  overflow: visible;
+  padding: clamp(24px, 7vh, 64px) 24px;
+}
+
+.auth-experience--verification .auth-footer {
+  padding: 12px 32px calc(12px + env(safe-area-inset-bottom));
+}
+
+.email-verification-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 18px;
+  box-shadow: none;
+  margin: 0 auto;
+  max-width: 520px;
+  padding: 44px 48px 40px;
+  text-align: center;
+  width: 100%;
+}
+
+.email-verification-card__icon {
+  align-items: center;
+  background: var(--brand-soft-violet);
+  border-radius: 14px;
+  color: var(--brand-foreground);
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  margin: 0 auto 24px;
+  width: 48px;
+}
+
+.email-verification-card__icon svg {
+  height: 23px;
+  width: 23px;
+}
+
+.email-verification-card__heading h1 {
+  font-size: clamp(1.75rem, 2.3vw, 2.125rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+  margin: 0;
+}
+
+.email-verification-card__heading p {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  margin: 12px auto 0;
+  max-width: 39ch;
+}
+
+.email-verification-card__heading p + p {
+  margin-top: 8px;
+}
+
+.email-verification-card__heading strong {
+  color: var(--text-primary);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.email-verification-card__form {
+  display: grid;
+  gap: 14px;
+  margin: 28px auto 0;
+  max-width: 380px;
+}
+
+.email-verification-card__field {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.email-verification-card__field label {
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.email-verification-card__field input {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-input);
+  color: var(--text-primary);
+  min-height: 46px;
+  padding: 0 13px;
+  width: 100%;
+}
+
+.email-verification-card__field input:focus {
+  border-color: var(--brand-violet);
+  outline: 3px solid color-mix(in srgb, var(--brand-violet) 18%, transparent);
+}
+
+.email-verification-card__field-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.email-verification-card__feedback {
+  align-items: flex-start;
+  display: flex;
+  font-size: 0.8125rem;
+  gap: 8px;
+  justify-content: center;
+  line-height: 1.45;
+  margin: 0 auto;
+  max-width: 38ch;
+  text-align: left;
+}
+
+.email-verification-card__feedback svg {
+  flex: 0 0 18px;
+  height: 18px;
+  margin-top: 1px;
+  width: 18px;
+}
+
+.email-verification-card__feedback.is-success {
+  color: var(--success);
+}
+
+.email-verification-card__feedback.is-error {
+  color: var(--danger);
+}
+
+.email-verification-card__submit {
+  min-height: 48px;
+  margin-inline: auto;
+  width: min(100%, 300px);
+}
+
+.email-verification-card__submit:not([aria-busy="true"]):disabled {
+  cursor: not-allowed;
+}
+
+.email-verification-card__helper {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin: 18px auto 0;
+  max-width: 36ch;
+}
+
+.email-verification-card__account-link {
+  align-items: center;
+  color: var(--brand-foreground);
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 650;
+  justify-content: center;
+  margin-top: 24px;
+  min-height: 44px;
+  padding: 4px 8px;
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--ease-ui);
+}
+
+.email-verification-card__account-link:hover {
+  color: var(--brand-violet);
+}
+
+.email-verification-card__account-link:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--brand-violet);
+  outline-offset: 2px;
+}
+
+.email-verification-card .session-actions--verification {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  margin: 18px auto 0;
+  width: 100%;
+}
+
+.email-verification-card .session-actions--verification > .button {
+  color: var(--brand-foreground);
+  min-height: 44px;
+  padding-inline: 8px;
+}
+
+.email-verification-card .session-actions--verification > p {
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin: 0 0 4px;
+}
+
+.email-verification-card .session-actions__more {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.email-verification-card .session-actions__more summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 32px;
+  padding: 7px 8px;
+}
+
+.email-verification-card
+  .session-actions__more
+  summary::-webkit-details-marker {
+  display: none;
+}
+
+.email-verification-card .session-actions__more summary:hover {
+  color: var(--text-secondary);
+}
+
+.email-verification-card .session-actions__more .button {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  min-height: 36px;
+  padding-inline: 8px;
+}
+
+@media (max-width: 600px) {
+  .auth-experience--verification {
+    grid-template-rows: auto auto auto;
+    height: auto;
+  }
+
+  .auth-experience--verification .auth-header {
+    min-height: 64px;
+    padding: 10px 20px;
+  }
+
+  .auth-experience--verification .auth-experience__main {
+    align-content: start;
+    padding: 28px 20px 36px;
+  }
+
+  .auth-experience--verification .auth-footer {
+    padding-inline: 20px;
+  }
+
+  .email-verification-card {
+    background: transparent;
+    border: 0;
+    padding: 20px 0 10px;
+  }
+
+  .email-verification-card__icon {
+    margin-bottom: 20px;
+  }
+
+  .email-verification-card__heading h1 {
+    font-size: clamp(1.625rem, 7vw, 1.875rem);
+  }
+
+  .email-verification-card__heading p {
+    font-size: 0.875rem;
+    max-width: 36ch;
+  }
+
+  .email-verification-card__form {
+    margin-top: 24px;
+    max-width: 100%;
+  }
+
+  .email-verification-card__submit {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
