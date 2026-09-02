@@ -4,6 +4,8 @@ import {
   buildReportFilename,
   formatReportDate,
   formatReportDateTime,
+  formatReportDisplayDate,
+  formatReportDisplayDateTime,
   formatReportDecimalHours,
   formatReportDuration,
   protectCsvText,
@@ -41,6 +43,12 @@ describe("reports domain", () => {
     expect(formatReportDate(value, "America/Sao_Paulo")).toBe("2026-09-01");
     expect(formatReportDateTime(value, "America/Sao_Paulo")).toBe(
       "2026-09-01 23:30",
+    );
+    expect(formatReportDisplayDate(value, "America/Sao_Paulo")).toBe(
+      "01/09/2026",
+    );
+    expect(formatReportDisplayDateTime(value, "America/Sao_Paulo")).toBe(
+      "01/09/2026 23:30",
     );
   });
 

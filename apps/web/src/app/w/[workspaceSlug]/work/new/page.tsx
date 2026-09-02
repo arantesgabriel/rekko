@@ -25,7 +25,7 @@ export default async function NewProjectPage({
     typeof query.existingProjectId === "string"
       ? query.existingProjectId
       : undefined;
-  const context = await requireWorkspace(
+  await requireWorkspace(
     session.user.id,
     workspaceSlug,
     existingProjectId ? undefined : "project:manage",
@@ -49,7 +49,6 @@ export default async function NewProjectPage({
               ? "Pesquise e selecione somente as demandas que importam para este projeto."
               : "Escolha de onde o trabalho virá."
         }
-        eyebrow={context.name}
         title={
           manual
             ? "Criar projeto manual"

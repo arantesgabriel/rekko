@@ -47,7 +47,6 @@ export function GettingStarted({
     () => window.localStorage.getItem(storageKey) === "true",
     () => false,
   );
-  const [collapsed, setCollapsed] = useState(false);
   const items: ChecklistItem[] = [
     { complete: true, label: "Workspace criado" },
     {
@@ -72,6 +71,7 @@ export function GettingStarted({
     },
   ];
   const completed = items.filter((item) => item.complete).length;
+  const [collapsed, setCollapsed] = useState(completed >= 3);
 
   if (dismissed || completed === items.length) return null;
 
@@ -82,8 +82,10 @@ export function GettingStarted({
     >
       <div className="getting-started__heading">
         <div>
-          <p className="page-eyebrow">Primeiros passos</p>
-          <h2 id="getting-started-title">Getting started</h2>
+          <h2 id="getting-started-title">Primeiros passos</h2>
+          <p className="getting-started__summary">
+            {completed} de {items.length} concluídos
+          </p>
         </div>
         <div className="getting-started__actions">
           <button

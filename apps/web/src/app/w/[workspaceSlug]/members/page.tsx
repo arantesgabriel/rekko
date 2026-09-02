@@ -21,7 +21,6 @@ export default async function MembersPage({
     <PageContainer width="wide">
       <PageHeader
         description="Gerencie quem participa, o cargo e as permissões deste Workspace."
-        eyebrow={data.context.name}
         title="Membros"
       />
       {data.context.role !== "MEMBER" && (

@@ -20,17 +20,16 @@ export default async function IntegrationsPage({
   const { workspaceSlug } = await params;
   const query = await searchParams;
   const session = await requireCoreSession(`/w/${workspaceSlug}/integrations`);
-  const { connection, role, workspace } = await getLinearConnection({
+  const { connection, role } = await getLinearConnection({
     slug: workspaceSlug,
     userId: session.user.id,
   });
   const canManage = role !== "MEMBER";
   const message = linearMessage(query.linear);
   return (
-    <PageContainer width="default">
+    <PageContainer width="lg">
       <PageHeader
         description="Conecte o contexto do seu trabalho sem importar tudo automaticamente."
-        eyebrow={workspace.name}
         title="Integrações"
       />
       {message ? (

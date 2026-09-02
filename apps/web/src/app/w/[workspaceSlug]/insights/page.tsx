@@ -27,7 +27,6 @@ export default async function InsightsPage({
     <PageContainer width="lg">
       <PageHeader
         description="Veja onde seu tempo foi usado e compare o registrado com as estimativas disponíveis."
-        eyebrow={data.context.name}
         title="Insights"
       />
       <InsightsView data={data} />

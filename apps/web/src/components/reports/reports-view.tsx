@@ -5,8 +5,8 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  formatReportDate,
-  formatReportDateTime,
+  formatReportDisplayDate,
+  formatReportDisplayDateTime,
   formatReportDuration,
 } from "@/modules/reports/domain";
 import type { ReportFilterOptions, ReportRow } from "@/modules/reports/service";
@@ -39,7 +39,6 @@ export function ReportsView({
     <div className="reports-page">
       <section className="reports-toolbar" aria-label="Filtros do relatório">
         <div>
-          <span className="eyebrow">Relação de horas</span>
           <p className="reports-toolbar__timezone">
             Horários em {data.timezone}
           </p>
@@ -237,7 +236,7 @@ function ReportTable({
           {data.rows.map((row) => (
             <tr key={row.segmentId}>
               <td data-label="Data">
-                {formatReportDate(row.startedAt, data.timezone)}
+                {formatReportDisplayDate(row.startedAt, data.timezone)}
               </td>
               <td data-label="Colaborador">
                 <strong>{row.collaboratorName}</strong>
@@ -249,10 +248,10 @@ function ReportTable({
                 {row.description ? <small>{row.description}</small> : null}
               </td>
               <td data-label="Início">
-                {formatReportDateTime(row.startedAt, data.timezone)}
+                {formatReportDisplayDateTime(row.startedAt, data.timezone)}
               </td>
               <td data-label="Fim">
-                {formatReportDateTime(row.endedAt, data.timezone)}
+                {formatReportDisplayDateTime(row.endedAt, data.timezone)}
               </td>
               <td data-label="Duração">
                 {formatReportDuration(row.durationSeconds)}
@@ -303,7 +302,9 @@ function ReportMobileList({
       {data.rows.map((row) => (
         <li key={row.segmentId}>
           <div className="reports-mobile-list__topline">
-            <strong>{formatReportDate(row.startedAt, data.timezone)}</strong>
+            <strong>
+              {formatReportDisplayDate(row.startedAt, data.timezone)}
+            </strong>
             <b>{formatReportDuration(row.durationSeconds)}</b>
           </div>
           <strong>{row.collaboratorName}</strong>
@@ -312,8 +313,8 @@ function ReportMobileList({
             {row.projectName} · {row.workItemTitle ?? "Sem demanda"}
           </span>
           <small>
-            {formatReportDateTime(row.startedAt, data.timezone)} →{" "}
-            {formatReportDateTime(row.endedAt, data.timezone)} ·{" "}
+            {formatReportDisplayDateTime(row.startedAt, data.timezone)} →{" "}
+            {formatReportDisplayDateTime(row.endedAt, data.timezone)} ·{" "}
             {row.source === "TIMER" ? "Timer" : "Manual"}
           </small>
           {canCorrectTime ? (

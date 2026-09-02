@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { parseServerEnv } from "@rekko/shared/env";
 
-import {
-  getGraceHoursRemaining,
-  getVerificationAccess,
-} from "@/modules/auth/grace-period";
+import { getVerificationAccess } from "@/modules/auth/grace-period";
 
 export function VerificationBanner({
   user,
@@ -20,19 +17,13 @@ export function VerificationBanner({
     now,
   });
   if (access !== "allowed") return null;
-  const hours = getGraceHoursRemaining({
-    createdAt: user.createdAt,
-    graceHours: env.EMAIL_VERIFICATION_GRACE_HOURS,
-    now,
-  });
   return (
     <aside className="verification-banner verification-banner--product">
       <div>
-        <strong>
-          Confirme seu e-mail nos próximos{" "}
-          {hours <= 24 ? `${hours} horas` : `${Math.ceil(hours / 24)} dias`}.
-        </strong>
-        <span>Assim você continua usando o Rekko sem interrupções.</span>
+        <strong>Confirme seu e-mail</strong>
+        <span>
+          Confirme seu e-mail para continuar usando todos os recursos do Rekko.
+        </span>
       </div>
       <Link
         className="button button--secondary button--sm"

@@ -21,7 +21,6 @@ export default async function SettingsPage({
     <PageContainer width="md">
       <PageHeader
         description="Ajuste sua conta, o Workspace e as conexões usadas no dia a dia."
-        eyebrow={data.context.name}
         title="Configurações"
       />
       <SettingsView data={data} workspaceSlug={workspaceSlug} />

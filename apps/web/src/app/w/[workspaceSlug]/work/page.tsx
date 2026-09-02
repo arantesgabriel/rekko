@@ -38,7 +38,6 @@ export default async function WorkPage({
           ) : undefined
         }
         description="Projetos e demandas que dão contexto ao trabalho do Workspace."
-        eyebrow={context.name}
         title="Projetos"
       />
       {query.archived === "1" && (
