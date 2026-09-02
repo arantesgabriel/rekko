@@ -1,15 +1,11 @@
-import Link from "next/link";
-
-import { EmptyState } from "@/components/ui/empty-state";
+import { DemandsView } from "@/components/demands/demands-view";
 import { PageContainer } from "@/components/ui/page-container";
-import { PageHeader } from "@/components/ui/page-header";
 import { requireCoreSession } from "@/modules/auth/session";
-import { formatEstimate, projectStatusLabel } from "@/modules/projects/domain";
-import { listProjects } from "@/modules/projects/service";
+import { listDemands } from "@/modules/projects/service";
 
-export const metadata = { title: "Projetos" };
+export const metadata = { title: "Demandas" };
 
-export default async function WorkPage({
+export default async function DemandsPage({
   params,
   searchParams,
 }: {
@@ -19,85 +15,26 @@ export default async function WorkPage({
   const { workspaceSlug } = await params;
   const query = await searchParams;
   const session = await requireCoreSession(`/w/${workspaceSlug}/work`);
-  const { context, projects } = await listProjects(
-    session.user.id,
-    workspaceSlug,
-  );
-  const canManage = context.role !== "MEMBER";
+  const search = typeof query.q === "string" ? query.q : "";
+  const projectId = typeof query.projectId === "string" ? query.projectId : "";
+  const status =
+    query.status === "ACTIVE" || query.status === "DONE" ? query.status : "ALL";
+  const data = await listDemands({
+    userId: session.user.id,
+    slug: workspaceSlug,
+    ...(search ? { search } : {}),
+    ...(projectId ? { projectId } : {}),
+    status,
+  });
   return (
     <PageContainer width="lg">
-      <PageHeader
-        actions={
-          canManage ? (
-            <Link
-              className="button button--primary"
-              href={`/w/${workspaceSlug}/work/new`}
-            >
-              Criar projeto
-            </Link>
-          ) : undefined
-        }
-        description="Projetos e demandas que dão contexto ao trabalho do Workspace."
-        title="Projetos"
+      <DemandsView
+        demands={data.demands}
+        projectOptions={data.projectOptions}
+        query={{ projectId, search, status }}
+        slug={workspaceSlug}
+        timezone={data.context.timezone}
       />
-      {query.archived === "1" && (
-        <p className="form-message form-message--success" role="status">
-          Projeto arquivado.
-        </p>
-      )}
-      {projects.length === 0 ? (
-        <EmptyState
-          actions={
-            canManage ? (
-              <Link
-                className="button button--primary"
-                href={`/w/${workspaceSlug}/work/new`}
-              >
-                Criar projeto
-              </Link>
-            ) : (
-              <small>
-                Proprietário ou administrador pode criar o primeiro projeto.
-              </small>
-            )
-          }
-          description="Organize seu trabalho criando um projeto manualmente."
-          title="Nenhum projeto ainda."
-        />
-      ) : (
-        <section className="project-grid" aria-label="Projetos ativos">
-          {projects.map((item) => (
-            <Link
-              className="project-card"
-              href={`/w/${workspaceSlug}/projects/${item.id}`}
-              key={item.id}
-            >
-              <div className="project-card__top">
-                <span className="source-badge">Manual</span>
-                <span
-                  className={`status-badge status-badge--${item.status.toLowerCase()}`}
-                >
-                  {projectStatusLabel[item.status]}
-                </span>
-              </div>
-              <div>
-                <h2 className="card-title">{item.name}</h2>
-                {item.description && <p>{item.description}</p>}
-              </div>
-              <dl>
-                <div>
-                  <dt>Estimativa</dt>
-                  <dd>{formatEstimate(item.estimatedMinutes)}</dd>
-                </div>
-                <div>
-                  <dt>Demandas</dt>
-                  <dd>{item.workItemCount}</dd>
-                </div>
-              </dl>
-            </Link>
-          ))}
-        </section>
-      )}
     </PageContainer>
   );
 }

@@ -66,7 +66,7 @@ export function GettingStarted({
     },
     {
       complete: progress.hasManualEntry,
-      href: `/w/${slug}#timeline-title`,
+      href: `/w/${slug}`,
       label: "Reconstruir seu primeiro gap",
     },
   ];

@@ -64,7 +64,7 @@ export default async function ProjectPage({
   const itemCount = data.parentOptions.length;
   return (
     <PageContainer width="lg">
-      <Link className="back-link" href={`/w/${workspaceSlug}/work`}>
+      <Link className="back-link" href={`/w/${workspaceSlug}/projects`}>
         ← Todos os projetos
       </Link>
       <PageHeader
