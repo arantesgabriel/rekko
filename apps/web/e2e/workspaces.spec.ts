@@ -221,13 +221,21 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(membersPath);
   const memberRow = page
-    .locator("article.member-row")
+    .locator("article.member-row:visible")
+    .filter({ hasText: memberEmail });
+  const memberCard = page
+    .locator("article.member-card:visible")
     .filter({ hasText: memberEmail });
   const membersList = page.locator(".members-list");
   const success = page.getByText("Permissão atualizada.");
-  await memberRow
-    .getByLabel("Permissão de Member Invite")
-    .selectOption("ADMIN");
+  if ((page.viewportSize()?.width ?? 1024) < 768) {
+    await memberCard.locator("details.member-card__edit > summary").click();
+    await memberCard.getByLabel("Permissão").selectOption("ADMIN");
+  } else {
+    await memberRow
+      .getByLabel("Permissão de Member Invite")
+      .selectOption("ADMIN");
+  }
   await expect
     .poll(
       async () =>
@@ -237,12 +245,24 @@ test("Owner invites a user who signs up and joins; Member sees no admin form", a
     .toBe(true);
   await expect(membersList).toHaveAttribute("aria-busy", "false");
   await page.reload();
-  await expect(
-    page
-      .locator("article.member-row")
-      .filter({ hasText: memberEmail })
-      .getByLabel("Permissão de Member Invite"),
-  ).toHaveValue("ADMIN");
+  const visibleMemberCard = page
+    .locator("article.member-card:visible")
+    .filter({ hasText: memberEmail });
+  if ((page.viewportSize()?.width ?? 1024) < 768) {
+    await visibleMemberCard
+      .locator("details.member-card__edit > summary")
+      .click();
+    await expect(visibleMemberCard.getByLabel("Permissão")).toHaveValue(
+      "ADMIN",
+    );
+  } else {
+    await expect(
+      page
+        .locator("article.member-row:visible")
+        .filter({ hasText: memberEmail })
+        .getByLabel("Permissão de Member Invite"),
+    ).toHaveValue("ADMIN");
+  }
 });
 
 test("mobile onboarding fits 390 by 844 without horizontal scroll", async ({
@@ -393,7 +413,15 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toContainText("Google login");
-  await page.getByRole("button", { name: "Encerrar" }).click();
+  const mobileTimerMenu = page.locator("details.timer-switcher--mobile");
+  if ((page.viewportSize()?.width ?? 1024) < 768) {
+    await mobileTimerMenu.locator("summary").click();
+    await mobileTimerMenu
+      .getByRole("button", { name: "Encerrar timer" })
+      .click();
+  } else {
+    await page.getByRole("button", { name: "Encerrar" }).click();
+  }
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toHaveCount(0);

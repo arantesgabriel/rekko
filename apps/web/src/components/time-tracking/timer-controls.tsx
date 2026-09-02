@@ -120,7 +120,7 @@ export function TimerDock({
             : timer.elapsedSeconds,
         )}
       </time>
-      <div className="timer-dock__actions">
+      <div className="timer-dock__actions timer-dock__actions--desktop">
         {timer.status === "RUNNING" ? (
           <form action={pauseAction}>
             <button
@@ -146,37 +146,7 @@ export function TimerDock({
           <summary className="button button--secondary">Trocar</summary>
           <div className="timer-switcher__panel">
             <strong>Trocar atividade</strong>
-            {targets.projects.map((target) => (
-              <StartTimerButton
-                key={`project-${target.projectId}`}
-                slug={target.slug}
-                projectId={target.projectId}
-                workItemId={null}
-                activeOnItem={
-                  timer.workItemTitle === null &&
-                  timer.projectName === target.projectName
-                }
-                hasActiveTimer
-              />
-            ))}
-            {targets.items.map((target) => (
-              <div className="timer-switcher__target" key={target.workItemId}>
-                <span>
-                  {target.workspaceName} · {target.projectName}
-                </span>
-                <strong>{target.workItemTitle}</strong>
-                <StartTimerButton
-                  slug={target.slug}
-                  projectId={target.projectId}
-                  workItemId={target.workItemId}
-                  activeOnItem={
-                    timer.workItemTitle === target.workItemTitle &&
-                    timer.projectName === target.projectName
-                  }
-                  hasActiveTimer
-                />
-              </div>
-            ))}
+            <TimerTargets targets={targets} timer={timer} />
           </div>
         </details>
         <form action={finishAction}>
@@ -189,8 +159,116 @@ export function TimerDock({
           </button>
         </form>
       </div>
+      <div className="timer-dock__actions timer-dock__actions--mobile">
+        {timer.status === "RUNNING" ? (
+          <form action={pauseAction}>
+            <button
+              aria-label="Pausar"
+              className="button button--secondary button--icon"
+              disabled={pausePending}
+              type="submit"
+            >
+              <span aria-hidden="true">Ⅱ</span>
+            </button>
+          </form>
+        ) : (
+          <form action={resumeAction}>
+            <button
+              aria-label="Retomar"
+              className="button button--primary button--icon"
+              disabled={resumePending}
+              type="submit"
+            >
+              <span aria-hidden="true">▶</span>
+            </button>
+          </form>
+        )}
+        <details className="timer-switcher timer-switcher--mobile">
+          <summary
+            aria-label="Mais ações do timer"
+            className="button button--secondary button--icon"
+          >
+            <span aria-hidden="true">•••</span>
+          </summary>
+          <div className="timer-switcher__panel">
+            <strong>Trocar atividade</strong>
+            <TimerTargets targets={targets} timer={timer} />
+            <form action={finishAction}>
+              <button
+                className="button button--secondary"
+                disabled={finishPending}
+                type="submit"
+              >
+                Encerrar timer
+              </button>
+            </form>
+          </div>
+        </details>
+      </div>
       {state.status === "error" && <p role="alert">{state.message}</p>}
     </aside>
+  );
+}
+
+function TimerTargets({
+  targets,
+  timer,
+}: {
+  targets: {
+    projects: {
+      projectId: string;
+      projectName: string;
+      slug: string;
+      workspaceName: string;
+    }[];
+    items: {
+      projectId: string;
+      projectName: string;
+      slug: string;
+      workspaceName: string;
+      workItemId: string;
+      workItemTitle: string;
+    }[];
+  };
+  timer: {
+    projectName: string;
+    workItemTitle: string | null;
+  };
+}) {
+  return (
+    <>
+      {targets.projects.map((target) => (
+        <StartTimerButton
+          key={`project-${target.projectId}`}
+          slug={target.slug}
+          projectId={target.projectId}
+          workItemId={null}
+          activeOnItem={
+            timer.workItemTitle === null &&
+            timer.projectName === target.projectName
+          }
+          hasActiveTimer
+        />
+      ))}
+      {targets.items.map((target) => (
+        <div className="timer-switcher__target" key={target.workItemId}>
+          <span>
+            {target.workspaceName} · {target.projectName}
+          </span>
+          <strong>{target.workItemTitle}</strong>
+          <StartTimerButton
+            slug={target.slug}
+            projectId={target.projectId}
+            workItemId={target.workItemId}
+            activeOnItem={
+              timer.workItemTitle === target.workItemTitle &&
+              timer.projectName === target.projectName
+            }
+            hasActiveTimer
+          />
+        </div>
+      ))}
+    </>
   );
 }
 

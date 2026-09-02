@@ -80,22 +80,50 @@ export function TimeEntryActions({
   return (
     <>
       <div className="time-entry-actions">
-        {row.userId !== currentUserId ? (
+        <div className="time-entry-actions__desktop">
+          {row.userId !== currentUserId ? (
+            <button
+              className="button button--ghost"
+              onClick={openCorrection}
+              type="button"
+            >
+              Corrigir
+            </button>
+          ) : null}
           <button
             className="button button--ghost"
-            onClick={openCorrection}
+            onClick={() => setDialog("archive")}
             type="button"
           >
-            Corrigir
+            Arquivar
           </button>
-        ) : null}
-        <button
-          className="button button--ghost"
-          onClick={() => setDialog("archive")}
-          type="button"
-        >
-          Arquivar
-        </button>
+        </div>
+        <details className="time-entry-actions__mobile">
+          <summary
+            aria-label="Mais ações do segmento"
+            className="button button--ghost button--icon button--sm"
+          >
+            <span aria-hidden="true">•••</span>
+          </summary>
+          <div className="time-entry-actions__menu">
+            {row.userId !== currentUserId ? (
+              <button
+                className="button button--ghost"
+                onClick={openCorrection}
+                type="button"
+              >
+                Corrigir
+              </button>
+            ) : null}
+            <button
+              className="button button--ghost"
+              onClick={() => setDialog("archive")}
+              type="button"
+            >
+              Arquivar
+            </button>
+          </div>
+        </details>
       </div>
       {dialog ? (
         <div className="settings-dialog-backdrop">

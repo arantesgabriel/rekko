@@ -51,6 +51,14 @@ export function formatReportDisplayDate(value: Date, timezone: string) {
   }).format(value);
 }
 
+export function formatReportShortDisplayDate(value: Date, timezone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+  }).format(value);
+}
+
 export function formatReportDateTime(value: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",

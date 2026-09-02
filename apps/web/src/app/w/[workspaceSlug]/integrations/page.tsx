@@ -42,7 +42,9 @@ export default async function IntegrationsPage({
       ) : null}
       <section className="integration-card" aria-labelledby="linear-title">
         <div className="integration-card__heading">
-          <span className="source-badge">Linear</span>
+          <span className="integration-card__icon" aria-hidden="true">
+            <LinearIcon />
+          </span>
           <div>
             <h2 className="card-title" id="linear-title">
               Linear
@@ -144,4 +146,35 @@ function linearMessage(value: string | string[] | undefined) {
       text: "Não conseguimos conectar o Linear agora. Tente novamente.",
     };
   return null;
+}
+
+function LinearIcon() {
+  return (
+    <svg fill="none" viewBox="0 0 24 24">
+      <path
+        d="M5.1 3.8a9.7 9.7 0 0 0-1.3 1.5l8.9 8.9 1.6-1.6-9.2-8.8Z"
+        fill="currentColor"
+      />
+      <path
+        d="M3.4 7.2a10.1 10.1 0 0 0-.8 2.2l7.4 7.4 1.6-1.6-8.2-8Z"
+        fill="currentColor"
+      />
+      <path
+        d="M3 12.2c.1 1.2.5 2.3 1 3.3l5.1 5.1a10 10 0 0 0 3.3.9L3 12.2Z"
+        fill="currentColor"
+      />
+      <path
+        d="M5.3 18.2a10.2 10.2 0 0 0 4 2.4l9.4-9.4-1.6-1.6-11.8 8.6Z"
+        fill="currentColor"
+      />
+      <path
+        d="M19.7 6.1a10.2 10.2 0 0 0-2.5-2.4L7.7 13.2l1.6 1.6 10.4-8.7Z"
+        fill="currentColor"
+      />
+      <path
+        d="M20.7 8.7a10 10 0 0 0-.8-2l-9.5 9.5 1.6 1.6 8.7-9.1Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }

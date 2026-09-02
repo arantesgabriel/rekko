@@ -51,6 +51,16 @@ function shiftDate(date: string, amount: number) {
   return value.toISOString().slice(0, 10);
 }
 
+function dayLabel(date: string, timezone: string) {
+  const label = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${date}T12:00:00Z`));
+  return label.charAt(0).toLocaleUpperCase("pt-BR") + label.slice(1);
+}
+
 export function TodayView({
   slug,
   date,
@@ -121,14 +131,7 @@ export function TodayView({
       <header className="today-header">
         <div>
           <p className="page-eyebrow">{isToday ? "Hoje" : "Timeline"}</p>
-          <h1>
-            {new Intl.DateTimeFormat("pt-BR", {
-              timeZone: timezone,
-              weekday: "long",
-              day: "2-digit",
-              month: "long",
-            }).format(new Date(`${date}T12:00:00Z`))}
-          </h1>
+          <h1>{dayLabel(date, timezone)}</h1>
         </div>
         <div className="today-date-nav" aria-label="Navegar entre dias">
           <button
@@ -155,7 +158,9 @@ export function TodayView({
       </header>
       <section className="today-summary" aria-labelledby="tracked-title">
         <div>
-          <span id="tracked-title">Registrado neste dia</span>
+          <span id="tracked-title">
+            {isToday ? "Registrado hoje" : "Registrado neste dia"}
+          </span>
           <strong>{duration(trackedSeconds)}</strong>
         </div>
         <button

@@ -16,6 +16,22 @@ async function signUp(
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
+async function openMobileDisclosure(
+  page: import("@playwright/test").Page,
+  selector: string,
+) {
+  const summary = page.locator(`${selector} > summary`);
+  if ((page.viewportSize()?.width ?? 1024) < 768) await summary.click();
+}
+
+async function openInviteForm(page: import("@playwright/test").Page) {
+  if ((page.viewportSize()?.width ?? 1024) < 768) {
+    await page.locator("details.invite-disclosure > summary").click();
+    return page.locator(".invite-section--mobile form.invite-form");
+  }
+  return page.locator(".invite-section--desktop form.invite-form");
+}
+
 async function completeOnboarding(
   page: import("@playwright/test").Page,
   workspaceName: string,
@@ -99,6 +115,7 @@ test("Owner reviews Workspace hours and downloads a UTF-8 CSV", async ({
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.getByRole("heading", { name: "Relatórios" })).toBeVisible();
+  await openMobileDisclosure(page, "details.reports-filter-disclosure");
   await expect(page.getByLabel("Colaborador")).toBeVisible();
   await expect(
     page.locator(".reports-table tbody tr").filter({ hasText: projectName }),
@@ -135,6 +152,7 @@ test("Owner reviews Workspace hours and downloads a UTF-8 CSV", async ({
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await openMobileDisclosure(page, "details.reports-filter-disclosure");
   await expect(
     page.locator(".reports-mobile-list").filter({ visible: true }),
   ).toHaveCount(1);
@@ -176,10 +194,11 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
 
   await page.goto(`${workspacePath}/members`);
   await page.getByRole("heading", { name: "Membros" }).waitFor();
-  await page.getByRole("heading", { name: "Convidar pessoa" }).waitFor();
-  await page.getByLabel("E-mail").fill(memberEmail);
-  await page.locator(".invite-form").getByLabel("Cargo").fill("Relatórios");
-  await page.getByRole("button", { name: "Enviar convite" }).click();
+  const inviteForm = await openInviteForm(page);
+  await inviteForm.waitFor();
+  await inviteForm.getByLabel("E-mail").fill(memberEmail);
+  await inviteForm.getByLabel("Cargo").fill("Relatórios");
+  await inviteForm.getByRole("button", { name: "Enviar convite" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: /Convite/ }),
   ).toBeVisible();
@@ -236,6 +255,7 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(`${workspacePath}/reports`);
   await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
+  await openMobileDisclosure(page, "details.reports-filter-disclosure");
   await expect(page.getByLabel("Colaborador")).toBeVisible();
 });
 
@@ -255,13 +275,11 @@ test("Admin can review and export Workspace hours", async ({
   await addManualTime(page, projectName, "08:00", "09:00");
 
   await page.goto(`${workspacePath}/members`);
-  await page.getByLabel("E-mail").fill(adminEmail);
-  await page
-    .locator(".invite-form")
-    .getByLabel("Permissão")
-    .selectOption("ADMIN");
-  await page.locator(".invite-form").getByLabel("Cargo").fill("Administração");
-  await page.getByRole("button", { name: "Enviar convite" }).click();
+  const inviteForm = await openInviteForm(page);
+  await inviteForm.getByLabel("E-mail").fill(adminEmail);
+  await inviteForm.getByLabel("Permissão").selectOption("ADMIN");
+  await inviteForm.getByLabel("Cargo").fill("Administração");
+  await inviteForm.getByRole("button", { name: "Enviar convite" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: /Convite/ }),
   ).toBeVisible();
@@ -290,6 +308,7 @@ test("Admin can review and export Workspace hours", async ({
   await addManualTime(page, projectName, "10:00", "10:30");
 
   await page.goto(`${workspacePath}/reports`);
+  await openMobileDisclosure(page, "details.reports-filter-disclosure");
   await expect(page.getByLabel("Colaborador")).toBeVisible();
   await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
   const [adminDownload] = await Promise.all([
@@ -351,6 +370,7 @@ test("demand filter excludes project-only entries from screen and CSV", async ({
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
+  await openMobileDisclosure(page, "details.reports-filter-disclosure");
   await page.getByLabel("Demanda").selectOption({ label: workItemName });
   await page.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect(page).toHaveURL(/workItemId=/);

@@ -2,6 +2,24 @@ import { expect, test } from "@playwright/test";
 
 const password = "Rekko-insights-2026";
 
+async function openFilters(page: import("@playwright/test").Page) {
+  const disclosure = page.locator("details.insights-filter-disclosure");
+  if (
+    await disclosure.evaluate(
+      (element) => !(element as HTMLDetailsElement).open,
+    )
+  ) {
+    const summary = disclosure.locator("summary");
+    if (await summary.isVisible()) {
+      await summary.click();
+    } else {
+      await disclosure.evaluate((element) => {
+        (element as HTMLDetailsElement).open = true;
+      });
+    }
+  }
+}
+
 test("shows personal tracked time and estimated versus actual", async ({
   page,
 }, testInfo) => {
@@ -71,10 +89,11 @@ test("shows personal tracked time and estimated versus actual", async ({
       .getByText("Insights Project", { exact: true }),
   ).toBeVisible();
 
+  await openFilters(page);
   await page
     .locator('select[name="projectId"]')
     .selectOption({ label: "Insights Project" });
-  await page.getByRole("button", { name: "Aplicar" }).click();
+  await page.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect(page).toHaveURL(/projectId=/);
 
   await page.setViewportSize({ width: 390, height: 844 });

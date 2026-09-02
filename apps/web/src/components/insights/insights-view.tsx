@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
@@ -175,8 +178,59 @@ function InsightsFilters({
   start: string | undefined;
   end: string | undefined;
 }) {
+  const periodLabel = getPeriodLabel(period, start, end);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const syncDisclosure = () => setFiltersOpen(media.matches);
+
+    syncDisclosure();
+    media.addEventListener("change", syncDisclosure);
+    return () => media.removeEventListener("change", syncDisclosure);
+  }, []);
+
   return (
-    <form className="insights-filters" method="get">
+    <details
+      className="insights-filter-disclosure"
+      onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+      open={filtersOpen}
+    >
+      <summary>
+        <span>
+          <strong>Filtros</strong>
+          <small>{periodLabel}</small>
+        </span>
+        <span className="button button--secondary button--sm">Abrir</span>
+      </summary>
+      <form className="insights-filters" method="get">
+        <InsightsFilterFields
+          end={end}
+          period={period}
+          projectId={projectId}
+          projects={projects}
+          start={start}
+        />
+      </form>
+    </details>
+  );
+}
+
+function InsightsFilterFields({
+  end,
+  period,
+  projectId,
+  projects,
+  start,
+}: {
+  end: string | undefined;
+  period: string;
+  projectId: string | undefined;
+  projects: InsightsResult["projects"];
+  start: string | undefined;
+}) {
+  return (
+    <>
       <label>
         <span>Período</span>
         <select defaultValue={period} name="period">
@@ -211,9 +265,9 @@ function InsightsFilters({
         </>
       ) : null}
       <button className="button button--secondary" type="submit">
-        Aplicar
+        Aplicar filtros
       </button>
-    </form>
+    </>
   );
 }
 

@@ -113,7 +113,12 @@ function MobileShellControls({
   const drawerTitleId = useId();
 
   useEffect(() => {
+    const pageScroll =
+      document.querySelector<HTMLElement>(".app-shell__scroll");
+    const previousOverflow = pageScroll?.style.overflow;
+
     if (!drawerOpen) return;
+    if (pageScroll) pageScroll.style.overflow = "hidden";
     drawerCloseRef.current?.focus();
     const menuButton = menuButtonRef.current;
     function onKey(event: KeyboardEvent) {
@@ -122,6 +127,7 @@ function MobileShellControls({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
+      if (pageScroll) pageScroll.style.overflow = previousOverflow ?? "";
       menuButton?.focus();
     };
   }, [drawerOpen]);
@@ -245,6 +251,7 @@ function SidebarBody({
           href={home}
           icon={<HomeIcon />}
           label="Hoje"
+          {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}

@@ -10,9 +10,11 @@ import {
 const initialActionState: ActionState = { message: "", status: "idle" };
 
 export function InviteForm({
+  idSuffix,
   slug,
   compact = false,
 }: {
+  idSuffix?: string;
   slug: string;
   compact?: boolean;
 }) {
@@ -20,15 +22,16 @@ export function InviteForm({
     inviteMemberAction.bind(null, slug),
     initialActionState,
   );
+  const fieldId = idSuffix ?? String(compact);
   return (
     <form
       action={formAction}
       className={compact ? "invite-form invite-form--compact" : "invite-form"}
     >
       <div className="field-group">
-        <label htmlFor={`invite-email-${compact}`}>E-mail</label>
+        <label htmlFor={`invite-email-${fieldId}`}>E-mail</label>
         <input
-          id={`invite-email-${compact}`}
+          id={`invite-email-${fieldId}`}
           name="email"
           placeholder="pessoa@empresa.com"
           required
@@ -36,17 +39,17 @@ export function InviteForm({
         />
       </div>
       <div className="field-group">
-        <label htmlFor={`invite-role-${compact}`}>Permissão</label>
-        <select defaultValue="MEMBER" id={`invite-role-${compact}`} name="role">
+        <label htmlFor={`invite-role-${fieldId}`}>Permissão</label>
+        <select defaultValue="MEMBER" id={`invite-role-${fieldId}`} name="role">
           <option value="MEMBER">Membro</option>
           <option value="ADMIN">Administrador</option>
           <option value="OWNER">Proprietário</option>
         </select>
       </div>
       <div className="field-group">
-        <label htmlFor={`invite-job-${compact}`}>Cargo</label>
+        <label htmlFor={`invite-job-${fieldId}`}>Cargo</label>
         <input
-          id={`invite-job-${compact}`}
+          id={`invite-job-${fieldId}`}
           maxLength={100}
           name="jobTitle"
           placeholder="Ex.: Tech Lead"
