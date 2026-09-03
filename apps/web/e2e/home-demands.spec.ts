@@ -75,6 +75,10 @@ test("unifies the operational home and manages demands", async ({
 
   await page.goto(workspacePath);
   await page.getByRole("button", { name: "Adicionar tempo" }).first().click();
+  const drawerOverflow = await page
+    .locator(".time-drawer")
+    .evaluate((drawer) => drawer.scrollWidth - drawer.clientWidth);
+  expect(drawerOverflow).toBeLessThanOrEqual(0);
   await page.getByLabel("Início").fill("08:00");
   await page.getByLabel("Fim").fill("09:00");
   await page

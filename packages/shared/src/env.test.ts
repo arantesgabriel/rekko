@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePublicEnv, parseServerEnv } from "./env";
+import { parseDatabaseEnv, parsePublicEnv, parseServerEnv } from "./env";
 
 describe("environment validation", () => {
   it("applies safe public defaults", () => {
@@ -23,6 +23,19 @@ describe("environment validation", () => {
     ).toMatchObject({
       NODE_ENV: "development",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    });
+  });
+
+  it("accepts a separate migration database URL", () => {
+    expect(
+      parseDatabaseEnv({
+        DATABASE_MIGRATION_URL:
+          "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:6543/postgres",
+      }),
+    ).toMatchObject({
+      DATABASE_MIGRATION_URL:
+        "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
     });
   });
 
