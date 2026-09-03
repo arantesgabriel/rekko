@@ -43,7 +43,6 @@ export default async function HomePage({
         trackedSeconds={timeline.trackedSeconds}
         isToday={timeline.isToday}
         todayDate={dateInTimezone(new Date(), timeline.timezone)}
-        userName={session.user.name}
         targets={targets}
         gettingStarted={{
           ...gettingStarted,

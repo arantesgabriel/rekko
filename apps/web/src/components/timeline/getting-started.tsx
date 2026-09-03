@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 
 type GettingStartedProgress = {
@@ -71,44 +71,17 @@ export function GettingStarted({
     },
   ];
   const completed = items.filter((item) => item.complete).length;
-  const [collapsed, setCollapsed] = useState(completed >= 3);
+  const nextItem = items.find((item) => !item.complete);
 
   if (dismissed || completed === items.length) return null;
 
   return (
-    <section
-      className="getting-started"
-      aria-labelledby="getting-started-title"
-    >
-      <div className="getting-started__heading">
-        <div>
-          <h2 id="getting-started-title">Primeiros passos</h2>
-          <p className="getting-started__summary">
-            {completed} de {items.length} concluídos
-          </p>
-        </div>
-        <div className="getting-started__actions">
-          <button
-            aria-controls="getting-started-items"
-            aria-expanded={!collapsed}
-            className="button button--ghost button--sm"
-            onClick={() => setCollapsed((value) => !value)}
-            type="button"
-          >
-            {collapsed ? "Mostrar" : "Recolher"}
-          </button>
-          <button
-            aria-label="Dispensar primeiros passos"
-            className="button button--ghost button--sm"
-            onClick={() => {
-              window.localStorage.setItem(storageKey, "true");
-              window.dispatchEvent(new Event("rekko-getting-started-change"));
-            }}
-            type="button"
-          >
-            Dispensar
-          </button>
-        </div>
+    <aside className="getting-started" aria-label="Configuração do Rekko">
+      <div className="getting-started__copy">
+        <strong>Complete a configuração do Rekko</strong>
+        <span>
+          {completed}/{items.length}
+        </span>
       </div>
       <div
         className="getting-started__progress"
@@ -123,21 +96,22 @@ export function GettingStarted({
           style={{ width: `${(completed / items.length) * 100}%` }}
         />
       </div>
-      <ul hidden={collapsed} id="getting-started-items">
-        {items.map((item) => (
-          <li
-            className={item.complete ? "is-complete" : undefined}
-            key={item.label}
-          >
-            <span aria-hidden="true">{item.complete ? "✓" : "○"}</span>
-            {item.href && !item.complete ? (
-              <Link href={item.href}>{item.label}</Link>
-            ) : (
-              <span>{item.label}</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+      {nextItem?.href ? (
+        <Link className="getting-started__continue" href={nextItem.href}>
+          Continuar <span aria-hidden="true">→</span>
+        </Link>
+      ) : null}
+      <button
+        aria-label="Dispensar configuração"
+        className="getting-started__dismiss"
+        onClick={() => {
+          window.localStorage.setItem(storageKey, "true");
+          window.dispatchEvent(new Event("rekko-getting-started-change"));
+        }}
+        type="button"
+      >
+        ×
+      </button>
+    </aside>
   );
 }

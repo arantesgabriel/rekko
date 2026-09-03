@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,10 @@ import {
   saveManualTimeAction,
   type ManualTimeActionState,
 } from "@/modules/timeline/actions";
+import {
+  finishTimerAction,
+  type TimerActionState,
+} from "@/modules/time-tracking/actions";
 
 type Block = {
   entryId: string;
@@ -65,29 +69,6 @@ function dayLabel(date: string, timezone: string) {
   return label.charAt(0).toLocaleUpperCase("pt-BR") + label.slice(1);
 }
 
-function weekdayLabel(date: string, timezone: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: timezone,
-    weekday: "short",
-  })
-    .format(new Date(`${date}T12:00:00Z`))
-    .replace(".", "")
-    .slice(0, 3);
-}
-
-function mondayOf(date: string) {
-  const value = new Date(`${date}T12:00:00Z`);
-  const day = value.getUTCDay();
-  value.setUTCDate(value.getUTCDate() - (day === 0 ? 6 : day - 1));
-  return value.toISOString().slice(0, 10);
-}
-
-function greetingForHour(hour: number) {
-  if (hour < 12) return "Bom dia";
-  if (hour < 18) return "Boa tarde";
-  return "Boa noite";
-}
-
 export function HomeView({
   blocks,
   date,
@@ -99,7 +80,6 @@ export function HomeView({
   timezone,
   todayDate,
   trackedSeconds,
-  userName,
 }: {
   blocks: Block[];
   date: string;
@@ -116,7 +96,6 @@ export function HomeView({
   timezone: string;
   todayDate: string;
   trackedSeconds: number;
-  userName: string;
 }) {
   const router = useRouter();
   const [editor, setEditor] = useState<null | {
@@ -140,7 +119,16 @@ export function HomeView({
     initialState,
   );
   const [projectId, setProjectId] = useState("");
-  const weekStart = mondayOf(date);
+  const [now, setNow] = useState(0);
+  const [finishState, finishAction, finishPending] = useActionState(
+    async (previous: TimerActionState, formData: FormData) => {
+      void formData;
+      const next = await finishTimerAction(previous);
+      if (next.status === "success") router.refresh();
+      return next;
+    },
+    { status: "idle", message: "" } satisfies TimerActionState,
+  );
   const filteredItems = useMemo(
     () => targets.items.filter((item) => item.projectId === projectId),
     [targets.items, projectId],
@@ -157,20 +145,21 @@ export function HomeView({
       ].sort((a, b) => a.start.getTime() - b.start.getTime()),
     [blocks, gaps],
   );
-  const firstBlock = blocks[0];
-  const lastBlock = blocks.at(-1);
   const demandCount = new Set(
     blocks.map((block) => block.workItemId).filter(Boolean),
   ).size;
-  const firstName = userName.trim().split(/\s+/)[0] || "por aqui";
-  const currentHour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date()),
-  );
-  const greeting = greetingForHour(currentHour);
+  const activeBlock = isToday
+    ? blocks.find((block) => block.active)
+    : undefined;
+  useEffect(() => {
+    if (!activeBlock) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [activeBlock]);
+  const activeDuration = activeBlock
+    ? activeBlock.durationSeconds +
+      Math.max(0, Math.floor((now - activeBlock.visibleEnd.getTime()) / 1000))
+    : 0;
 
   function openEditor(value: NonNullable<typeof editor>) {
     setProjectId(value.projectId ?? targets.projects[0]?.id ?? "");
@@ -186,114 +175,129 @@ export function HomeView({
   return (
     <div className="home-page">
       <header className="home-header">
-        <div className="home-header__copy">
-          <p className="home-header__eyebrow">
-            {greeting}, {firstName}
-          </p>
-          <h1>Seu dia em contexto</h1>
-          <p>
-            {dayLabel(date, timezone)} · uma leitura simples do tempo que
-            aconteceu.
-          </p>
-        </div>
-        <div className="home-header__metric">
-          <span>
-            {isToday ? "Hoje você registrou" : "Neste dia você registrou"}
-          </span>
+        <h1>Home</h1>
+        <div className="home-day-total">
           <strong>{duration(trackedSeconds)}</strong>
-          <Link href={`/w/${slug}/insights`}>
-            Ver análise completa <span aria-hidden="true">↗</span>
-          </Link>
+          <span>{isToday ? "registradas hoje" : "registradas neste dia"}</span>
         </div>
-      </header>
-
-      <nav className="home-day-selector" aria-label="Selecionar dia">
-        {Array.from({ length: 7 }, (_, index) => {
-          const day = shiftDate(weekStart, index);
-          const selected = day === date;
-          const current = day === todayDate;
-          return (
+        <nav className="home-date-nav" aria-label="Navegar entre dias">
+          <button
+            aria-label="Dia anterior"
+            onClick={() => go(shiftDate(date, -1))}
+            type="button"
+          >
+            ←
+          </button>
+          <label className="home-date-picker">
+            <span>
+              {isToday
+                ? `Hoje, ${dayLabel(date, timezone).replace(/^\S+[-,]?\s*/u, "")}`
+                : dayLabel(date, timezone)}
+            </span>
+            <input
+              aria-label="Selecionar data"
+              max={todayDate}
+              onChange={(event) => event.target.value && go(event.target.value)}
+              type="date"
+              value={date}
+            />
+          </label>
+          <button
+            aria-label="Próximo dia"
+            disabled={date >= todayDate}
+            onClick={() => go(shiftDate(date, 1))}
+            type="button"
+          >
+            →
+          </button>
+          {!isToday ? (
             <button
-              aria-current={selected ? "date" : undefined}
-              className={`${selected ? "is-selected" : ""}${current ? " is-today" : ""}`}
-              key={day}
-              onClick={() => go(day)}
-              type="button"
-            >
-              <span>{weekdayLabel(day, timezone)}</span>
-              <strong>{day.slice(-2)}</strong>
-              {current ? <small>hoje</small> : null}
-            </button>
-          );
-        })}
-      </nav>
-
-      <section className="home-summary" aria-label="Resumo do dia">
-        <div className="home-summary__primary">
-          <span>Tempo registrado</span>
-          <strong>{duration(trackedSeconds)}</strong>
-        </div>
-        <div>
-          <span>Primeira entrada</span>
-          <strong>
-            {firstBlock ? localTime(firstBlock.visibleStart, timezone) : "—"}
-          </strong>
-        </div>
-        <div>
-          <span>Último registro</span>
-          <strong>
-            {lastBlock ? localTime(lastBlock.visibleEnd, timezone) : "—"}
-          </strong>
-        </div>
-        <div>
-          <span>Demandas</span>
-          <strong>{demandCount || "—"}</strong>
-        </div>
-        <button
-          className="button button--secondary home-summary__action"
-          onClick={() => openEditor({ start: "09:00", end: "10:00" })}
-          type="button"
-        >
-          + Adicionar tempo
-        </button>
-      </section>
-
-      {isToday && gettingStarted ? (
-        <GettingStarted progress={gettingStarted} slug={slug} />
-      ) : null}
-
-      <section className="home-timeline" aria-labelledby="home-timeline-title">
-        <div className="home-section-heading">
-          <div>
-            <p className="home-section-heading__eyebrow">A jornada do dia</p>
-            <h2 id="home-timeline-title">Timeline</h2>
-          </div>
-          <div className="home-timeline__nav">
-            <button
-              aria-label="Dia anterior"
-              className="button button--ghost button--icon button--sm"
-              onClick={() => go(shiftDate(date, -1))}
-              type="button"
-            >
-              ←
-            </button>
-            <button
-              className="button button--ghost button--sm"
-              disabled={isToday}
+              aria-label="Hoje"
+              className="home-date-nav__today"
               onClick={() => go(todayDate)}
               type="button"
             >
               Hoje
             </button>
-            <button
-              aria-label="Próximo dia"
-              className="button button--ghost button--icon button--sm"
-              onClick={() => go(shiftDate(date, 1))}
-              type="button"
-            >
-              →
-            </button>
+          ) : null}
+        </nav>
+      </header>
+
+      <section
+        className={`home-now${activeBlock ? " is-active" : " is-idle"}`}
+        aria-labelledby="home-now-title"
+      >
+        <div className="home-now__heading">
+          <h2 id="home-now-title">Agora</h2>
+          {activeBlock ? (
+            <span>
+              <i aria-hidden="true" /> Em andamento
+            </span>
+          ) : null}
+        </div>
+        {activeBlock ? (
+          <div className="home-now__active">
+            <div className="home-now__activity">
+              <strong>
+                {activeBlock.workItemTitle ?? activeBlock.projectName}
+              </strong>
+              <span>
+                {activeBlock.workItemTitle
+                  ? activeBlock.projectName
+                  : "Projeto"}
+              </span>
+            </div>
+            <div className="home-now__clock">
+              <time>{duration(activeDuration)}</time>
+              <span>
+                Iniciado às {localTime(activeBlock.visibleStart, timezone)}
+              </span>
+            </div>
+            <form action={finishAction}>
+              <button
+                className="button button--secondary"
+                disabled={finishPending}
+                type="submit"
+              >
+                {finishPending ? "Finalizando…" : "Finalizar"}
+              </button>
+            </form>
           </div>
+        ) : (
+          <div className="home-now__idle">
+            <div>
+              <strong>Nenhuma atividade em andamento.</strong>
+              <span>
+                Selecione uma demanda para começar a registrar seu tempo.
+              </span>
+            </div>
+            <Link className="button button--primary" href={`/w/${slug}/work`}>
+              Iniciar atividade
+            </Link>
+          </div>
+        )}
+        {finishState.status === "error" ? (
+          <p className="form-message form-message--error" role="alert">
+            {finishState.message}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="home-timeline" aria-labelledby="home-timeline-title">
+        <div className="home-section-heading">
+          <h2 id="home-timeline-title">Registros</h2>
+          <span>
+            {duration(trackedSeconds)} · {demandCount}{" "}
+            {demandCount === 1 ? "demanda" : "demandas"}
+          </span>
+          <button
+            aria-label="Adicionar tempo"
+            className="home-add-time"
+            onClick={() => openEditor({ start: "09:00", end: "10:00" })}
+            type="button"
+          >
+            + Adicionar registro
+          </button>
         </div>
 
         {all.length ? (
@@ -335,37 +339,22 @@ export function HomeView({
           </ol>
         ) : (
           <div className="today-empty">
-            <span
-              className="segment-mark segment-mark--brand"
-              aria-hidden="true"
-            >
-              <i />
-              <i />
-              <i />
-            </span>
-            <h2>Nenhum tempo registrado neste dia.</h2>
-            <p>
-              Inicie uma atividade ou adicione um período para começar a
-              reconstruir sua jornada.
-            </p>
-            <div>
-              <Link
-                className="button button--secondary"
-                href={`/w/${slug}/work`}
-              >
-                Escolher atividade
-              </Link>
-              <button
-                className="button button--primary"
-                onClick={() => openEditor({ start: "09:00", end: "10:00" })}
-                type="button"
-              >
-                Adicionar tempo
-              </button>
-            </div>
+            <h2 className="sr-only">Nenhum tempo registrado neste dia.</h2>
+            <p>Ainda não há registros {isToday ? "hoje" : "neste dia"}.</p>
           </div>
         )}
+        {all.length > 0 && trackedSeconds > 0 ? (
+          <div className="home-timeline__footer">
+            <Link href={`/w/${slug}/insights`}>
+              Ver insights <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        ) : null}
       </section>
+
+      {isToday && gettingStarted ? (
+        <GettingStarted progress={gettingStarted} slug={slug} />
+      ) : null}
 
       {editor ? (
         <div className="time-drawer-backdrop">
@@ -516,7 +505,9 @@ function TimelineEntry({
     <li className={`home-timeline-entry${block.active ? " is-active" : ""}`}>
       <div className="home-timeline-entry__time">
         <time>{localTime(block.visibleStart, timezone)}</time>
-        <span aria-hidden="true">{localTime(block.visibleEnd, timezone)}</span>
+        <span>
+          {block.active ? "agora" : localTime(block.visibleEnd, timezone)}
+        </span>
       </div>
       <span className="home-timeline-entry__rail" aria-hidden="true" />
       <article
@@ -524,33 +515,22 @@ function TimelineEntry({
         className="home-timeline-block timeline-block"
       >
         <div className="home-timeline-block__copy">
-          <div className="home-timeline-block__meta">
-            <span className="home-timeline-block__project">
-              {block.projectName}
-            </span>
-            <span
-              className={`home-timeline-block__source${block.source === "MANUAL" ? " is-manual" : ""}`}
-            >
-              {block.active
-                ? "● Em andamento"
-                : block.source === "MANUAL"
-                  ? "Editado manualmente"
-                  : "Registrado"}
-            </span>
-          </div>
           <strong>{title}</strong>
           {context ? <span>{context}</span> : null}
         </div>
         <div className="home-timeline-block__details">
           <time>{duration(block.durationSeconds)}</time>
           {block.source === "MANUAL" ? (
-            <button
-              className="button button--ghost button--sm"
-              onClick={onEdit}
-              type="button"
-            >
-              Editar
-            </button>
+            <details className="home-entry-actions">
+              <summary aria-label="Mais ações" title="Mais ações">
+                ···
+              </summary>
+              <div>
+                <button onClick={onEdit} type="button">
+                  Editar
+                </button>
+              </div>
+            </details>
           ) : null}
         </div>
       </article>
@@ -575,7 +555,7 @@ function TimelineGap({
     <li className="home-timeline-gap">
       <div className="home-timeline-entry__time">
         <time>{localTime(gap.start, timezone)}</time>
-        <span aria-hidden="true">{localTime(gap.end, timezone)}</span>
+        <span>{localTime(gap.end, timezone)}</span>
       </div>
       <span className="home-timeline-entry__rail is-gap" aria-hidden="true" />
       <div className="home-timeline-gap__content">

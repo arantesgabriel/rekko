@@ -20,10 +20,7 @@ export function VerificationBanner({
   return (
     <aside className="verification-banner verification-banner--product">
       <div>
-        <strong>Confirme seu e-mail</strong>
-        <span>
-          Confirme seu e-mail para continuar usando todos os recursos do Rekko.
-        </span>
+        <strong>Confirme seu e-mail para liberar todos os recursos.</strong>
       </div>
       <Link
         className="button button--secondary button--sm"
