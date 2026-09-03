@@ -145,8 +145,7 @@ test("Owner connects Linear and selectively imports a parent tree", async ({
   if (!(await workLink.isVisible()))
     await page.getByRole("button", { name: "Abrir menu" }).click();
   await workLink.click();
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar com Linear" }).click();
+  await page.getByRole("link", { name: "Importar do Linear" }).click();
   await page.getByLabel("Nome do projeto").fill("Projeto Linear seletivo");
   const parent = page.getByLabel(/LIN-100/);
   await parent.check();
@@ -364,38 +363,43 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     await page.getByRole("button", { name: "Abrir menu" }).click();
   }
   await projectsLink.click();
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill("AMBLA");
   await page.getByLabel("Descrição").fill("Projeto manual de teste");
   await page.getByLabel("Estimativa total").fill("40h");
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "AMBLA" })).toBeVisible();
-  await page.locator("summary").filter({ hasText: "Criar demanda" }).click();
-  const createItem = page.locator("details.create-item");
-  await createItem.getByLabel("Título *").fill("Authentication");
-  await createItem.getByLabel("Estimativa", { exact: true }).fill("2h");
-  await createItem
+  await page.locator(".project-card").filter({ hasText: "AMBLA" }).click();
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Título *").fill("Authentication");
+  await page.getByLabel("Estimativa", { exact: true }).fill("2h");
+  await page
+    .locator(".drawer-form__footer")
     .getByRole("button", { name: "Criar demanda", exact: true })
     .click();
-  await expect(page.getByText("Demanda criada.")).toBeVisible();
-  await createItem.getByLabel("Título *").fill("Google login");
-  await createItem
+  await expect(
+    page.getByRole("button", { name: "Authentication", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Título *").fill("Google login");
+  await page
     .getByLabel("Demanda principal")
     .selectOption({ label: "Authentication" });
-  await createItem
+  await page
+    .locator(".drawer-form__footer")
     .getByRole("button", { name: "Criar demanda", exact: true })
     .click();
   const rowNamed = (name: string) =>
-    page.locator("article.work-item-row").filter({
-      has: page
-        .locator(".work-item-row__main > strong")
-        .filter({ hasText: new RegExp(`^${name}$`) }),
-    });
+    page
+      .locator("article.project-demand-row")
+      .filter({ has: page.getByRole("button", { name, exact: true }) });
   await expect(rowNamed("Google login")).toBeVisible();
-  await createItem.evaluate((details: HTMLDetailsElement) => {
-    details.open = false;
-  });
   const authentication = rowNamed("Authentication");
   await authentication.getByRole("button", { name: "Iniciar" }).click();
   await expect(
@@ -425,6 +429,29 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await expect(
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toHaveCount(0);
+  const googleActions = page
+    .locator("article.project-demand-row")
+    .filter({
+      has: page.getByRole("button", { name: "Google login", exact: true }),
+    })
+    .getByRole("button", { name: /Mais ações para Google login/ });
+  await googleActions.click();
+  await page.getByRole("menuitem", { name: "Concluir demanda" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Concluir demanda?" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("heading", { name: "Concluir demanda?" }),
+  ).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Concluir demanda" }).click();
+  await page.getByRole("button", { name: "Concluir", exact: true }).click();
+  await expect(
+    page.locator("article.project-demand-row").filter({
+      has: page.getByRole("button", { name: "Google login", exact: true }),
+    }),
+  ).toContainText("Concluída");
+  await expect(page.getByRole("status")).toContainText("Demanda concluída.");
   await page.getByPlaceholder("Buscar por título…").fill("Google");
   await expect(page).toHaveURL(/q=Google/);
   await expect(rowNamed("Google login")).toBeVisible();

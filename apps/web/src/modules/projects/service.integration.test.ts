@@ -16,10 +16,14 @@ import { createWorkspace } from "@/modules/workspaces/service";
 
 import {
   archiveProject,
+  archiveWorkItem,
   createProject,
   createWorkItem,
+  duplicateWorkItem,
   getProjectPage,
   listProjects,
+  moveWorkItem,
+  setWorkItemStatus,
   updateWorkItem,
 } from "./service";
 
@@ -167,6 +171,88 @@ describe.sequential("projects and work items with PostgreSQL", () => {
         parentWorkItemId: child.id,
       }),
     ).rejects.toMatchObject({ code: "PARENT_CYCLE" });
+  });
+
+  it("manages the demand lifecycle without changing its project context", async () => {
+    const source = await createProject({
+      actorUserId: ids.owner,
+      slug,
+      name: "Demand lifecycle source",
+      description: null,
+      status: "ACTIVE",
+      estimatedMinutes: null,
+    });
+    const target = await createProject({
+      actorUserId: ids.owner,
+      slug,
+      name: "Demand lifecycle target",
+      description: null,
+      status: "ACTIVE",
+      estimatedMinutes: null,
+    });
+    const item = await createWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      projectId: source.id,
+      title: "Lifecycle demand",
+      description: "Keep the operational context intact.",
+      status: "IN_PROGRESS",
+      estimatedMinutes: 45,
+      parentWorkItemId: null,
+    });
+
+    await setWorkItemStatus({
+      actorUserId: ids.admin,
+      slug,
+      itemId: item.id,
+      status: "DONE",
+    });
+    const completed = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: source.id,
+    });
+    expect(
+      completed.demandItems.find((demand) => demand.id === item.id),
+    ).toMatchObject({
+      status: "DONE",
+      isActive: false,
+    });
+
+    const duplicate = await duplicateWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      itemId: item.id,
+    });
+    await moveWorkItem({
+      actorUserId: ids.admin,
+      slug,
+      itemId: item.id,
+      targetProjectId: target.id,
+    });
+    const moved = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: target.id,
+    });
+    expect(
+      moved.demandItems.find((demand) => demand.id === item.id),
+    ).toMatchObject({
+      projectId: target.id,
+      title: "Lifecycle demand",
+    });
+
+    await archiveWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      itemId: duplicate.id,
+    });
+    const sourceAfterArchive = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: source.id,
+    });
+    expect(sourceAfterArchive.demandItems).toHaveLength(0);
   });
 
   it("archives with audit, hides the project and blocks later mutation", async () => {

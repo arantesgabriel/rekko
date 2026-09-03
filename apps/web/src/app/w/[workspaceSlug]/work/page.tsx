@@ -29,6 +29,7 @@ export default async function DemandsPage({
   return (
     <PageContainer width="lg">
       <DemandsView
+        canManage={data.context.role !== "MEMBER"}
         demands={data.demands}
         projectOptions={data.projectOptions}
         query={{ projectId, search, status }}

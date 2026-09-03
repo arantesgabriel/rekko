@@ -4,7 +4,8 @@ export type ProjectErrorCode =
   | "PROJECT_ARCHIVED"
   | "SOURCE_READ_ONLY"
   | "INVALID_PARENT"
-  | "PARENT_CYCLE";
+  | "PARENT_CYCLE"
+  | "WORK_ITEM_HAS_ACTIVE_TIMER";
 
 export class ProjectError extends Error {
   constructor(readonly code: ProjectErrorCode) {
@@ -20,4 +21,6 @@ export const projectErrorMessage: Record<ProjectErrorCode, string> = {
   SOURCE_READ_ONLY: "Esta demanda é atualizada pelo Linear.",
   INVALID_PARENT: "A demanda principal deve pertencer a este projeto.",
   PARENT_CYCLE: "Essa relação criaria um ciclo entre as demandas.",
+  WORK_ITEM_HAS_ACTIVE_TIMER:
+    "Finalize ou pause o tempo desta demanda antes de arquivá-la.",
 };

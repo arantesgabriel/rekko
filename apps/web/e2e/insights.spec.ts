@@ -41,19 +41,30 @@ test("shows personal tracked time and estimated versus actual", async ({
   ).toBeVisible();
   const workspacePath = new URL(page.url()).pathname;
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill("Insights Project");
-  await page.getByRole("button", { name: "Criar projeto" }).click();
-  await page.locator("summary").filter({ hasText: "Criar demanda" }).click();
-  const createItem = page.locator("details.create-item");
-  await createItem.getByLabel("Título *").fill("Estimated item");
-  await createItem.getByLabel("Estimativa", { exact: true }).fill("1h");
-  await createItem
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
+  await page
+    .locator(".project-card")
+    .filter({ hasText: "Insights Project" })
+    .click();
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Título *").fill("Estimated item");
+  await page.getByLabel("Estimativa", { exact: true }).fill("1h");
+  await page
+    .locator(".drawer-form__footer")
     .getByRole("button", { name: "Criar demanda", exact: true })
     .click();
-  await expect(page.getByText("Demanda criada.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Estimated item", exact: true }),
+  ).toBeVisible();
 
   await page.goto(workspacePath);
   await page.getByRole("button", { name: "Adicionar tempo" }).first().click();

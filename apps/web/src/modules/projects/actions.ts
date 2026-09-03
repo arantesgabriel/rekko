@@ -13,7 +13,11 @@ import { projectInputSchema, workItemInputSchema } from "./schemas";
 import {
   archiveProject,
   createProject,
+  archiveWorkItem,
   createWorkItem,
+  duplicateWorkItem,
+  moveWorkItem,
+  setWorkItemStatus,
   updateProject,
   updateWorkItem,
 } from "./service";
@@ -43,6 +47,29 @@ export async function createProjectAction(
     return mappedError(error);
   }
   redirect(`/w/${slug}/projects/${created.id}?created=1`);
+}
+
+export async function createProjectDrawerAction(
+  slug: string,
+  _state: ProjectActionState,
+  formData: FormData,
+) {
+  const session = await requireCoreSession(`/w/${slug}/projects`);
+  const parsed = parseProjectForm(formData);
+  if (!parsed.success)
+    return errorState("Revise o nome, o status e a estimativa.");
+  try {
+    await createProject({
+      actorUserId: session.user.id,
+      slug,
+      ...parsed.data,
+    });
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/work`);
+    return successState("Projeto criado.");
+  } catch (error) {
+    return mappedError(error);
+  }
 }
 
 export async function updateProjectAction(
@@ -86,6 +113,22 @@ export async function archiveProjectAction(slug: string, projectId: string) {
   revalidatePath(`/w/${slug}/projects`);
   revalidatePath(`/w/${slug}/insights`);
   redirect(`/w/${slug}/projects?archived=1`);
+}
+
+export async function archiveProjectDrawerAction(
+  slug: string,
+  projectId: string,
+) {
+  const session = await requireCoreSession(`/w/${slug}/projects`);
+  try {
+    await archiveProject({ actorUserId: session.user.id, slug, projectId });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState("Projeto arquivado.");
+  } catch (error) {
+    return mappedError(error);
+  }
 }
 
 export async function createWorkItemAction(
@@ -160,8 +203,110 @@ export async function updateWorkItemAction(
       ...parsed.data,
     });
     revalidatePath(`/w/${slug}/projects/${projectId}`);
+    revalidatePath(`/w/${slug}/work`);
     revalidatePath(`/w/${slug}/insights`);
     return successState("Demanda atualizada.");
+  } catch (error) {
+    return mappedError(error);
+  }
+}
+
+export async function createDemandDrawerAction(
+  slug: string,
+  _state: ProjectActionState,
+  formData: FormData,
+) {
+  const session = await requireCoreSession(`/w/${slug}/work`);
+  const projectId = z.uuid().safeParse(formData.get("projectId"));
+  const parsed = parseWorkItemForm(formData);
+  if (!projectId.success || !parsed.success)
+    return errorState("Revise o projeto, os dados da demanda e a estimativa.");
+  try {
+    await createWorkItem({
+      actorUserId: session.user.id,
+      slug,
+      projectId: projectId.data,
+      ...parsed.data,
+    });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects/${projectId.data}`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState("Demanda criada.");
+  } catch (error) {
+    return mappedError(error);
+  }
+}
+
+export async function setWorkItemStatusAction(
+  slug: string,
+  itemId: string,
+  status: "TODO" | "IN_PROGRESS" | "DONE",
+) {
+  const session = await requireCoreSession(`/w/${slug}/work`);
+  try {
+    await setWorkItemStatus({
+      actorUserId: session.user.id,
+      slug,
+      itemId,
+      status,
+    });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState(
+      status === "DONE" ? "Demanda concluída." : "Demanda reaberta.",
+    );
+  } catch (error) {
+    return mappedError(error);
+  }
+}
+
+export async function moveWorkItemAction(
+  slug: string,
+  itemId: string,
+  targetProjectId: string,
+) {
+  const session = await requireCoreSession(`/w/${slug}/work`);
+  if (!z.uuid().safeParse(targetProjectId).success)
+    return errorState("Selecione um projeto válido.");
+  try {
+    await moveWorkItem({
+      actorUserId: session.user.id,
+      slug,
+      itemId,
+      targetProjectId,
+    });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState("Demanda movida.");
+  } catch (error) {
+    return mappedError(error);
+  }
+}
+
+export async function duplicateWorkItemAction(slug: string, itemId: string) {
+  const session = await requireCoreSession(`/w/${slug}/work`);
+  try {
+    await duplicateWorkItem({ actorUserId: session.user.id, slug, itemId });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState("Demanda duplicada.");
+  } catch (error) {
+    return mappedError(error);
+  }
+}
+
+export async function archiveWorkItemAction(slug: string, itemId: string) {
+  const session = await requireCoreSession(`/w/${slug}/work`);
+  try {
+    await archiveWorkItem({ actorUserId: session.user.id, slug, itemId });
+    revalidatePath(`/w/${slug}/work`);
+    revalidatePath(`/w/${slug}/projects`);
+    revalidatePath(`/w/${slug}/insights`);
+    return successState("Demanda arquivada.");
   } catch (error) {
     return mappedError(error);
   }

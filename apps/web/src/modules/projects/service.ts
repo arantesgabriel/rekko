@@ -20,31 +20,123 @@ import { recordAudit } from "@/modules/audit/service";
 import { createsParentCycle } from "./domain";
 import { ProjectError } from "./errors";
 
+export type ProjectListItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  source: "MANUAL" | "LINEAR";
+  status: "ACTIVE" | "COMPLETED";
+  estimatedMinutes: number | null;
+  workItemCount: number;
+  activeDemandCount: number;
+  trackedSeconds: number;
+  lastActivityAt: Date | null;
+};
+
+export type ProjectSummary = {
+  demandCount: number;
+  activeDemandCount: number;
+  trackedSeconds: number;
+  lastActivityAt: Date | null;
+};
+
 export async function listProjects(userId: string, slug: string) {
   const context = await requireWorkspace(userId, slug);
-  const rows = await db
-    .select({
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      source: project.source,
-      status: project.status,
-      estimatedMinutes: project.estimatedMinutes,
-      workItemCount: count(workItem.id),
-    })
-    .from(project)
-    .leftJoin(
-      workItem,
-      and(
-        eq(workItem.projectId, project.id),
-        eq(workItem.workspaceId, context.id),
-        isNull(workItem.archivedAt),
+  const [rows, demandRows, timeRows] = await Promise.all([
+    db
+      .select({
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        source: project.source,
+        status: project.status,
+        estimatedMinutes: project.estimatedMinutes,
+        workItemCount: count(workItem.id),
+      })
+      .from(project)
+      .leftJoin(
+        workItem,
+        and(
+          eq(workItem.projectId, project.id),
+          eq(workItem.workspaceId, context.id),
+          isNull(workItem.archivedAt),
+        ),
+      )
+      .where(
+        and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
+      )
+      .groupBy(project.id)
+      .orderBy(desc(project.updatedAt)),
+    db
+      .select({ projectId: workItem.projectId, status: workItem.status })
+      .from(workItem)
+      .where(
+        and(eq(workItem.workspaceId, context.id), isNull(workItem.archivedAt)),
       ),
-    )
-    .where(and(eq(project.workspaceId, context.id), isNull(project.archivedAt)))
-    .groupBy(project.id)
-    .orderBy(desc(project.updatedAt));
-  return { context, projects: rows };
+    db
+      .select({
+        projectId: timeEntry.projectId,
+        startedAt: timeSegment.startedAt,
+        endedAt: timeSegment.endedAt,
+      })
+      .from(timeSegment)
+      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .where(
+        and(
+          eq(timeSegment.workspaceId, context.id),
+          eq(timeEntry.workspaceId, context.id),
+          isNull(timeEntry.archivedAt),
+          ne(timeEntry.status, "ARCHIVED"),
+        ),
+      ),
+  ]);
+  const now = new Date();
+  const metrics = new Map<
+    string,
+    {
+      activeDemandCount: number;
+      trackedSeconds: number;
+      lastActivityAt: Date | null;
+    }
+  >();
+  for (const demand of demandRows) {
+    const current = metrics.get(demand.projectId) ?? {
+      activeDemandCount: 0,
+      trackedSeconds: 0,
+      lastActivityAt: null,
+    };
+    if (demand.status !== "DONE") current.activeDemandCount += 1;
+    metrics.set(demand.projectId, current);
+  }
+  for (const segment of timeRows) {
+    const current = metrics.get(segment.projectId) ?? {
+      activeDemandCount: 0,
+      trackedSeconds: 0,
+      lastActivityAt: null,
+    };
+    const end = segment.endedAt ?? now;
+    current.trackedSeconds += Math.max(
+      0,
+      Math.floor((end.getTime() - segment.startedAt.getTime()) / 1000),
+    );
+    const activityAt = segment.endedAt ?? segment.startedAt;
+    if (
+      !current.lastActivityAt ||
+      activityAt.getTime() > current.lastActivityAt.getTime()
+    ) {
+      current.lastActivityAt = activityAt;
+    }
+    metrics.set(segment.projectId, current);
+  }
+  const projects: ProjectListItem[] = rows.map((row) => ({
+    ...row,
+    ...(metrics.get(row.id) ?? {
+      activeDemandCount: 0,
+      trackedSeconds: 0,
+      lastActivityAt: null,
+    }),
+  }));
+  return { context, projects };
 }
 
 export type DemandListItem = {
@@ -66,6 +158,16 @@ export type DemandListItem = {
   recordCount: number;
   lastActivityAt: Date | null;
   isRunning: boolean;
+  recentRecords: DemandTimeRecord[];
+};
+
+export type DemandTimeRecord = {
+  id: string;
+  source: "TIMER" | "MANUAL";
+  description: string | null;
+  startedAt: Date;
+  endedAt: Date | null;
+  durationSeconds: number;
 };
 
 export type DemandProjectOption = { id: string; name: string };
@@ -135,72 +237,23 @@ export async function listDemands(input: {
       .orderBy(asc(project.name)),
   ]);
 
-  const itemIds = rows.map((row) => row.id);
-  const segments = itemIds.length
-    ? await db
-        .select({
-          entryId: timeEntry.id,
-          workItemId: timeEntry.workItemId,
-          startedAt: timeSegment.startedAt,
-          endedAt: timeSegment.endedAt,
-        })
-        .from(timeSegment)
-        .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
-        .where(
-          and(
-            eq(timeSegment.workspaceId, context.id),
-            eq(timeSegment.userId, input.userId),
-            eq(timeEntry.userId, input.userId),
-            ne(timeEntry.status, "ARCHIVED"),
-            inArray(timeEntry.workItemId, itemIds),
-          ),
-        )
-    : [];
-  const now = new Date();
-  const summaries = new Map<
-    string,
-    {
-      trackedSeconds: number;
-      entryIds: Set<string>;
-      lastActivityAt: Date | null;
-      isRunning: boolean;
-    }
-  >();
-  for (const segment of segments) {
-    if (!segment.workItemId) continue;
-    const summary = summaries.get(segment.workItemId) ?? {
-      trackedSeconds: 0,
-      entryIds: new Set<string>(),
-      lastActivityAt: null,
-      isRunning: false,
-    };
-    const end = segment.endedAt ?? now;
-    summary.trackedSeconds += Math.max(
-      0,
-      Math.floor((end.getTime() - segment.startedAt.getTime()) / 1000),
-    );
-    summary.entryIds.add(segment.entryId);
-    summary.isRunning ||= segment.endedAt === null;
-    const activityAt = segment.endedAt ?? segment.startedAt;
-    if (
-      !summary.lastActivityAt ||
-      activityAt.getTime() > summary.lastActivityAt.getTime()
-    ) {
-      summary.lastActivityAt = activityAt;
-    }
-    summaries.set(segment.workItemId, summary);
-  }
-
-  const demands: DemandListItem[] = rows.map((row) => {
-    const summary = summaries.get(row.id);
-    return {
-      ...row,
-      trackedSeconds: summary?.trackedSeconds ?? 0,
-      recordCount: summary?.entryIds.size ?? 0,
-      lastActivityAt: summary?.lastActivityAt ?? null,
-      isRunning: summary?.isRunning ?? false,
-    };
-  });
+  const summaries = await getDemandSummaries(
+    context.id,
+    input.userId,
+    rows.map((row) => row.id),
+  );
+  const demands = rows.map((row) =>
+    toDemandListItem(
+      row,
+      {
+        id: row.projectId,
+        name: row.projectName,
+        source: row.projectSource,
+        status: row.projectStatus,
+      },
+      summaries.get(row.id),
+    ),
+  );
   return {
     context,
     demands,
@@ -255,11 +308,29 @@ export async function getProjectPage(input: {
     input.kind === "SUB_ITEM"
       ? rows.filter((item) => item.parentWorkItemId !== null)
       : rows;
+  const summaries = await getDemandSummaries(
+    result.context.id,
+    input.userId,
+    visible.map((item) => item.id),
+  );
+  const demandItems = visible.map((item) =>
+    toDemandListItem(
+      item,
+      {
+        id: result.project.id,
+        name: result.project.name,
+        source: result.project.source,
+        status: result.project.status,
+      },
+      summaries.get(item.id),
+    ),
+  );
   const allItems = await db
     .select({
       id: workItem.id,
       title: workItem.title,
       parentWorkItemId: workItem.parentWorkItemId,
+      status: workItem.status,
     })
     .from(workItem)
     .where(
@@ -270,7 +341,63 @@ export async function getProjectPage(input: {
       ),
     )
     .orderBy(asc(workItem.createdAt));
-  return { ...result, items: visible, parentOptions: allItems };
+  const [projectOptions, projectTimeRows] = await Promise.all([
+    db
+      .select({ id: project.id, name: project.name })
+      .from(project)
+      .where(
+        and(
+          eq(project.workspaceId, result.context.id),
+          isNull(project.archivedAt),
+        ),
+      )
+      .orderBy(asc(project.name)),
+    db
+      .select({
+        startedAt: timeSegment.startedAt,
+        endedAt: timeSegment.endedAt,
+      })
+      .from(timeSegment)
+      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .where(
+        and(
+          eq(timeSegment.workspaceId, result.context.id),
+          eq(timeEntry.workspaceId, result.context.id),
+          eq(timeEntry.projectId, result.project.id),
+          isNull(timeEntry.archivedAt),
+          ne(timeEntry.status, "ARCHIVED"),
+        ),
+      ),
+  ]);
+  const now = new Date();
+  const projectSummary: ProjectSummary = {
+    demandCount: allItems.length,
+    activeDemandCount: allItems.filter((item) => item.status !== "DONE").length,
+    trackedSeconds: projectTimeRows.reduce((total, row) => {
+      const end = row.endedAt ?? now;
+      return (
+        total +
+        Math.max(
+          0,
+          Math.floor((end.getTime() - row.startedAt.getTime()) / 1000),
+        )
+      );
+    }, 0),
+    lastActivityAt: projectTimeRows.reduce<Date | null>((latest, row) => {
+      const activityAt = row.endedAt ?? row.startedAt;
+      return !latest || activityAt.getTime() > latest.getTime()
+        ? activityAt
+        : latest;
+    }, null),
+  };
+  return {
+    ...result,
+    items: visible,
+    demandItems,
+    parentOptions: allItems,
+    projectOptions,
+    projectSummary,
+  };
 }
 
 export async function createProject(input: {
@@ -305,11 +432,7 @@ export async function createProject(input: {
 export async function updateProject(
   input: Parameters<typeof createProject>[0] & { projectId: string },
 ) {
-  const context = await requireWorkspace(
-    input.actorUserId,
-    input.slug,
-    "project:manage",
-  );
+  const context = await validateMutableProject(input);
   const [updated] = await db
     .update(project)
     .set({
@@ -335,11 +458,7 @@ export async function archiveProject(input: {
   slug: string;
   projectId: string;
 }) {
-  const context = await requireWorkspace(
-    input.actorUserId,
-    input.slug,
-    "project:manage",
-  );
+  const context = await validateMutableProject(input);
   await db.transaction(async (tx) => {
     const [archived] = await tx
       .update(project)
@@ -379,6 +498,136 @@ type WorkItemMutation = {
   estimatedMinutes: number | null;
   parentWorkItemId: string | null;
 };
+
+type DemandSummary = {
+  trackedSeconds: number;
+  entryIds: Set<string>;
+  lastActivityAt: Date | null;
+  isRunning: boolean;
+  records: Map<string, DemandTimeRecord>;
+};
+
+async function getDemandSummaries(
+  workspaceId: string,
+  userId: string,
+  itemIds: string[],
+) {
+  if (!itemIds.length) return new Map<string, DemandSummary>();
+  const segments = await db
+    .select({
+      entryId: timeEntry.id,
+      workItemId: timeEntry.workItemId,
+      entrySource: timeEntry.source,
+      entryDescription: timeEntry.description,
+      entryStatus: timeEntry.status,
+      entryStartedAt: timeEntry.startedAt,
+      entryFinishedAt: timeEntry.finishedAt,
+      segmentStartedAt: timeSegment.startedAt,
+      segmentEndedAt: timeSegment.endedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .where(
+      and(
+        eq(timeSegment.workspaceId, workspaceId),
+        eq(timeSegment.userId, userId),
+        eq(timeEntry.userId, userId),
+        isNull(timeEntry.archivedAt),
+        ne(timeEntry.status, "ARCHIVED"),
+        inArray(timeEntry.workItemId, itemIds),
+      ),
+    );
+  const now = new Date();
+  const summaries = new Map<string, DemandSummary>();
+  for (const segment of segments) {
+    if (!segment.workItemId) continue;
+    const summary = summaries.get(segment.workItemId) ?? {
+      trackedSeconds: 0,
+      entryIds: new Set<string>(),
+      lastActivityAt: null,
+      isRunning: false,
+      records: new Map<string, DemandTimeRecord>(),
+    };
+    const end = segment.segmentEndedAt ?? now;
+    const seconds = Math.max(
+      0,
+      Math.floor((end.getTime() - segment.segmentStartedAt.getTime()) / 1000),
+    );
+    summary.trackedSeconds += seconds;
+    summary.entryIds.add(segment.entryId);
+    summary.isRunning ||= segment.entryStatus === "RUNNING";
+    const activityAt = segment.segmentEndedAt ?? segment.segmentStartedAt;
+    if (
+      !summary.lastActivityAt ||
+      activityAt.getTime() > summary.lastActivityAt.getTime()
+    ) {
+      summary.lastActivityAt = activityAt;
+    }
+    const record = summary.records.get(segment.entryId) ?? {
+      id: segment.entryId,
+      source: segment.entrySource,
+      description: segment.entryDescription,
+      startedAt: segment.entryStartedAt,
+      endedAt: segment.entryFinishedAt,
+      durationSeconds: 0,
+    };
+    record.durationSeconds += seconds;
+    if (
+      !record.endedAt &&
+      segment.segmentEndedAt &&
+      segment.segmentEndedAt.getTime() > record.startedAt.getTime()
+    ) {
+      record.endedAt = segment.segmentEndedAt;
+    }
+    summary.records.set(segment.entryId, record);
+    summaries.set(segment.workItemId, summary);
+  }
+  return summaries;
+}
+
+function toDemandListItem(
+  row: {
+    id: string;
+    title: string;
+    description: string | null;
+    source: "MANUAL" | "LINEAR";
+    externalIdentifier: string | null;
+    externalUrl: string | null;
+    parentWorkItemId: string | null;
+    status: "TODO" | "IN_PROGRESS" | "DONE";
+    isActive: boolean;
+    estimatedMinutes: number | null;
+  },
+  projectData: {
+    id: string;
+    name: string;
+    source: "MANUAL" | "LINEAR";
+    status: "ACTIVE" | "COMPLETED";
+  },
+  summary?: DemandSummary,
+): DemandListItem {
+  const recentRecords = summary
+    ? [...summary.records.values()]
+        .sort((a, b) => {
+          const aAt = a.endedAt ?? a.startedAt;
+          const bAt = b.endedAt ?? b.startedAt;
+          return bAt.getTime() - aAt.getTime();
+        })
+        .slice(0, 5)
+    : [];
+  return {
+    ...row,
+    projectId: projectData.id,
+    projectName: projectData.name,
+    projectSource: projectData.source,
+    projectStatus: projectData.status,
+    trackedSeconds: summary?.trackedSeconds ?? 0,
+    recordCount: summary?.entryIds.size ?? 0,
+    lastActivityAt: summary?.lastActivityAt ?? null,
+    isRunning: summary?.isRunning ?? false,
+    recentRecords,
+  };
+}
 
 async function validateMutableProject(
   input: Pick<WorkItemMutation, "actorUserId" | "slug" | "projectId">,
@@ -442,6 +691,7 @@ export async function createWorkItem(input: WorkItemMutation) {
       title: input.title,
       description: input.description,
       status: input.status,
+      isActive: input.status !== "DONE",
       estimatedMinutes: input.estimatedMinutes,
       parentWorkItemId: input.parentWorkItemId,
     })
@@ -461,6 +711,7 @@ export async function updateWorkItem(
       title: input.title,
       description: input.description,
       status: input.status,
+      isActive: input.status !== "DONE",
       estimatedMinutes: input.estimatedMinutes,
       parentWorkItemId: input.parentWorkItemId,
       updatedAt: new Date(),
@@ -475,4 +726,265 @@ export async function updateWorkItem(
     )
     .returning({ id: workItem.id });
   if (!updated) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+}
+
+export async function setWorkItemStatus(input: {
+  actorUserId: string;
+  slug: string;
+  itemId: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+}) {
+  const context = await requireWorkspace(
+    input.actorUserId,
+    input.slug,
+    "project:manage",
+  );
+  const [item] = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      source: workItem.source,
+    })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.itemId),
+        eq(workItem.workspaceId, context.id),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+  if (item.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  await validateMutableProject({
+    actorUserId: input.actorUserId,
+    slug: input.slug,
+    projectId: item.projectId,
+  });
+  const [updated] = await db
+    .update(workItem)
+    .set({
+      status: input.status,
+      isActive: input.status !== "DONE",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(workItem.id, item.id),
+        eq(workItem.workspaceId, context.id),
+        eq(workItem.projectId, item.projectId),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .returning({ id: workItem.id });
+  if (!updated) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+}
+
+export async function moveWorkItem(input: {
+  actorUserId: string;
+  slug: string;
+  itemId: string;
+  targetProjectId: string;
+}) {
+  const context = await requireWorkspace(
+    input.actorUserId,
+    input.slug,
+    "project:manage",
+  );
+  const [item] = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      source: workItem.source,
+      parentWorkItemId: workItem.parentWorkItemId,
+    })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.itemId),
+        eq(workItem.workspaceId, context.id),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+  if (item.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  await validateMutableProject({
+    actorUserId: input.actorUserId,
+    slug: input.slug,
+    projectId: item.projectId,
+  });
+  const [target] = await db
+    .select({ id: project.id, source: project.source, status: project.status })
+    .from(project)
+    .where(
+      and(
+        eq(project.id, input.targetProjectId),
+        eq(project.workspaceId, context.id),
+        isNull(project.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!target) throw new ProjectError("PROJECT_NOT_FOUND");
+  if (target.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  if (target.status !== "ACTIVE") throw new ProjectError("PROJECT_ARCHIVED");
+  if (target.id === item.projectId) return;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(timeEntry)
+      .set({ projectId: target.id, updatedAt: new Date() })
+      .where(
+        and(
+          eq(timeEntry.workspaceId, context.id),
+          eq(timeEntry.workItemId, item.id),
+          eq(timeEntry.projectId, item.projectId),
+        ),
+      );
+    await tx
+      .update(workItem)
+      .set({
+        projectId: target.id,
+        parentWorkItemId: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(workItem.id, item.id),
+          eq(workItem.workspaceId, context.id),
+          isNull(workItem.archivedAt),
+        ),
+      );
+    await recordAudit(tx, {
+      workspaceId: context.id,
+      actorUserId: input.actorUserId,
+      entityType: "work_item",
+      entityId: item.id,
+      action: "work_item_moved",
+      beforeJson: {
+        projectId: item.projectId,
+        parentWorkItemId: item.parentWorkItemId,
+      },
+      afterJson: { projectId: target.id, parentWorkItemId: null },
+    });
+  });
+}
+
+export async function duplicateWorkItem(input: {
+  actorUserId: string;
+  slug: string;
+  itemId: string;
+}) {
+  const context = await requireWorkspace(
+    input.actorUserId,
+    input.slug,
+    "project:manage",
+  );
+  const [item] = await db
+    .select({
+      projectId: workItem.projectId,
+      source: workItem.source,
+      title: workItem.title,
+      description: workItem.description,
+      estimatedMinutes: workItem.estimatedMinutes,
+    })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.itemId),
+        eq(workItem.workspaceId, context.id),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+  if (item.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  await validateMutableProject({
+    actorUserId: input.actorUserId,
+    slug: input.slug,
+    projectId: item.projectId,
+  });
+  const [created] = await db
+    .insert(workItem)
+    .values({
+      workspaceId: context.id,
+      projectId: item.projectId,
+      source: "MANUAL",
+      estimateSource: "MANUAL",
+      title: `${item.title} (cópia)`,
+      description: item.description,
+      status: "TODO",
+      isActive: true,
+      estimatedMinutes: item.estimatedMinutes,
+      parentWorkItemId: null,
+    })
+    .returning({ id: workItem.id });
+  if (!created) throw new Error("Work item duplicate returned no row");
+  return created;
+}
+
+export async function archiveWorkItem(input: {
+  actorUserId: string;
+  slug: string;
+  itemId: string;
+}) {
+  const context = await requireWorkspace(
+    input.actorUserId,
+    input.slug,
+    "project:manage",
+  );
+  const [item] = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      source: workItem.source,
+    })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.itemId),
+        eq(workItem.workspaceId, context.id),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ProjectError("WORK_ITEM_NOT_FOUND");
+  if (item.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  await validateMutableProject({
+    actorUserId: input.actorUserId,
+    slug: input.slug,
+    projectId: item.projectId,
+  });
+  const [activeTimer] = await db
+    .select({ id: timeEntry.id })
+    .from(timeEntry)
+    .where(
+      and(
+        eq(timeEntry.workspaceId, context.id),
+        eq(timeEntry.workItemId, item.id),
+        inArray(timeEntry.status, ["RUNNING", "PAUSED"]),
+      ),
+    )
+    .limit(1);
+  if (activeTimer) throw new ProjectError("WORK_ITEM_HAS_ACTIVE_TIMER");
+  await db.transaction(async (tx) => {
+    await tx
+      .update(workItem)
+      .set({ archivedAt: new Date(), isActive: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(workItem.id, item.id),
+          eq(workItem.workspaceId, context.id),
+          isNull(workItem.archivedAt),
+        ),
+      );
+    await recordAudit(tx, {
+      workspaceId: context.id,
+      actorUserId: input.actorUserId,
+      entityType: "work_item",
+      entityId: item.id,
+      action: "work_item_archived",
+      beforeJson: { projectId: item.projectId },
+      afterJson: { archived: true },
+    });
+  });
 }

@@ -48,24 +48,38 @@ test("unifies the operational home and manages demands", async ({
   await page.getByRole("button", { name: "Hoje", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${workspacePath}$`));
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto", exact: true }).click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 
-  await page.goto(`${workspacePath}/work/new?mode=demand`);
+  await page.goto(`${workspacePath}/work`);
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
   await page.getByLabel("Projeto *").selectOption({ label: projectName });
   await page.getByLabel("Título *").fill(demandName);
   await page.getByLabel("Descrição").fill("Análise do provider");
-  await page.getByRole("button", { name: "Criar demanda" }).click();
-  await expect(page).toHaveURL(/\/work\?created=1$/);
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`${workspacePath}/work$`));
   await expect(page.getByText(demandName, { exact: true })).toBeVisible();
   await expect(page.getByText("Ativa", { exact: true })).toBeVisible();
   await expect(
     page.locator(".demand-row").getByRole("link", { name: projectName }),
   ).toBeVisible();
+  await page.getByRole("button", { name: demandName, exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: demandName, exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Fechar painel" }).click();
 
   const search = page.getByLabel("Buscar demandas");
   await search.fill("Provider Analysis");

@@ -59,11 +59,16 @@ async function createProject(
   projectName: string,
 ) {
   const workspacePath = new URL(page.url()).pathname;
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 }
 
@@ -184,11 +189,16 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
   await completeOnboarding(page, `Shared Reports ${stamp}`);
   const workspacePath = new URL(page.url()).pathname;
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
   await addManualTime(page, projectName, "08:00", "09:00");
 
@@ -228,7 +238,7 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
   await expect(
     page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
-  await addManualTime(page, projectName, "10:00", "10:30");
+  await addManualTime(page, projectName, "06:00", "06:30");
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.getByRole("heading", { name: "Relatórios" })).toBeVisible();
@@ -305,7 +315,7 @@ test("Admin can review and export Workspace hours", async ({
   await expect(
     page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
-  await addManualTime(page, projectName, "10:00", "10:30");
+  await addManualTime(page, projectName, "06:00", "06:30");
 
   await page.goto(`${workspacePath}/reports`);
   await openMobileDisclosure(page, "details.reports-filter-disclosure");
@@ -353,20 +363,20 @@ test("demand filter excludes project-only entries from screen and CSV", async ({
   const workspacePath = new URL(page.url()).pathname;
   await createProject(page, projectName);
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: projectName }).click();
-  await page.locator("details.create-item > summary").click();
+  await page.goto(`${workspacePath}/projects`);
+  await page.locator(".project-card").filter({ hasText: projectName }).click();
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
   await page.getByLabel("Título *").fill(workItemName);
-  await page.getByRole("button", { name: "Criar demanda" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .click();
   await expect(
-    page
-      .getByRole("region", { name: "Demandas" })
-      .locator("strong.card-title")
-      .filter({ hasText: workItemName }),
+    page.getByRole("button", { name: workItemName, exact: true }),
   ).toBeVisible();
 
-  await addManualTime(page, projectName, "08:00", "09:00");
-  await addManualTime(page, projectName, "09:00", "10:00", workItemName);
+  await addManualTime(page, projectName, "06:00", "07:00");
+  await addManualTime(page, projectName, "07:00", "08:00", workItemName);
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
