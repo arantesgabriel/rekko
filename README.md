@@ -39,6 +39,7 @@ pnpm supabase:stop
 Copy `.env.example` to `.env`. Environment values are runtime-validated with Zod.
 
 - `DATABASE_URL` is required for database commands and server boundaries that use PostgreSQL.
+- `DATABASE_MIGRATION_URL` is optional; when present, Drizzle migrations use it instead of `DATABASE_URL`.
 - `REKKO_SEED_ENV` must be `local` or `test`; production seeding is always rejected.
 - Sentry and PostHog variables are optional locally. Both integrations remain disabled when their keys are absent.
 - Google OAuth is optional locally. Configure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for the real provider flow.

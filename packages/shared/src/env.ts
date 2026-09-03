@@ -4,10 +4,16 @@ type EnvironmentInput = Record<string, string | undefined>;
 
 const emptyStringToUndefined = z.literal("").transform(() => undefined);
 
+const databaseUrl = z.url().startsWith("postgresql://");
+const optionalDatabaseUrl = z
+  .union([databaseUrl, emptyStringToUndefined])
+  .optional();
+
 const optionalUrl = z.union([z.url(), emptyStringToUndefined]).optional();
 
 const databaseEnvSchema = z.object({
-  DATABASE_URL: z.url().startsWith("postgresql://"),
+  DATABASE_MIGRATION_URL: optionalDatabaseUrl,
+  DATABASE_URL: databaseUrl,
 });
 
 const publicEnvSchema = z.object({

@@ -9,7 +9,10 @@ import postgres from "postgres";
 
 const env = parseDatabaseEnv(process.env);
 const migrationsFolder = fileURLToPath(new URL("../drizzle", import.meta.url));
-const queryClient = postgres(env.DATABASE_URL, { max: 1, prepare: false });
+const queryClient = postgres(env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL, {
+  max: 1,
+  prepare: false,
+});
 
 try {
   await migrate(drizzle(queryClient), { migrationsFolder });

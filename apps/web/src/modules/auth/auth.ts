@@ -1,12 +1,13 @@
-import { createDatabaseClient, schema } from "@rekko/db";
+import { schema } from "@rekko/db";
 import { parseServerEnv } from "@rekko/shared/env";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
+import { db } from "@/lib/db";
+
 import { createEmailService } from "./email-service";
 
 const env = parseServerEnv(process.env);
-const { db } = createDatabaseClient(env.DATABASE_URL);
 const emailService = createEmailService({
   apiKey: env.RESEND_API_KEY,
   from: env.RESEND_FROM_EMAIL,
