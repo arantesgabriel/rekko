@@ -38,6 +38,7 @@ let firstSlug = "";
 let secondSlug = "";
 let firstProjectId = "";
 let workItemId = "";
+let secondWorkItemId = "";
 
 const reportPeriod = {
   period: "custom" as const,
@@ -186,7 +187,7 @@ describe.sequential("reports with PostgreSQL", () => {
       workspaceId: first.id,
       userId: ids.owner,
       projectId: firstProject.id,
-      workItemId: null,
+      workItemId: item.id,
       source: "MANUAL",
       start: "2026-09-02T02:30:00Z",
       end: "2026-09-02T03:30:00Z",
@@ -217,11 +218,24 @@ describe.sequential("reports with PostgreSQL", () => {
       estimatedMinutes: null,
     });
     projectIds.push(secondProject.id);
+    secondWorkItemId = (
+      await createWorkItem({
+        actorUserId: ids.outsider,
+        slug: secondSlug,
+        projectId: secondProject.id,
+        title: "Other tenant demand",
+        description: null,
+        status: "TODO",
+        estimatedMinutes: null,
+        parentWorkItemId: null,
+      })
+    ).id;
+    workItemIds.push(secondWorkItemId);
     await addEntry({
       workspaceId: second.id,
       userId: ids.outsider,
       projectId: secondProject.id,
-      workItemId: null,
+      workItemId: secondWorkItemId,
       source: "MANUAL",
       start: "2026-09-01T08:00:00Z",
       end: "2026-09-01T10:00:00Z",
@@ -230,7 +244,7 @@ describe.sequential("reports with PostgreSQL", () => {
       workspaceId: second.id,
       userId: ids.owner,
       projectId: secondProject.id,
-      workItemId: null,
+      workItemId: secondWorkItemId,
       source: "MANUAL",
       start: "2026-09-01T10:00:00Z",
       end: "2026-09-01T11:00:00Z",
@@ -263,10 +277,10 @@ describe.sequential("reports with PostgreSQL", () => {
       query: reportPeriod,
       now: reportNow,
     });
-    expect(ownerReport.totalRows).toBe(6);
-    expect(ownerReport.totalSeconds).toBe(4.5 * 60 * 60);
+    expect(ownerReport.totalRows).toBe(2);
+    expect(ownerReport.totalSeconds).toBe(1.5 * 60 * 60);
     expect(ownerReport.rows.map((row) => row.userId)).toEqual(
-      expect.arrayContaining([ids.owner, ids.admin, ids.member, ids.removed]),
+      expect.arrayContaining([ids.owner, ids.admin]),
     );
 
     const adminReport = await getTimeReport({
@@ -275,8 +289,8 @@ describe.sequential("reports with PostgreSQL", () => {
       query: reportPeriod,
       now: reportNow,
     });
-    expect(adminReport.totalRows).toBe(6);
-    expect(adminReport.totalSeconds).toBe(4.5 * 60 * 60);
+    expect(adminReport.totalRows).toBe(2);
+    expect(adminReport.totalSeconds).toBe(1.5 * 60 * 60);
 
     const memberReport = await getTimeReport({
       userId: ids.member,
@@ -284,8 +298,8 @@ describe.sequential("reports with PostgreSQL", () => {
       query: { ...reportPeriod, userId: ids.removed },
       now: reportNow,
     });
-    expect(memberReport.totalRows).toBe(2);
-    expect(memberReport.totalSeconds).toBe(60 * 60);
+    expect(memberReport.totalRows).toBe(0);
+    expect(memberReport.totalSeconds).toBe(0);
     expect(memberReport.rows.every((row) => row.userId === ids.member)).toBe(
       true,
     );
@@ -296,7 +310,7 @@ describe.sequential("reports with PostgreSQL", () => {
       now: reportNow,
     });
     expect(clampedReport.page).toBe(1);
-    expect(clampedReport.rows).toHaveLength(6);
+    expect(clampedReport.rows).toHaveLength(2);
 
     const options = await getReportFilterOptions({
       userId: ids.owner,
@@ -339,14 +353,21 @@ describe.sequential("reports with PostgreSQL", () => {
       query: { ...reportPeriod, workItemId },
       now: reportNow,
     });
-    expect(filtered.totalRows).toBe(1);
-    expect(filtered.totalSeconds).toBe(60 * 60);
-    expect(filtered.rows[0]).toEqual(
-      expect.objectContaining({
-        workItemId,
-        source: "TIMER",
-        durationSeconds: 60 * 60,
-      }),
+    expect(filtered.totalRows).toBe(2);
+    expect(filtered.totalSeconds).toBe(1.5 * 60 * 60);
+    expect(filtered.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          workItemId,
+          source: "TIMER",
+          durationSeconds: 60 * 60,
+        }),
+        expect.objectContaining({
+          workItemId,
+          source: "MANUAL",
+          durationSeconds: 30 * 60,
+        }),
+      ]),
     );
 
     const filteredExport = await exportTimeReportCsv({
@@ -355,9 +376,9 @@ describe.sequential("reports with PostgreSQL", () => {
       query: { ...reportPeriod, workItemId },
       now: reportNow,
     });
-    expect(filteredExport.rowCount).toBe(1);
+    expect(filteredExport.rowCount).toBe(2);
     expect(filteredExport.csv).toContain('"Demanda concluída"');
-    expect(filteredExport.csv).not.toContain("Reports Owner");
+    expect(filteredExport.csv).toContain('"Reports Owner"');
 
     const exported = await exportTimeReportCsv({
       userId: ids.owner,
@@ -365,7 +386,7 @@ describe.sequential("reports with PostgreSQL", () => {
       query: reportPeriod,
       now: reportNow,
     });
-    expect(exported.rowCount).toBe(6);
+    expect(exported.rowCount).toBe(2);
     expect(exported.csv.startsWith("\uFEFF")).toBe(true);
     expect(exported.csv).toContain('"Duração em Horas"');
     expect(exported.csv).toContain('"2026-09-01 23:30"');

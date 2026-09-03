@@ -8,11 +8,7 @@ export const timeEntryCorrectionSchema = z.object({
   startTime: timeOnly,
   endTime: timeOnly,
   projectId: z.uuid(),
-  workItemId: z
-    .string()
-    .trim()
-    .transform((value) => value || null)
-    .pipe(z.uuid().nullable()),
+  workItemId: z.uuid(),
   description: z
     .string()
     .trim()

@@ -4,7 +4,6 @@ import { ProjectDetailView } from "@/components/projects/project-detail-view";
 import { requireCoreSession } from "@/modules/auth/session";
 import { ProjectError } from "@/modules/projects/errors";
 import { getProjectPage } from "@/modules/projects/service";
-import { getCurrentTimer } from "@/modules/time-tracking/service";
 
 export default async function ProjectPage({
   params,
@@ -40,10 +39,8 @@ export default async function ProjectPage({
       notFound();
     throw error;
   }
-  const activeTimer = await getCurrentTimer(session.user.id);
   return (
     <ProjectDetailView
-      activeTimer={activeTimer ? { workItemId: activeTimer.workItemId } : null}
       canManage={
         data.context.role !== "MEMBER" &&
         !data.project.archivedAt &&
@@ -55,7 +52,6 @@ export default async function ProjectPage({
         query: typeof query.q === "string" ? query.q : "",
         status: typeof query.status === "string" ? query.status : "ALL",
       }}
-      parents={data.parentOptions.map(({ id, title }) => ({ id, title }))}
       project={{
         id: data.project.id,
         name: data.project.name,
@@ -65,7 +61,6 @@ export default async function ProjectPage({
         estimatedMinutes: data.project.estimatedMinutes,
         archivedAt: data.project.archivedAt,
       }}
-      projectOptions={data.projectOptions}
       summary={data.projectSummary}
       slug={workspaceSlug}
       timezone={data.context.timezone}

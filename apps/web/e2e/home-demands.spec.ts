@@ -60,8 +60,86 @@ test("unifies the operational home and manages demands", async ({
     .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 
+  await page.goto(`${workspacePath}/projects`);
+  const projectCard = page.locator(".project-card").filter({
+    has: page.getByRole("heading", { name: projectName }),
+  });
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard).not.toContainText("Sem estimativa");
+  await expect(projectCard.locator(".project-card__stat")).toHaveCount(2);
+  await expect(projectCard.locator("dt")).toHaveText([
+    "Tempo registrado",
+    "Demandas",
+  ]);
+  await expect
+    .poll(() =>
+      projectCard
+        .locator(".project-card__stat")
+        .first()
+        .evaluate((element) => getComputedStyle(element).animationName),
+    )
+    .toBe("project-card-content-in");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect
+    .poll(() =>
+      projectCard
+        .locator(".project-card__stat")
+        .first()
+        .evaluate((element) => getComputedStyle(element).animationName),
+    )
+    .toBe("none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect(
+    (await projectCard.boundingBox())?.width ?? Infinity,
+  ).toBeLessThanOrEqual(448);
+  await projectCard.click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
+  await expect(
+    page.getByText("Contexto para organizar demandas e reconstruir seu tempo."),
+  ).toHaveCount(0);
+  await expect(page.getByText("Sem estimativa")).toHaveCount(0);
+
   await page.goto(`${workspacePath}/work`);
-  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  const createDemand = page.getByRole("button", {
+    name: "Nova demanda",
+    exact: true,
+  });
+  const expectedControlHeight =
+    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "36px";
+  await expect
+    .poll(() =>
+      createDemand.evaluate((button) => getComputedStyle(button).height),
+    )
+    .toBe(expectedControlHeight);
+  if ((page.viewportSize()?.width ?? 1280) >= 768) {
+    const projectsLink = page
+      .locator(".page-header")
+      .getByRole("link", { name: "Projetos", exact: true });
+    const rightBefore = await createDemand.evaluate(
+      (button) => button.getBoundingClientRect().right,
+    );
+    await createDemand.hover();
+    await expect
+      .poll(() =>
+        createDemand.evaluate((button) => button.getBoundingClientRect().width),
+      )
+      .toBeGreaterThan(100);
+    const rightAfter = await createDemand.evaluate(
+      (button) => button.getBoundingClientRect().right,
+    );
+    const gapAfter = await projectsLink.evaluate(
+      (link) =>
+        link.nextElementSibling!.getBoundingClientRect().left -
+        link.getBoundingClientRect().right,
+    );
+    const labelFontSize = await createDemand
+      .locator(".demands-create-button__label")
+      .evaluate((label) => getComputedStyle(label).fontSize);
+    expect(Math.abs(rightAfter - rightBefore)).toBeLessThanOrEqual(1);
+    expect(gapAfter).toBe(8);
+    expect(labelFontSize).toBe("12px");
+  }
+  await createDemand.click();
   await page.getByLabel("Projeto *").selectOption({ label: projectName });
   await page.getByLabel("Título *").fill(demandName);
   await page.getByLabel("Descrição").fill("Análise do provider");

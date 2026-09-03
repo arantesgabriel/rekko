@@ -44,7 +44,7 @@ async function run(
 export async function startTimerAction(
   slug: string,
   projectId: string,
-  workItemId: string | null,
+  workItemId: string,
   state: TimerActionState,
 ) {
   void state;
@@ -55,7 +55,7 @@ export async function startTimerAction(
 export async function switchTimerAction(
   slug: string,
   projectId: string,
-  workItemId: string | null,
+  workItemId: string,
   state: TimerActionState,
 ) {
   void state;

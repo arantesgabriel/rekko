@@ -19,7 +19,7 @@ type CorrectTimeEntryInput = {
   start: Date;
   end: Date;
   projectId: string;
-  workItemId: string | null;
+  workItemId: string;
   description: string | null;
 };
 
@@ -89,7 +89,6 @@ async function validateTarget(
     )
     .limit(1);
   if (!targetProject) throw new AdminTimeError("TARGET_NOT_FOUND");
-  if (!input.workItemId) return;
   const [targetWorkItem] = await tx
     .select({ id: workItem.id })
     .from(workItem)

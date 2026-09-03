@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useState } from "react";
 
 import { ProjectDrawer } from "@/components/projects/project-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CompactCreateButton } from "@/components/ui/compact-create-button";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatEstimate, projectStatusLabel } from "@/modules/projects/domain";
+import { projectStatusLabel } from "@/modules/projects/domain";
 import type { ProjectListItem } from "@/modules/projects/service";
 
 function formatDuration(seconds: number) {
@@ -22,7 +23,7 @@ function formatDuration(seconds: number) {
 }
 
 function formatActivity(date: Date | null, timezone: string) {
-  if (!date) return "Sem registros";
+  if (!date) return null;
   const today = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
     month: "2-digit",
@@ -73,17 +74,14 @@ export function ProjectsView({
               >
                 Importar do Linear
               </Link>
-              <button
-                className="button button--primary"
+              <CompactCreateButton
+                label="Criar projeto"
                 onClick={() => setDrawerOpen(true)}
-                type="button"
-              >
-                <span aria-hidden="true">+</span> Criar projeto
-              </button>
+              />
             </>
           ) : undefined
         }
-        description="Projetos e contextos que dão forma ao trabalho do Workspace."
+        description="Organize seu trabalho por contexto."
         title="Projetos"
       />
       {notice ? (
@@ -113,15 +111,14 @@ export function ProjectsView({
         />
       ) : (
         <section className="project-grid" aria-label="Projetos ativos">
-          {projects.map((item, index) => (
+          {projects.map((item) => (
             <Link
               className="project-card"
               href={`/w/${slug}/projects/${item.id}`}
               key={item.id}
-              style={{ "--project-index": index } as CSSProperties}
             >
               <div className="project-card__top">
-                <span className="source-badge">
+                <span className="project-card__source">
                   {item.source === "LINEAR" ? "Linear" : "Manual"}
                 </span>
                 <span
@@ -130,33 +127,23 @@ export function ProjectsView({
                   {projectStatusLabel[item.status]}
                 </span>
               </div>
-              <div className="project-card__identity">
-                <h2 className="card-title">{item.name}</h2>
-                {item.description ? <p>{item.description}</p> : null}
-              </div>
-              <div className="project-card__primary-metric">
-                <span>Tempo registrado</span>
-                <strong>{formatDuration(item.trackedSeconds)}</strong>
-              </div>
-              <dl className="project-card__metrics">
-                <div>
+              <h2 className="card-title">{item.name}</h2>
+              <dl className="project-card__stats">
+                <div className="project-card__stat project-card__stat--primary">
+                  <dt>Tempo registrado</dt>
+                  <dd>{formatDuration(item.trackedSeconds)}</dd>
+                </div>
+                <div className="project-card__stat">
                   <dt>Demandas</dt>
-                  <dd>{item.workItemCount || "—"}</dd>
+                  <dd>{item.workItemCount}</dd>
                 </div>
-                <div>
-                  <dt>Ativas</dt>
-                  <dd>{item.activeDemandCount || "—"}</dd>
-                </div>
-                <div>
-                  <dt>Última atividade</dt>
-                  <dd>{formatActivity(item.lastActivityAt, timezone)}</dd>
-                </div>
+                {item.lastActivityAt ? (
+                  <div className="project-card__stat">
+                    <dt>Última atividade</dt>
+                    <dd>{formatActivity(item.lastActivityAt, timezone)}</dd>
+                  </div>
+                ) : null}
               </dl>
-              <span className="project-card__estimate">
-                {item.estimatedMinutes
-                  ? `Estimativa · ${formatEstimate(item.estimatedMinutes)}`
-                  : "Sem estimativa"}
-              </span>
             </Link>
           ))}
         </section>

@@ -10,11 +10,7 @@ export const manualTimeInputSchema = z.object({
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   projectId: z.uuid(),
-  workItemId: z
-    .string()
-    .trim()
-    .transform((value) => value || null)
-    .pipe(z.uuid().nullable()),
+  workItemId: z.uuid(),
   description: z
     .string()
     .trim()

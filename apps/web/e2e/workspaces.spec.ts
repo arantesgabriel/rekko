@@ -376,7 +376,20 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     .click();
   await expect(page.getByRole("heading", { name: "AMBLA" })).toBeVisible();
   await page.locator(".project-card").filter({ hasText: "AMBLA" }).click();
+  await expect(page).toHaveURL(/\/projects\/[^/]+$/);
+  const workspaceHome = new URL(page.url()).pathname.replace(
+    /\/projects\/[^/]+$/,
+    "",
+  );
+  await expect(
+    page.getByRole("button", { name: "Nova demanda", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Iniciar", exact: true }),
+  ).toHaveCount(0);
+  await page.goto(`${workspaceHome}/work`);
   await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Projeto *").selectOption({ label: "AMBLA" });
   await page.getByLabel("Título *").fill("Authentication");
   await page.getByLabel("Estimativa", { exact: true }).fill("2h");
   await page
@@ -386,6 +399,8 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await expect(
     page.getByRole("button", { name: "Authentication", exact: true }),
   ).toBeVisible();
+  await page.getByLabel("Filtrar por projeto").selectOption({ label: "AMBLA" });
+  await expect(page).toHaveURL(/projectId=/);
   await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
   await page.getByLabel("Título *").fill("Google login");
   await page
@@ -397,7 +412,7 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     .click();
   const rowNamed = (name: string) =>
     page
-      .locator("article.project-demand-row")
+      .locator("article.demand-row")
       .filter({ has: page.getByRole("button", { name, exact: true }) });
   await expect(rowNamed("Google login")).toBeVisible();
   const authentication = rowNamed("Authentication");
@@ -430,7 +445,7 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     page.getByRole("complementary", { name: "Timer atual" }),
   ).toHaveCount(0);
   const googleActions = page
-    .locator("article.project-demand-row")
+    .locator("article.demand-row")
     .filter({
       has: page.getByRole("button", { name: "Google login", exact: true }),
     })
@@ -447,12 +462,14 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await page.getByRole("menuitem", { name: "Concluir demanda" }).click();
   await page.getByRole("button", { name: "Concluir", exact: true }).click();
   await expect(
-    page.locator("article.project-demand-row").filter({
+    page.locator("article.demand-row").filter({
       has: page.getByRole("button", { name: "Google login", exact: true }),
     }),
   ).toContainText("Concluída");
   await expect(page.getByRole("status")).toContainText("Demanda concluída.");
-  await page.getByPlaceholder("Buscar por título…").fill("Google");
+  await page
+    .getByPlaceholder("Buscar por nome, código ou projeto…")
+    .fill("Google");
   await expect(page).toHaveURL(/q=Google/);
   await expect(rowNamed("Google login")).toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -471,8 +488,6 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   );
   expect(darkOverflow).toBeLessThanOrEqual(0);
 
-  const projectPath = new URL(page.url()).pathname;
-  const workspaceHome = projectPath.replace(/\/projects\/[^/]+$/, "");
   await page.goto(workspaceHome);
   await page.getByRole("button", { name: "Adicionar tempo" }).first().click();
   await page.getByLabel("Início").fill("08:00");
@@ -501,6 +516,9 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   await page
     .locator('select[name="projectId"]')
     .selectOption({ label: "AMBLA" });
+  await page
+    .locator('select[name="workItemId"]')
+    .selectOption({ label: "Authentication" });
   await page.getByRole("button", { name: "Salvar tempo" }).click();
   await expect(
     page.getByText("Parte deste período já possui tempo registrado."),

@@ -81,6 +81,13 @@ export async function listProjects(userId: string, slug: string) {
       })
       .from(timeSegment)
       .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .innerJoin(
+        workItem,
+        and(
+          eq(workItem.id, timeEntry.workItemId),
+          eq(workItem.workspaceId, context.id),
+        ),
+      )
       .where(
         and(
           eq(timeSegment.workspaceId, context.id),
@@ -171,6 +178,11 @@ export type DemandTimeRecord = {
 };
 
 export type DemandProjectOption = { id: string; name: string };
+export type DemandParentOption = {
+  id: string;
+  projectId: string;
+  title: string;
+};
 
 export async function listDemands(input: {
   userId: string;
@@ -200,7 +212,7 @@ export async function listDemands(input: {
   if (input.status === "DONE") filters.push(eq(workItem.status, "DONE"));
   if (input.projectId) filters.push(eq(workItem.projectId, input.projectId));
 
-  const [rows, projectOptions] = await Promise.all([
+  const [rows, projectOptions, parentOptions] = await Promise.all([
     db
       .select({
         id: workItem.id,
@@ -235,6 +247,21 @@ export async function listDemands(input: {
         and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
       )
       .orderBy(asc(project.name)),
+    db
+      .select({
+        id: workItem.id,
+        projectId: workItem.projectId,
+        title: workItem.title,
+      })
+      .from(workItem)
+      .where(
+        and(
+          eq(workItem.workspaceId, context.id),
+          eq(workItem.source, "MANUAL"),
+          isNull(workItem.archivedAt),
+        ),
+      )
+      .orderBy(asc(workItem.title)),
   ]);
 
   const summaries = await getDemandSummaries(
@@ -258,6 +285,7 @@ export async function listDemands(input: {
     context,
     demands,
     projectOptions: projectOptions satisfies DemandProjectOption[],
+    parentOptions: parentOptions satisfies DemandParentOption[],
   };
 }
 
@@ -341,34 +369,30 @@ export async function getProjectPage(input: {
       ),
     )
     .orderBy(asc(workItem.createdAt));
-  const [projectOptions, projectTimeRows] = await Promise.all([
-    db
-      .select({ id: project.id, name: project.name })
-      .from(project)
-      .where(
-        and(
-          eq(project.workspaceId, result.context.id),
-          isNull(project.archivedAt),
-        ),
-      )
-      .orderBy(asc(project.name)),
-    db
-      .select({
-        startedAt: timeSegment.startedAt,
-        endedAt: timeSegment.endedAt,
-      })
-      .from(timeSegment)
-      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
-      .where(
-        and(
-          eq(timeSegment.workspaceId, result.context.id),
-          eq(timeEntry.workspaceId, result.context.id),
-          eq(timeEntry.projectId, result.project.id),
-          isNull(timeEntry.archivedAt),
-          ne(timeEntry.status, "ARCHIVED"),
-        ),
+  const projectTimeRows = await db
+    .select({
+      startedAt: timeSegment.startedAt,
+      endedAt: timeSegment.endedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .innerJoin(
+      workItem,
+      and(
+        eq(workItem.id, timeEntry.workItemId),
+        eq(workItem.projectId, result.project.id),
+        eq(workItem.workspaceId, result.context.id),
       ),
-  ]);
+    )
+    .where(
+      and(
+        eq(timeSegment.workspaceId, result.context.id),
+        eq(timeEntry.workspaceId, result.context.id),
+        eq(timeEntry.projectId, result.project.id),
+        isNull(timeEntry.archivedAt),
+        ne(timeEntry.status, "ARCHIVED"),
+      ),
+    );
   const now = new Date();
   const projectSummary: ProjectSummary = {
     demandCount: allItems.length,
@@ -394,8 +418,6 @@ export async function getProjectPage(input: {
     ...result,
     items: visible,
     demandItems,
-    parentOptions: allItems,
-    projectOptions,
     projectSummary,
   };
 }

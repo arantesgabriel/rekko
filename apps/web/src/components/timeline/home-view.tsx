@@ -435,12 +435,13 @@ export function HomeView({
                 </select>
               </label>
               <label>
-                Demanda <span>opcional</span>
+                Demanda
                 <select
                   defaultValue={editor.workItemId ?? ""}
                   name="workItemId"
+                  required
                 >
-                  <option value="">Somente o projeto</option>
+                  <option value="">Selecione uma demanda</option>
                   {filteredItems.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.title}

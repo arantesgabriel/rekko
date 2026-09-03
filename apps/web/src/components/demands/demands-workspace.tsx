@@ -8,10 +8,14 @@ import { DemandActionsMenu } from "@/components/demands/demand-actions-menu";
 import { CreateDemandButton } from "@/components/demands/create-demand-button";
 import { DemandDrawer } from "@/components/demands/demand-drawer";
 import { DemandFilters } from "@/components/demands/demand-filters";
+import { StartTimerButton } from "@/components/time-tracking/timer-controls";
 import { ActionToast } from "@/components/ui/action-toast";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import type {
   DemandListItem,
+  DemandParentOption,
   DemandProjectOption,
 } from "@/modules/projects/service";
 
@@ -29,7 +33,7 @@ function formatActivity(
   isRunning: boolean,
 ) {
   if (isRunning) return "Agora";
-  if (!date) return "Sem registros";
+  if (!date) return "—";
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
@@ -64,15 +68,21 @@ function statusLabel(item: DemandListItem) {
 }
 
 export function DemandsWorkspace({
+  activeTimerWorkItemId,
   canManage,
   demands,
+  hasActiveTimer,
+  parentOptions,
   projectOptions,
   query,
   slug,
   timezone,
 }: {
+  activeTimerWorkItemId: string | null;
   canManage: boolean;
   demands: DemandListItem[];
+  hasActiveTimer: boolean;
+  parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
   query: {
     projectId: string;
@@ -88,6 +98,12 @@ export function DemandsWorkspace({
   const [createOpen, setCreateOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const selected = demands.find((demand) => demand.id === selectedId);
+  const selectedParents = selected
+    ? parentOptions.filter((parent) => parent.projectId === selected.projectId)
+    : [];
+  const createParents = query.projectId
+    ? parentOptions.filter((parent) => parent.projectId === query.projectId)
+    : [];
   const hasFilters = Boolean(
     query.search || query.projectId || query.status !== "ALL",
   );
@@ -111,48 +127,45 @@ export function DemandsWorkspace({
 
   return (
     <div className="demands-page">
-      <header className="demands-header">
-        <div>
-          <p className="demands-header__eyebrow">Trabalho operacional</p>
-          <h1 className="page-title">Demandas</h1>
-          <p className="page-description">
-            Organize e acompanhe os itens nos quais seu tempo é registrado.
-          </p>
-        </div>
-        <div className="demands-header__actions">
-          <Link
-            className="button button--tertiary button--sm demands-projects-link"
-            href={`/w/${slug}/projects`}
-          >
-            <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
-              <path
-                d="M2.75 5.75h5l1.5 1.75h8v8.75a1 1 0 0 1-1 1h-12.5a1 1 0 0 1-1-1z"
-                stroke="currentColor"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
+      <PageHeader
+        actions={
+          <>
+            <Link
+              className="button button--tertiary demands-projects-link"
+              href={`/w/${slug}/projects`}
+            >
+              <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+                <path
+                  d="M2.75 5.75h5l1.5 1.75h8v8.75a1 1 0 0 1-1 1h-12.5a1 1 0 0 1-1-1z"
+                  stroke="currentColor"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M2.75 5.75v-1.25a1 1 0 0 1 1-1h3.5l1.5 1.75"
+                  stroke="currentColor"
+                  strokeLinejoin="round"
+                  strokeWidth="1.5"
+                />
+              </svg>
+              Projetos
+            </Link>
+            {canManage ? (
+              <CreateDemandButton
+                onClick={() => {
+                  setSelectedId(null);
+                  setEditDemandId(null);
+                  setCreateOpen(true);
+                }}
               />
-              <path
-                d="M2.75 5.75v-1.25a1 1 0 0 1 1-1h3.5l1.5 1.75"
-                stroke="currentColor"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-              />
-            </svg>
-            Projetos
-          </Link>
-          {canManage ? (
-            <CreateDemandButton
-              onClick={() => {
-                setSelectedId(null);
-                setEditDemandId(null);
-                setCreateOpen(true);
-              }}
-            />
-          ) : null}
-        </div>
-      </header>
+            ) : null}
+          </>
+        }
+        description="Organize e acompanhe os itens nos quais seu tempo é registrado."
+        title="Demandas"
+      />
 
-      <section className="demands-toolbar" aria-label="Busca e filtros">
+      <PageToolbar label="Busca e filtros" surface>
         <DemandFilters
           initialProjectId={query.projectId}
           initialQuery={query.search}
@@ -160,7 +173,7 @@ export function DemandsWorkspace({
           key={`${query.search}:${query.status}:${query.projectId}`}
           projects={projectOptions}
         />
-      </section>
+      </PageToolbar>
 
       {demands.length === 0 ? (
         <EmptyState
@@ -224,7 +237,7 @@ export function DemandsWorkspace({
             <span>Status</span>
             <span>Tempo</span>
             <span>Última atividade</span>
-            <span />
+            <span>Ações</span>
           </div>
           <div className="demands-list__rows">
             {demands.map((demand) => {
@@ -288,15 +301,28 @@ export function DemandsWorkspace({
                       demand.isRunning,
                     )}
                   </div>
-                  <DemandActionsMenu
-                    canManage={canManage}
-                    demand={demand}
-                    onChanged={refresh}
-                    onEdit={() => openDemand(demand.id, true)}
-                    onFeedback={showFeedback}
-                    projects={projectOptions}
-                    slug={slug}
-                  />
+                  <div className="demand-row__actions">
+                    {demand.projectStatus === "ACTIVE" &&
+                    demand.isActive &&
+                    demand.status !== "DONE" ? (
+                      <StartTimerButton
+                        activeOnItem={activeTimerWorkItemId === demand.id}
+                        hasActiveTimer={hasActiveTimer}
+                        projectId={demand.projectId}
+                        slug={slug}
+                        workItemId={demand.id}
+                      />
+                    ) : null}
+                    <DemandActionsMenu
+                      canManage={canManage}
+                      demand={demand}
+                      onChanged={refresh}
+                      onEdit={() => openDemand(demand.id, true)}
+                      onFeedback={showFeedback}
+                      projects={projectOptions}
+                      slug={slug}
+                    />
+                  </div>
                 </article>
               );
             })}
@@ -315,6 +341,7 @@ export function DemandsWorkspace({
         onClose={closeDrawer}
         onFeedback={showFeedback}
         open={Boolean(selected)}
+        parents={selectedParents}
         projects={projectOptions}
         slug={slug}
         startInEdit={Boolean(selected && editDemandId === selected.id)}
@@ -324,9 +351,11 @@ export function DemandsWorkspace({
       <DemandDrawer
         key={`demand-create-${createOpen ? "open" : "closed"}`}
         canManage={canManage}
+        {...(query.projectId ? { initialProjectId: query.projectId } : {})}
         onClose={closeDrawer}
         onFeedback={showFeedback}
         open={createOpen}
+        parents={createParents}
         projects={projectOptions}
         slug={slug}
         timezone={timezone}

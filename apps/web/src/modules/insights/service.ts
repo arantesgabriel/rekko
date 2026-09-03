@@ -71,7 +71,7 @@ export async function getInsights(input: {
     .from(timeSegment)
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
     .innerJoin(project, eq(project.id, timeEntry.projectId))
-    .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(and(...filters))
     .orderBy(asc(timeSegment.startedAt));
 

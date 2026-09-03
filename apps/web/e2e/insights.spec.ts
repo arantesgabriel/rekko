@@ -55,7 +55,11 @@ test("shows personal tracked time and estimated versus actual", async ({
     .locator(".project-card")
     .filter({ hasText: "Insights Project" })
     .click();
+  await page.goto(`${workspacePath}/work`);
   await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page
+    .getByLabel("Projeto *")
+    .selectOption({ label: "Insights Project" });
   await page.getByLabel("Título *").fill("Estimated item");
   await page.getByLabel("Estimativa", { exact: true }).fill("1h");
   await page

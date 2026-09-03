@@ -78,16 +78,16 @@
   --radius-pill: 999px;
 
   --control-height-sm: 32px;
-  --control-height: 44px;
-  --control-height-lg: 46px;
+  --control-height: 36px;
+  --control-height-lg: 40px;
   --control-height-touch: 44px;
 
   --sidebar-expanded: 248px;
   --sidebar-collapsed: 68px;
   --sidebar-current: var(--sidebar-expanded);
   --page-max-sm: 40rem;
-  --page-max-md: 67.5rem;
-  --page-max-lg: 80rem;
+  --page-max-md: 60rem;
+  --page-max-lg: 72rem;
   --page-max: var(--page-max-md);
   --page-max-wide: var(--page-max-lg);
   --radius-control: var(--radius-input);
@@ -3332,11 +3332,12 @@ html {
 
 .button {
   align-items: center;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-button);
   display: inline-flex;
   font-size: var(--font-body);
   font-weight: var(--weight-semibold);
+  gap: var(--space-2);
   justify-content: center;
   min-height: var(--control-height);
   padding: 0 14px;
@@ -3347,11 +3348,11 @@ html {
     transform var(--motion-fast) var(--ease-ui);
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-.button:active {
+.button:active:not(:disabled) {
   transform: scale(0.98);
 }
 
@@ -3376,6 +3377,35 @@ html {
 .button--icon svg {
   height: 18px;
   width: 18px;
+}
+
+.button--sm.button--icon {
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  width: var(--control-height-sm);
+}
+
+.button--secondary {
+  background: var(--surface-primary);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.button--secondary:hover:not(:disabled) {
+  background: var(--surface-subtle);
+  border-color: var(--border-strong);
+}
+
+.button--ghost,
+.button--tertiary {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.button--ghost:hover:not(:disabled),
+.button--tertiary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .button--destructive {

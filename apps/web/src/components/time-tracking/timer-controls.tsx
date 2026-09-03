@@ -30,12 +30,6 @@ export function TimerDock({
     openSegmentStartedAt: Date | null;
   };
   targets: {
-    projects: {
-      projectId: string;
-      projectName: string;
-      slug: string;
-      workspaceName: string;
-    }[];
     items: {
       projectId: string;
       projectName: string;
@@ -215,12 +209,6 @@ function TimerTargets({
   timer,
 }: {
   targets: {
-    projects: {
-      projectId: string;
-      projectName: string;
-      slug: string;
-      workspaceName: string;
-    }[];
     items: {
       projectId: string;
       projectName: string;
@@ -237,19 +225,6 @@ function TimerTargets({
 }) {
   return (
     <>
-      {targets.projects.map((target) => (
-        <StartTimerButton
-          key={`project-${target.projectId}`}
-          slug={target.slug}
-          projectId={target.projectId}
-          workItemId={null}
-          activeOnItem={
-            timer.workItemTitle === null &&
-            timer.projectName === target.projectName
-          }
-          hasActiveTimer
-        />
-      ))}
       {targets.items.map((target) => (
         <div className="timer-switcher__target" key={target.workItemId}>
           <span>
@@ -281,7 +256,7 @@ export function StartTimerButton({
 }: {
   slug: string;
   projectId: string;
-  workItemId: string | null;
+  workItemId: string;
   activeOnItem: boolean;
   hasActiveTimer: boolean;
 }) {

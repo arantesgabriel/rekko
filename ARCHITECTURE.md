@@ -1313,7 +1313,7 @@ Campos recebidos:
 ```text
 workspace
 project
-work item opcional
+work item obrigatório
 activity type opcional
 local date/time
 timezone
@@ -1328,6 +1328,10 @@ Servidor:
 4. verifica sobreposição;
 5. cria TimeEntry COMPLETED;
 6. cria TimeSegment único.
+
+Projetos são somente um contexto de agrupamento para o tempo. Todo novo
+TimeEntry deve apontar para uma Demanda; totais, Timeline, Relatórios e
+Insights derivados ignoram registros legados sem Demanda.
 
 ---
 

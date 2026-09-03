@@ -18,7 +18,7 @@ type Target = {
   actorUserId: string;
   slug: string;
   projectId: string;
-  workItemId?: string | null;
+  workItemId: string;
 };
 
 async function validateTarget(input: Target) {
@@ -36,24 +36,22 @@ async function validateTarget(input: Target) {
     )
     .limit(1);
   if (!targetProject) throw new TimerError("TARGET_NOT_TRACKABLE");
-  if (input.workItemId) {
-    const [item] = await db
-      .select({ id: workItem.id })
-      .from(workItem)
-      .where(
-        and(
-          eq(workItem.id, input.workItemId),
-          eq(workItem.projectId, input.projectId),
-          eq(workItem.workspaceId, context.id),
-          isNull(workItem.archivedAt),
-          eq(workItem.isActive, true),
-          eq(workItem.isTrackable, true),
-          inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
-        ),
-      )
-      .limit(1);
-    if (!item) throw new TimerError("TARGET_NOT_TRACKABLE");
-  }
+  const [item] = await db
+    .select({ id: workItem.id })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.workItemId),
+        eq(workItem.projectId, input.projectId),
+        eq(workItem.workspaceId, context.id),
+        isNull(workItem.archivedAt),
+        eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
+        inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new TimerError("TARGET_NOT_TRACKABLE");
   return context;
 }
 
@@ -94,7 +92,7 @@ export async function startTimer(input: Target, clock: Clock = systemClock) {
           workspaceId: context.id,
           userId: input.actorUserId,
           projectId: input.projectId,
-          workItemId: input.workItemId ?? null,
+          workItemId: input.workItemId,
           source: "TIMER",
           status: "RUNNING",
           startedAt: now,
@@ -244,7 +242,7 @@ export async function switchTimer(input: Target, clock: Clock = systemClock) {
         workspaceId: context.id,
         userId: input.actorUserId,
         projectId: input.projectId,
-        workItemId: input.workItemId ?? null,
+        workItemId: input.workItemId,
         source: "TIMER",
         status: "RUNNING",
         startedAt: now,
@@ -305,30 +303,6 @@ export async function getCurrentTimer(
 }
 
 export async function listTimerTargets(userId: string) {
-  const projects = await db
-    .select({
-      projectId: project.id,
-      projectName: project.name,
-      slug: workspace.slug,
-      workspaceName: workspace.name,
-    })
-    .from(project)
-    .innerJoin(workspace, eq(workspace.id, project.workspaceId))
-    .innerJoin(
-      workspaceMember,
-      and(
-        eq(workspaceMember.workspaceId, project.workspaceId),
-        eq(workspaceMember.userId, userId),
-      ),
-    )
-    .where(
-      and(
-        isNull(project.archivedAt),
-        eq(project.status, "ACTIVE"),
-        isNull(workspace.archivedAt),
-      ),
-    )
-    .orderBy(asc(workspace.name), asc(project.name));
   const items = await db
     .select({
       projectId: project.id,
@@ -359,5 +333,5 @@ export async function listTimerTargets(userId: string) {
       ),
     )
     .orderBy(asc(workspace.name), asc(project.name), asc(workItem.title));
-  return { projects, items };
+  return { items };
 }

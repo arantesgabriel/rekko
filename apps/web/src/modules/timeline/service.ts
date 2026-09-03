@@ -43,7 +43,7 @@ type ManualInput = {
   start: Date;
   end: Date;
   projectId: string;
-  workItemId: string | null;
+  workItemId: string;
   description: string | null;
 };
 
@@ -62,24 +62,22 @@ async function validateTarget(input: ManualInput) {
     )
     .limit(1);
   if (!targetProject) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
-  if (input.workItemId) {
-    const [item] = await db
-      .select({ id: workItem.id })
-      .from(workItem)
-      .where(
-        and(
-          eq(workItem.id, input.workItemId),
-          eq(workItem.projectId, input.projectId),
-          eq(workItem.workspaceId, context.id),
-          eq(workItem.isActive, true),
-          eq(workItem.isTrackable, true),
-          isNull(workItem.archivedAt),
-          ne(workItem.status, "DONE"),
-        ),
-      )
-      .limit(1);
-    if (!item) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
-  }
+  const [item] = await db
+    .select({ id: workItem.id })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.workItemId),
+        eq(workItem.projectId, input.projectId),
+        eq(workItem.workspaceId, context.id),
+        eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
+        isNull(workItem.archivedAt),
+        ne(workItem.status, "DONE"),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
   return context;
 }
 
@@ -250,7 +248,7 @@ export async function getDailyTimeline(input: {
     .from(timeSegment)
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
     .innerJoin(project, eq(project.id, timeEntry.projectId))
-    .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(
       and(
         eq(timeEntry.userId, input.userId),
@@ -378,6 +376,7 @@ export async function getGettingStartedProgress(userId: string, slug: string) {
           eq(timeEntry.userId, userId),
           eq(timeEntry.workspaceId, context.id),
           eq(timeEntry.source, "MANUAL"),
+          isNotNull(timeEntry.workItemId),
           ne(timeEntry.status, "ARCHIVED"),
         ),
       )

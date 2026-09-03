@@ -87,7 +87,7 @@ export function Drawer({
           </div>
           <button
             aria-label="Fechar painel"
-            className="button button--ghost button--icon"
+            className="button button--ghost button--icon button--sm"
             onClick={onClose}
             ref={closeRef}
             type="button"
