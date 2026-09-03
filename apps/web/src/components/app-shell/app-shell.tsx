@@ -85,8 +85,10 @@ export function AppShell({
           workspaces={workspaces}
           workspaceSlug={workspaceSlug}
         />
-        {banner ? <div className="app-notice">{banner}</div> : null}
-        <div className="app-shell__scroll">{children}</div>
+        <div className="app-shell__scroll">
+          {banner ? <div className="app-notice">{banner}</div> : null}
+          {children}
+        </div>
         {timer}
         <MobileBottomNav pathname={pathname} workspaceSlug={workspaceSlug} />
       </div>

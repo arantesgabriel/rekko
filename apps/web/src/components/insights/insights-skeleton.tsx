@@ -6,21 +6,19 @@ export function InsightsSkeleton() {
       role="status"
     >
       <div className="insights-skeleton__header" aria-hidden="true">
-        <div>
-          <span className="insights-skeleton__line is-short" />
-          <span className="insights-skeleton__line is-title" />
-          <span className="insights-skeleton__line is-copy" />
-        </div>
-        <span className="insights-skeleton__filters" />
+        <span className="insights-skeleton__line is-short" />
+        <span className="insights-skeleton__line is-title" />
+        <span className="insights-skeleton__line is-copy" />
       </div>
-      <div className="insights-skeleton__kpis" aria-hidden="true">
+      <span className="insights-skeleton__filters" aria-hidden="true" />
+      <div className="insights-skeleton__summary" aria-hidden="true">
         {[1, 2, 3, 4].map((item) => (
           <span key={item} />
         ))}
       </div>
       <div className="insights-skeleton__primary" aria-hidden="true">
-        <span />
-        <span />
+        <span className="is-chart" />
+        <span className="is-highlights" />
       </div>
       <div className="insights-skeleton__secondary" aria-hidden="true">
         <span />
