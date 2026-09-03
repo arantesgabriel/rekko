@@ -3,7 +3,7 @@ import { PageContainer } from "@/components/ui/page-container";
 
 export default function ProjectDetailLoading() {
   return (
-    <PageContainer width="lg">
+    <PageContainer width="md">
       <ProjectsSkeleton detail />
     </PageContainer>
   );

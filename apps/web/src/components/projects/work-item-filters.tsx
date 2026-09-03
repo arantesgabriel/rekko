@@ -4,17 +4,22 @@ import { useRef } from "react";
 
 export function WorkItemFilters({
   compact = false,
+  hiddenFields,
   kind,
   query,
   status,
 }: {
   compact?: boolean;
+  hiddenFields?: Record<string, string>;
   kind: string;
   query: string;
   status: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const searchTimerRef = useRef<number | undefined>(undefined);
+  const activeFilterCount = [kind !== "ALL", status !== "ALL"].filter(
+    Boolean,
+  ).length;
 
   function submit() {
     formRef.current?.requestSubmit();
@@ -27,6 +32,11 @@ export function WorkItemFilters({
       ref={formRef}
       role="search"
     >
+      {hiddenFields
+        ? Object.entries(hiddenFields).map(([name, value]) => (
+            <input key={name} name={name} type="hidden" value={value} />
+          ))
+        : null}
       <label>
         <span className="sr-only">Buscar demandas</span>
         <input
@@ -36,7 +46,7 @@ export function WorkItemFilters({
             window.clearTimeout(searchTimerRef.current);
             searchTimerRef.current = window.setTimeout(submit, 350);
           }}
-          placeholder="Buscar por título…"
+          placeholder="Buscar demandas…"
           type="search"
         />
       </label>
@@ -45,14 +55,15 @@ export function WorkItemFilters({
           className="work-filters__disclosure"
           open={kind !== "ALL" || status !== "ALL"}
         >
-          <summary className="button button--ghost button--sm">
-            Filtros
-            {kind !== "ALL" || status !== "ALL" ? (
-              <span
-                aria-label="filtros ativos"
-                className="work-filters__active-dot"
-              />
-            ) : null}
+          <summary
+            className="button button--ghost button--sm"
+            aria-label={
+              activeFilterCount
+                ? `Filtros, ${activeFilterCount} ativos`
+                : "Filtros"
+            }
+          >
+            {activeFilterCount ? `Filtros · ${activeFilterCount}` : "Filtros"}
           </summary>
           <div className="work-filters__popover">
             <label>

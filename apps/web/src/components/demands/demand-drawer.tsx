@@ -100,6 +100,19 @@ export function DemandDrawer({
       onClose={requestClose}
       open={open}
       title={title}
+      {...(!isCreate && !editing && canManage && demand.source === "MANUAL"
+        ? {
+            footer: (
+              <button
+                className="button button--primary"
+                onClick={beginEditing}
+                type="button"
+              >
+                Editar demanda
+              </button>
+            ),
+          }
+        : {})}
     >
       {isCreate || editing ? (
         <>
@@ -221,15 +234,6 @@ export function DemandDrawer({
             >
               Abrir no Linear
             </a>
-          ) : null}
-          {canManage && demand.source === "MANUAL" ? (
-            <button
-              className="button button--primary demand-drawer__edit"
-              onClick={beginEditing}
-              type="button"
-            >
-              Editar demanda
-            </button>
           ) : null}
         </div>
       )}

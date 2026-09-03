@@ -19,11 +19,12 @@ export function VerificationBanner({
   if (access !== "allowed") return null;
   return (
     <aside className="verification-banner verification-banner--product">
-      <div>
-        <strong>Confirme seu e-mail para liberar todos os recursos.</strong>
-      </div>
+      <p>
+        <strong>Confirme seu e-mail</strong>
+        <span> para liberar todos os recursos.</span>
+      </p>
       <Link
-        className="button button--secondary button--sm"
+        className="button button--ghost button--sm"
         href={`/verify-email?email=${encodeURIComponent(user.email)}`}
       >
         Reenviar

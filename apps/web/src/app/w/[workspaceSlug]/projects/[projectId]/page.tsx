@@ -17,22 +17,31 @@ export default async function ProjectPage({
   const session = await requireCoreSession(
     `/w/${workspaceSlug}/projects/${projectId}`,
   );
+  const view =
+    query.view === "demands" || query.view === "activity"
+      ? query.view
+      : "overview";
+  const applyFilters = view === "demands";
   let data;
   try {
-    const search = typeof query.q === "string" ? query.q : undefined;
+    const search =
+      applyFilters && typeof query.q === "string" ? query.q : undefined;
     data = await getProjectPage({
       userId: session.user.id,
       slug: workspaceSlug,
       projectId,
       ...(search ? { search } : {}),
       status:
-        query.status === "TODO" ||
-        query.status === "IN_PROGRESS" ||
-        query.status === "DONE"
+        applyFilters &&
+        (query.status === "TODO" ||
+          query.status === "IN_PROGRESS" ||
+          query.status === "DONE")
           ? query.status
           : "ALL",
       kind:
-        query.kind === "ROOT" || query.kind === "SUB_ITEM" ? query.kind : "ALL",
+        applyFilters && (query.kind === "ROOT" || query.kind === "SUB_ITEM")
+          ? query.kind
+          : "ALL",
     });
   } catch (error) {
     if (error instanceof ProjectError && error.code === "PROJECT_NOT_FOUND")
@@ -64,6 +73,7 @@ export default async function ProjectPage({
       summary={data.projectSummary}
       slug={workspaceSlug}
       timezone={data.context.timezone}
+      view={view}
       {...(query.created === "1"
         ? { notice: "Projeto criado." }
         : query.linear === "imported"
