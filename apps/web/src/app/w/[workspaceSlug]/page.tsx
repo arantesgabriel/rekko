@@ -5,9 +5,12 @@ import { getLinearConnection } from "@/modules/integrations/linear/service";
 import {
   getDailyTimeline,
   getGettingStartedProgress,
+  getWeekDaySummaries,
   listManualTimeTargets,
+  listRecentWorkItems,
 } from "@/modules/timeline/service";
 import { dateInTimezone } from "@/modules/timeline/domain";
+import { getCurrentTimer } from "@/modules/time-tracking/service";
 
 export default async function HomePage({
   params,
@@ -22,7 +25,15 @@ export default async function HomePage({
     typeof query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.date)
       ? query.date
       : undefined;
-  const [timeline, targets, gettingStarted, linear] = await Promise.all([
+  const [
+    timeline,
+    targets,
+    gettingStarted,
+    linear,
+    recentItems,
+    activeTimer,
+    weekDays,
+  ] = await Promise.all([
     getDailyTimeline({
       userId: session.user.id,
       slug: workspaceSlug,
@@ -31,11 +42,17 @@ export default async function HomePage({
     listManualTimeTargets(session.user.id, workspaceSlug),
     getGettingStartedProgress(session.user.id, workspaceSlug),
     getLinearConnection({ slug: workspaceSlug, userId: session.user.id }),
+    listRecentWorkItems(session.user.id, workspaceSlug, 8),
+    getCurrentTimer(session.user.id),
+    getWeekDaySummaries({
+      userId: session.user.id,
+      slug: workspaceSlug,
+      ...(requestedDate ? { date: requestedDate } : {}),
+    }),
   ]);
   return (
     <PageContainer width="lg">
       <HomeView
-        gaps={timeline.gaps}
         slug={workspaceSlug}
         date={timeline.date}
         timezone={timeline.timezone}
@@ -44,6 +61,9 @@ export default async function HomePage({
         isToday={timeline.isToday}
         todayDate={dateInTimezone(new Date(), timeline.timezone)}
         targets={targets}
+        recentItems={recentItems}
+        weekDays={weekDays}
+        hasActiveTimer={Boolean(activeTimer)}
         gettingStarted={{
           ...gettingStarted,
           hasLinear: linear.connection?.status === "CONNECTED",

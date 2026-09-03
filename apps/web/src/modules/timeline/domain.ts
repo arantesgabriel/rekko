@@ -115,3 +115,49 @@ export function dateInTimezone(date: Date, timezone: string) {
   const p = partsInTimezone(date, timezone);
   return `${p.year}-${p.month}-${p.day}`;
 }
+
+/** Calendar-day arithmetic for `YYYY-MM-DD` values (noon UTC, no DST edge). */
+export function addCalendarDays(date: string, amount: number) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new RangeError("Invalid date");
+  const value = new Date(`${date}T12:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() + amount);
+  return value.toISOString().slice(0, 10);
+}
+
+export function startOfIsoWeek(date: string) {
+  const value = new Date(`${date}T12:00:00.000Z`);
+  const day = value.getUTCDay();
+  const delta = day === 0 ? -6 : 1 - day;
+  return addCalendarDays(date, delta);
+}
+
+export function weekDates(date: string) {
+  const start = startOfIsoWeek(date);
+  return Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index));
+}
+
+/** Same display floor as Insights: sub-minute noise is not a work session. */
+export const MIN_TIMELINE_SESSION_SECONDS = 60;
+
+export function isDisplayableSession(block: {
+  active: boolean;
+  durationSeconds: number;
+}) {
+  return block.active || block.durationSeconds >= MIN_TIMELINE_SESSION_SECONDS;
+}
+
+export function formatCompactDuration(seconds: number) {
+  const minutes = Math.floor(Math.max(0, seconds) / 60);
+  if (minutes <= 0) return "0m";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function formatWeekStripDuration(seconds: number) {
+  return Math.floor(Math.max(0, seconds) / 60) <= 0
+    ? "—"
+    : formatCompactDuration(seconds);
+}

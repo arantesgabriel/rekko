@@ -10,6 +10,7 @@ import {
 import {
   and,
   asc,
+  desc,
   eq,
   gt,
   isNotNull,
@@ -28,11 +29,14 @@ import { requireWorkspace } from "@/modules/workspaces/service";
 import type { Clock } from "@/modules/time-tracking/clock";
 import { systemClock } from "@/modules/time-tracking/clock";
 import {
+  addCalendarDays,
   calculateGaps,
   clipInterval,
   dateInTimezone,
   dayWindow,
   intervalSeconds,
+  weekDates,
+  zonedDateTimeToUtc,
 } from "./domain";
 import { ManualTimeError } from "./errors";
 
@@ -296,6 +300,111 @@ export async function getDailyTimeline(input: {
     ),
     isToday: selectedDate === dateInTimezone(now, person.timezone),
   };
+}
+
+export async function getWeekDaySummaries(input: {
+  userId: string;
+  slug: string;
+  date?: string;
+  clock?: Clock;
+}) {
+  const clock = input.clock ?? systemClock;
+  const context = await requireWorkspace(input.userId, input.slug);
+  const [person] = await db
+    .select({ timezone: user.timezone })
+    .from(user)
+    .where(eq(user.id, input.userId))
+    .limit(1);
+  if (!person) throw new Error("User timezone not found");
+  const selectedDate =
+    input.date ?? dateInTimezone(clock.now(), person.timezone);
+  const dates = weekDates(selectedDate);
+  const weekStart = dates[0]!;
+  const weekEndExclusive = addCalendarDays(dates[6]!, 1);
+  const window = {
+    start: zonedDateTimeToUtc(`${weekStart}T00:00:00`, person.timezone),
+    end: zonedDateTimeToUtc(`${weekEndExclusive}T00:00:00`, person.timezone),
+  };
+  const rows = await db
+    .select({
+      startedAt: timeSegment.startedAt,
+      endedAt: timeSegment.endedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .where(
+      and(
+        eq(timeEntry.userId, input.userId),
+        eq(timeEntry.workspaceId, context.id),
+        ne(timeEntry.status, "ARCHIVED"),
+        lt(timeSegment.startedAt, window.end),
+        or(isNull(timeSegment.endedAt), gt(timeSegment.endedAt, window.start)),
+      ),
+    );
+  const now = clock.now();
+  return dates.map((date) => {
+    const day = dayWindow(date, person.timezone);
+    const trackedSeconds = rows.reduce((total, row) => {
+      const clipped = clipInterval(
+        { start: row.startedAt, end: row.endedAt ?? now },
+        day,
+      );
+      return total + (clipped ? intervalSeconds(clipped) : 0);
+    }, 0);
+    return { date, trackedSeconds };
+  });
+}
+
+export async function listRecentWorkItems(
+  userId: string,
+  slug: string,
+  limit = 8,
+) {
+  const context = await requireWorkspace(userId, slug);
+  const rows = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      title: workItem.title,
+      projectName: project.name,
+      startedAt: timeSegment.startedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(project, eq(project.id, timeEntry.projectId))
+    .where(
+      and(
+        eq(timeEntry.userId, userId),
+        eq(timeEntry.workspaceId, context.id),
+        ne(timeEntry.status, "ARCHIVED"),
+        eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
+        ne(workItem.status, "DONE"),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .orderBy(desc(timeSegment.startedAt))
+    .limit(40);
+  const seen = new Set<string>();
+  const items: {
+    id: string;
+    projectId: string;
+    title: string;
+    projectName: string;
+  }[] = [];
+  for (const row of rows) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    items.push({
+      id: row.id,
+      projectId: row.projectId,
+      title: row.title,
+      projectName: row.projectName,
+    });
+    if (items.length >= limit) break;
+  }
+  return items;
 }
 
 export async function listManualTimeTargets(userId: string, slug: string) {

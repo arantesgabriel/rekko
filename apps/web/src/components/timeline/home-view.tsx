@@ -5,14 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { GettingStarted } from "@/components/timeline/getting-started";
+import { StartTimerButton } from "@/components/time-tracking/timer-controls";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   saveManualTimeAction,
   type ManualTimeActionState,
 } from "@/modules/timeline/actions";
 import {
-  finishTimerAction,
-  type TimerActionState,
-} from "@/modules/time-tracking/actions";
+  addCalendarDays,
+  calculateGaps,
+  formatCompactDuration,
+  formatWeekStripDuration,
+  isDisplayableSession,
+} from "@/modules/timeline/domain";
 
 type Block = {
   entryId: string;
@@ -33,16 +38,16 @@ type Target = {
   projects: { id: string; name: string }[];
   items: { id: string; projectId: string; title: string }[];
 };
+type RecentItem = {
+  id: string;
+  projectId: string;
+  title: string;
+  projectName: string;
+};
+type WeekDay = { date: string; trackedSeconds: number };
 
 const initialState: ManualTimeActionState = { status: "idle", message: "" };
-
-function duration(seconds: number) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return [hours ? `${hours}h` : "", minutes || !hours ? `${minutes}m` : ""]
-    .filter(Boolean)
-    .join(" ");
-}
+const WEEKDAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
 
 function localTime(value: Date, timezone: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -51,12 +56,6 @@ function localTime(value: Date, timezone: string) {
     minute: "2-digit",
     hour12: false,
   }).format(value);
-}
-
-function shiftDate(date: string, amount: number) {
-  const value = new Date(`${date}T12:00:00Z`);
-  value.setUTCDate(value.getUTCDate() + amount);
-  return value.toISOString().slice(0, 10);
 }
 
 function dayLabel(date: string, timezone: string) {
@@ -69,17 +68,30 @@ function dayLabel(date: string, timezone: string) {
   return label.charAt(0).toLocaleUpperCase("pt-BR") + label.slice(1);
 }
 
+function compactDate(date: string, timezone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "short",
+  })
+    .format(new Date(`${date}T12:00:00Z`))
+    .replace(".", "")
+    .replace(" de ", " ");
+}
+
 export function HomeView({
   blocks,
   date,
-  gaps,
   gettingStarted,
+  hasActiveTimer,
   isToday,
+  recentItems,
   slug,
   targets,
   timezone,
   todayDate,
   trackedSeconds,
+  weekDays,
 }: {
   blocks: Block[];
   date: string;
@@ -89,15 +101,19 @@ export function HomeView({
     hasManualEntry: boolean;
     hasTrackedTask: boolean;
   };
-  gaps: Gap[];
+  hasActiveTimer: boolean;
   isToday: boolean;
+  recentItems: RecentItem[];
   slug: string;
   targets: Target;
   timezone: string;
   todayDate: string;
   trackedSeconds: number;
+  weekDays: WeekDay[];
 }) {
   const router = useRouter();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
   const [editor, setEditor] = useState<null | {
     entryId?: string;
     start: string;
@@ -119,47 +135,92 @@ export function HomeView({
     initialState,
   );
   const [projectId, setProjectId] = useState("");
-  const [now, setNow] = useState(0);
-  const [finishState, finishAction, finishPending] = useActionState(
-    async (previous: TimerActionState, formData: FormData) => {
-      void formData;
-      const next = await finishTimerAction(previous);
-      if (next.status === "success") router.refresh();
-      return next;
-    },
-    { status: "idle", message: "" } satisfies TimerActionState,
+  const displayBlocks = useMemo(
+    () => blocks.filter(isDisplayableSession),
+    [blocks],
   );
-  const filteredItems = useMemo(
-    () => targets.items.filter((item) => item.projectId === projectId),
-    [targets.items, projectId],
+  const displayGaps = useMemo(
+    () =>
+      calculateGaps(
+        displayBlocks.map((block) => ({
+          start: block.visibleStart,
+          end: block.visibleEnd,
+        })),
+      ),
+    [displayBlocks],
   );
   const all = useMemo(
     () =>
       [
-        ...blocks.map((block) => ({
+        ...displayBlocks.map((block) => ({
           kind: "block" as const,
           start: block.visibleStart,
           block,
         })),
-        ...gaps.map((gap) => ({ kind: "gap" as const, start: gap.start, gap })),
+        ...displayGaps.map((gap) => ({
+          kind: "gap" as const,
+          start: gap.start,
+          gap,
+        })),
       ].sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [blocks, gaps],
+    [displayBlocks, displayGaps],
   );
-  const demandCount = new Set(
-    blocks.map((block) => block.workItemId).filter(Boolean),
-  ).size;
   const activeBlock = isToday
-    ? blocks.find((block) => block.active)
+    ? displayBlocks.find((block) => block.active)
     : undefined;
+  const continueItems = useMemo(() => {
+    if (hasActiveTimer || !isToday) return [];
+    return recentItems
+      .filter((item) => item.id !== activeBlock?.workItemId)
+      .slice(0, 4);
+  }, [activeBlock?.workItemId, hasActiveTimer, isToday, recentItems]);
+  const pickerItems = useMemo(() => {
+    const query = pickerQuery.trim().toLowerCase();
+    const byId = new Map(
+      targets.projects.map((project) => [project.id, project.name]),
+    );
+    const ranked = [
+      ...recentItems,
+      ...targets.items
+        .filter((item) => !recentItems.some((recent) => recent.id === item.id))
+        .map((item) => ({
+          id: item.id,
+          projectId: item.projectId,
+          title: item.title,
+          projectName: byId.get(item.projectId) ?? "Projeto",
+        })),
+    ];
+    if (!query) return ranked.slice(0, 8);
+    return ranked
+      .filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          item.projectName.toLowerCase().includes(query),
+      )
+      .slice(0, 8);
+  }, [pickerQuery, recentItems, targets.items, targets.projects]);
+  const weekTotal = weekDays.reduce(
+    (total, day) => total + day.trackedSeconds,
+    0,
+  );
+  const isFuture = date > todayDate;
+  const overlayOpen = pickerOpen || Boolean(editor);
+
   useEffect(() => {
-    if (!activeBlock) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [activeBlock]);
-  const activeDuration = activeBlock
-    ? activeBlock.durationSeconds +
-      Math.max(0, Math.floor((now - activeBlock.visibleEnd.getTime()) / 1000))
-    : 0;
+    if (!overlayOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setPickerOpen(false);
+      setEditor(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [overlayOpen]);
 
   function openEditor(value: NonNullable<typeof editor>) {
     setProjectId(value.projectId ?? targets.projects[0]?.id ?? "");
@@ -172,28 +233,35 @@ export function HomeView({
     });
   }
 
+  function openStart() {
+    if (!targets.items.length) return;
+    setPickerQuery("");
+    setPickerOpen(true);
+  }
+
   return (
     <div className="home-page">
-      <header className="home-header">
-        <h1>Home</h1>
-        <div className="home-day-total">
-          <strong>{duration(trackedSeconds)}</strong>
-          <span>{isToday ? "registradas hoje" : "registradas neste dia"}</span>
-        </div>
-        <nav className="home-date-nav" aria-label="Navegar entre dias">
-          <button
-            aria-label="Dia anterior"
-            onClick={() => go(shiftDate(date, -1))}
-            type="button"
-          >
-            ←
-          </button>
+      <PageHeader description={dayLabel(date, timezone)} title="Home" />
+
+      <div className="home-week-row">
+        <WeekStrip
+          date={date}
+          onSelect={go}
+          todayDate={todayDate}
+          weekDays={weekDays}
+        />
+        <div className="home-week-tools">
+          {!isToday ? (
+            <button
+              className="button button--ghost button--sm"
+              onClick={() => go(todayDate)}
+              type="button"
+            >
+              Hoje
+            </button>
+          ) : null}
           <label className="home-date-picker">
-            <span>
-              {isToday
-                ? `Hoje, ${dayLabel(date, timezone).replace(/^\S+[-,]?\s*/u, "")}`
-                : dayLabel(date, timezone)}
-            </span>
+            <span aria-hidden="true">{compactDate(date, timezone)}</span>
             <input
               aria-label="Selecionar data"
               max={todayDate}
@@ -202,96 +270,72 @@ export function HomeView({
               value={date}
             />
           </label>
-          <button
-            aria-label="Próximo dia"
-            disabled={date >= todayDate}
-            onClick={() => go(shiftDate(date, 1))}
-            type="button"
-          >
-            →
-          </button>
-          {!isToday ? (
-            <button
-              aria-label="Hoje"
-              className="home-date-nav__today"
-              onClick={() => go(todayDate)}
-              type="button"
-            >
-              Hoje
-            </button>
-          ) : null}
-        </nav>
-      </header>
+        </div>
+      </div>
 
-      <section
-        className={`home-now${activeBlock ? " is-active" : " is-idle"}`}
-        aria-labelledby="home-now-title"
-      >
-        <div className="home-now__heading">
+      {isToday ? (
+        <section
+          className={`home-now${activeBlock ? " is-active" : " is-idle"}`}
+          aria-labelledby="home-now-title"
+        >
           <h2 id="home-now-title">Agora</h2>
           {activeBlock ? (
-            <span>
-              <i aria-hidden="true" /> Em andamento
-            </span>
-          ) : null}
-        </div>
-        {activeBlock ? (
-          <div className="home-now__active">
-            <div className="home-now__activity">
-              <strong>
-                {activeBlock.workItemTitle ?? activeBlock.projectName}
-              </strong>
-              <span>
-                {activeBlock.workItemTitle
-                  ? activeBlock.projectName
-                  : "Projeto"}
-              </span>
+            <div className="home-now__active">
+              <span className="home-now__dot" aria-hidden="true" />
+              <div className="home-now__activity">
+                <strong>
+                  {activeBlock.workItemTitle ?? activeBlock.projectName}
+                </strong>
+                <span>
+                  {activeBlock.workItemTitle
+                    ? activeBlock.projectName
+                    : "Projeto"}
+                </span>
+              </div>
             </div>
-            <div className="home-now__clock">
-              <time>{duration(activeDuration)}</time>
-              <span>
-                Iniciado às {localTime(activeBlock.visibleStart, timezone)}
-              </span>
-            </div>
-            <form action={finishAction}>
-              <button
-                className="button button--secondary"
-                disabled={finishPending}
-                type="submit"
+          ) : targets.items.length === 0 ? (
+            <div className="home-now__idle">
+              <p>
+                Nenhuma demanda disponível. Crie uma demanda para começar a
+                registrar seu tempo.
+              </p>
+              <Link
+                className="button button--primary"
+                href={`/w/${slug}/work/new`}
               >
-                {finishPending ? "Finalizando…" : "Finalizar"}
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="home-now__idle">
-            <div>
-              <strong>Nenhuma atividade em andamento.</strong>
-              <span>
-                Selecione uma demanda para começar a registrar seu tempo.
-              </span>
+                Criar demanda
+              </Link>
             </div>
-            <Link className="button button--primary" href={`/w/${slug}/work`}>
-              Iniciar atividade
-            </Link>
-          </div>
-        )}
-        {finishState.status === "error" ? (
-          <p className="form-message form-message--error" role="alert">
-            {finishState.message}
-          </p>
-        ) : null}
-      </section>
+          ) : (
+            <div className="home-now__idle">
+              <p>Nenhuma atividade em andamento</p>
+              <button
+                className="button button--primary"
+                onClick={openStart}
+                type="button"
+              >
+                <span aria-hidden="true">+</span> Iniciar atividade
+              </button>
+            </div>
+          )}
+        </section>
+      ) : (
+        <p className="home-day-hint">
+          {isFuture
+            ? "Ainda não há registros para este dia."
+            : "Neste dia você pode adicionar registros ou reconstruir períodos sem registro."}
+        </p>
+      )}
 
       <section className="home-timeline" aria-labelledby="home-timeline-title">
         <div className="home-section-heading">
-          <h2 id="home-timeline-title">Registros</h2>
-          <span>
-            {duration(trackedSeconds)} · {demandCount}{" "}
-            {demandCount === 1 ? "demanda" : "demandas"}
-          </span>
+          <div className="home-section-heading__lead">
+            <h2 id="home-timeline-title">Registros</h2>
+            <span className="home-section-heading__total">
+              {formatCompactDuration(trackedSeconds)}
+            </span>
+          </div>
           <button
-            aria-label="Adicionar tempo"
             className="home-add-time"
             onClick={() => openEditor({ start: "09:00", end: "10:00" })}
             type="button"
@@ -338,22 +382,129 @@ export function HomeView({
             )}
           </ol>
         ) : (
-          <div className="today-empty">
-            <h2 className="sr-only">Nenhum tempo registrado neste dia.</h2>
-            <p>Ainda não há registros {isToday ? "hoje" : "neste dia"}.</p>
+          <div className="home-empty">
+            <p className="home-empty__title">
+              {isToday
+                ? "Nenhum tempo registrado hoje."
+                : "Nenhum tempo registrado neste dia."}
+            </p>
+            <p>
+              {isToday
+                ? "Comece uma atividade acima ou registre algo que você já fez."
+                : "Adicione um registro do que aconteceu neste dia."}
+            </p>
+            <button
+              className="home-add-time"
+              onClick={() => openEditor({ start: "09:00", end: "10:00" })}
+              type="button"
+            >
+              + Adicionar registro
+            </button>
           </div>
         )}
-        {all.length > 0 && trackedSeconds > 0 ? (
-          <div className="home-timeline__footer">
-            <Link href={`/w/${slug}/insights`}>
-              Ver insights <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        ) : null}
+
+        <div className="home-week-context">
+          <span>Esta semana · {formatCompactDuration(weekTotal)}</span>
+          <Link href={`/w/${slug}/insights`}>
+            Ver insights <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </section>
+
+      {continueItems.length > 0 ? (
+        <section
+          className="home-continue"
+          aria-labelledby="home-continue-title"
+        >
+          <h2 id="home-continue-title">Continuar trabalhando</h2>
+          <ul>
+            {continueItems.map((item) => (
+              <li key={item.id}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.projectName}</span>
+                </div>
+                <StartTimerButton
+                  slug={slug}
+                  projectId={item.projectId}
+                  workItemId={item.id}
+                  activeOnItem={false}
+                  hasActiveTimer={false}
+                />
+              </li>
+            ))}
+          </ul>
+          <Link className="home-continue__more" href={`/w/${slug}/work`}>
+            Ver demandas <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+      ) : null}
 
       {isToday && gettingStarted ? (
         <GettingStarted progress={gettingStarted} slug={slug} />
+      ) : null}
+
+      {pickerOpen ? (
+        <div className="time-drawer-backdrop">
+          <button
+            aria-label="Fechar seleção"
+            onClick={() => setPickerOpen(false)}
+            type="button"
+          />
+          <aside
+            aria-labelledby="quick-start-title"
+            aria-modal="true"
+            className="time-drawer time-drawer--pick"
+            role="dialog"
+          >
+            <header>
+              <h2 id="quick-start-title">Escolha uma demanda</h2>
+              <button
+                aria-label="Fechar"
+                className="button button--ghost button--icon"
+                onClick={() => setPickerOpen(false)}
+                type="button"
+              >
+                ×
+              </button>
+            </header>
+            <div className="home-quick-start">
+              <label className="home-quick-start__search">
+                <span className="sr-only">Buscar demanda ou projeto</span>
+                <input
+                  autoFocus
+                  onChange={(event) => setPickerQuery(event.target.value)}
+                  placeholder="Buscar demanda ou projeto…"
+                  type="search"
+                  value={pickerQuery}
+                />
+              </label>
+              {pickerItems.length ? (
+                <ul>
+                  {pickerItems.map((item) => (
+                    <li key={item.id}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <span>{item.projectName}</span>
+                      </div>
+                      <StartTimerButton
+                        slug={slug}
+                        projectId={item.projectId}
+                        workItemId={item.id}
+                        activeOnItem={item.id === activeBlock?.workItemId}
+                        hasActiveTimer={hasActiveTimer}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="home-quick-start__empty">
+                  Nenhuma demanda encontrada.
+                </p>
+              )}
+            </div>
+          </aside>
+        </div>
       ) : null}
 
       {editor ? (
@@ -442,11 +593,13 @@ export function HomeView({
                   required
                 >
                   <option value="">Selecione uma demanda</option>
-                  {filteredItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}
-                    </option>
-                  ))}
+                  {targets.items
+                    .filter((item) => item.projectId === projectId)
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                      </option>
+                    ))}
                 </select>
               </label>
               <label>
@@ -491,6 +644,68 @@ export function HomeView({
   );
 }
 
+function WeekStrip({
+  date,
+  onSelect,
+  todayDate,
+  weekDays,
+}: {
+  date: string;
+  onSelect: (next: string) => void;
+  todayDate: string;
+  weekDays: WeekDay[];
+}) {
+  const weekStart = weekDays[0]?.date;
+  useEffect(() => {
+    document
+      .querySelector(".home-week__day.is-selected")
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [date]);
+  return (
+    <nav className="home-week" aria-label="Dias da semana">
+      <button
+        aria-label="Semana anterior"
+        className="home-week__shift"
+        onClick={() => weekStart && onSelect(addCalendarDays(weekStart, -1))}
+        type="button"
+      >
+        ←
+      </button>
+      <div className="home-week__days">
+        {weekDays.map((day, index) => {
+          const selected = day.date === date;
+          const disabled = day.date > todayDate;
+          return (
+            <button
+              aria-current={selected ? "date" : undefined}
+              aria-label={`${WEEKDAY_LABELS[index]}, ${formatWeekStripDuration(day.trackedSeconds)}`}
+              className={`home-week__day${selected ? " is-selected" : ""}`}
+              disabled={disabled}
+              key={day.date}
+              onClick={() => onSelect(day.date)}
+              type="button"
+            >
+              <span>{WEEKDAY_LABELS[index]}</span>
+              <strong>{formatWeekStripDuration(day.trackedSeconds)}</strong>
+            </button>
+          );
+        })}
+      </div>
+      <button
+        aria-label="Próxima semana"
+        className="home-week__shift"
+        disabled={!weekDays[6] || weekDays[6].date >= todayDate}
+        onClick={() =>
+          weekDays[6] && onSelect(addCalendarDays(weekDays[6].date, 1))
+        }
+        type="button"
+      >
+        →
+      </button>
+    </nav>
+  );
+}
+
 function TimelineEntry({
   block,
   onEdit,
@@ -501,26 +716,28 @@ function TimelineEntry({
   timezone: string;
 }) {
   const title = block.workItemTitle ?? block.projectName;
-  const context = block.workItemTitle ? block.projectName : block.description;
+  const endLabel = block.active
+    ? "agora"
+    : localTime(block.visibleEnd, timezone);
   return (
     <li className={`home-timeline-entry${block.active ? " is-active" : ""}`}>
       <div className="home-timeline-entry__time">
-        <time>{localTime(block.visibleStart, timezone)}</time>
-        <span>
-          {block.active ? "agora" : localTime(block.visibleEnd, timezone)}
-        </span>
+        <time dateTime={block.visibleStart.toISOString()}>
+          {localTime(block.visibleStart, timezone)}
+        </time>
+        <span>{endLabel}</span>
       </div>
       <span className="home-timeline-entry__rail" aria-hidden="true" />
       <article
-        aria-label={`${title}, ${localTime(block.visibleStart, timezone)} até ${localTime(block.visibleEnd, timezone)}, ${duration(block.durationSeconds)}`}
-        className="home-timeline-block timeline-block"
+        aria-label={`${title}, ${localTime(block.visibleStart, timezone)} até ${endLabel}, ${formatCompactDuration(block.durationSeconds)}`}
+        className="home-timeline-block"
       >
         <div className="home-timeline-block__copy">
           <strong>{title}</strong>
-          {context ? <span>{context}</span> : null}
+          {block.workItemTitle ? <span>{block.projectName}</span> : null}
         </div>
         <div className="home-timeline-block__details">
-          <time>{duration(block.durationSeconds)}</time>
+          <time>{formatCompactDuration(block.durationSeconds)}</time>
           {block.source === "MANUAL" ? (
             <details className="home-entry-actions">
               <summary aria-label="Mais ações" title="Mais ações">
@@ -560,13 +777,13 @@ function TimelineGap({
       </div>
       <span className="home-timeline-entry__rail is-gap" aria-hidden="true" />
       <div className="home-timeline-gap__content">
-        <span>{duration(seconds)} sem registro</span>
+        <span>{formatCompactDuration(seconds)} sem registro</span>
         <button
-          className="button button--ghost button--sm"
+          className="home-reconstruct"
           onClick={onReconstruct}
           type="button"
         >
-          Reconstruir
+          Reconstruir →
         </button>
       </div>
     </li>

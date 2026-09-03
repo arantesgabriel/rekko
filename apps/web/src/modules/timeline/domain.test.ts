@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  addCalendarDays,
   calculateGaps,
   clipInterval,
   dayWindow,
+  formatCompactDuration,
+  formatWeekStripDuration,
   intervalSeconds,
   intervalsOverlap,
+  isDisplayableSession,
+  startOfIsoWeek,
+  weekDates,
   zonedDateTimeToUtc,
 } from "./domain";
 
@@ -79,5 +85,44 @@ describe("timeline intervals", () => {
         "America/Sao_Paulo",
       ).toISOString(),
     ).toBe("2026-08-27T12:00:00.000Z");
+  });
+
+  it("builds Monday-first week dates", () => {
+    expect(startOfIsoWeek("2026-09-03")).toBe("2026-08-31");
+    expect(weekDates("2026-09-03")).toEqual([
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-05",
+      "2026-09-06",
+    ]);
+    expect(addCalendarDays("2026-09-03", 7)).toBe("2026-09-10");
+  });
+
+  it("hides sub-minute idle sessions from the timeline", () => {
+    expect(isDisplayableSession({ active: false, durationSeconds: 0 })).toBe(
+      false,
+    );
+    expect(isDisplayableSession({ active: false, durationSeconds: 59 })).toBe(
+      false,
+    );
+    expect(isDisplayableSession({ active: true, durationSeconds: 12 })).toBe(
+      true,
+    );
+    expect(isDisplayableSession({ active: false, durationSeconds: 60 })).toBe(
+      true,
+    );
+  });
+
+  it("formats compact durations without treating zero minutes as a session", () => {
+    expect(formatCompactDuration(0)).toBe("0m");
+    expect(formatCompactDuration(45)).toBe("0m");
+    expect(formatCompactDuration(90)).toBe("1m");
+    expect(formatCompactDuration(4980)).toBe("1h 23m");
+    expect(formatWeekStripDuration(0)).toBe("—");
+    expect(formatWeekStripDuration(59)).toBe("—");
+    expect(formatWeekStripDuration(3600)).toBe("1h");
   });
 });

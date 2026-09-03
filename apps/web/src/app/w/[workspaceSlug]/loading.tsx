@@ -9,8 +9,10 @@ export default function HomeLoading() {
         role="status"
       >
         <div className="home-skeleton__heading" aria-hidden="true" />
+        <div className="home-skeleton__week" aria-hidden="true" />
         <div className="home-skeleton__summary" aria-hidden="true" />
         <div className="home-skeleton__timeline" aria-hidden="true" />
+        <div className="home-skeleton__summary" aria-hidden="true" />
       </div>
     </PageContainer>
   );
