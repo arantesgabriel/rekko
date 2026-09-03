@@ -137,7 +137,7 @@ export function TimerDock({
           </form>
         )}
         <details className="timer-switcher">
-          <summary className="button button--secondary">Trocar</summary>
+          <summary className="button button--ghost">Trocar</summary>
           <div className="timer-switcher__panel">
             <strong>Trocar atividade</strong>
             <TimerTargets targets={targets} timer={timer} />
@@ -145,7 +145,7 @@ export function TimerDock({
         </details>
         <form action={finishAction}>
           <button
-            className="button button--secondary"
+            className="button button--ghost"
             disabled={finishPending}
             type="submit"
           >
@@ -253,12 +253,14 @@ export function StartTimerButton({
   workItemId,
   activeOnItem,
   hasActiveTimer,
+  sessionStatus = null,
 }: {
   slug: string;
   projectId: string;
   workItemId: string;
   activeOnItem: boolean;
   hasActiveTimer: boolean;
+  sessionStatus?: "RUNNING" | "PAUSED" | null;
 }) {
   const router = useRouter();
   const action = hasActiveTimer
@@ -276,23 +278,28 @@ export function StartTimerButton({
   if (activeOnItem)
     return (
       <span className="timer-working-label">
-        <span className="timer-status-dot" />
-        Em andamento
+        <span aria-hidden="true" className="timer-status-dot" />
+        {sessionStatus === "PAUSED" ? "Pausado" : "Em andamento"}
       </span>
     );
   return (
     <div className="start-timer-action">
       <form action={formAction}>
         <button
-          className={
-            hasActiveTimer
-              ? "button button--secondary button--sm"
-              : "button button--primary button--sm"
-          }
+          className="button button--ghost button--sm start-timer-button"
           disabled={pending}
           type="submit"
         >
-          {pending ? "Aguarde…" : hasActiveTimer ? "Trocar" : "Iniciar"}
+          {pending ? (
+            "Aguarde…"
+          ) : hasActiveTimer ? (
+            "Trocar"
+          ) : (
+            <>
+              <span aria-hidden="true">▶</span>
+              Iniciar
+            </>
+          )}
         </button>
       </form>
       {state.status === "error" && <small role="alert">{state.message}</small>}

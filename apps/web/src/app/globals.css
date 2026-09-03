@@ -1558,6 +1558,7 @@ html {
 
 .timer-dock {
   align-items: center;
+  animation: timer-dock-in var(--motion-standard) var(--ease-out);
   background: var(--surface-primary);
   border-top: 1px solid var(--border-default);
   display: grid;
@@ -1565,24 +1566,11 @@ html {
   gap: var(--space-4);
   grid-template-columns: minmax(0, 1fr) auto auto;
   min-height: var(--timer-dock-height);
-  padding: var(--space-3) var(--space-page-x);
+  padding: var(--space-2) var(--space-page-x);
   position: relative;
   z-index: var(--z-sticky);
 }
 
-.timer-dock::before {
-  background: var(--brand-violet);
-  content: "";
-  height: 2px;
-  left: var(--space-page-x);
-  position: absolute;
-  right: 55%;
-  top: 0;
-}
-
-.timer-dock--paused::before {
-  background: var(--text-muted);
-}
 .timer-dock__context {
   align-items: center;
   display: flex;
@@ -1711,7 +1699,7 @@ html {
   .timer-dock {
     gap: var(--space-2);
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-4);
   }
   .timer-dock__context span {
     display: none;

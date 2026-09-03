@@ -13,12 +13,16 @@ const RECENT_LIMIT = 5;
 export function ProjectOverview({
   demandsHref,
   onOpenDemand,
+  slug,
   summary,
+  timezone,
   unfilteredDemands,
 }: {
   demandsHref: string;
   onOpenDemand: (demandId: string) => void;
+  slug: string;
   summary: ProjectSummary;
+  timezone: string;
   unfilteredDemands: DemandListItem[];
 }) {
   const completedCount = Math.max(
@@ -88,7 +92,12 @@ export function ProjectOverview({
             title="Nenhuma demanda neste projeto"
           />
         ) : (
-          <ProjectDemandTable demands={recent} onOpen={onOpenDemand} />
+          <ProjectDemandTable
+            demands={recent}
+            onOpen={onOpenDemand}
+            slug={slug}
+            timezone={timezone}
+          />
         )}
       </section>
     </div>

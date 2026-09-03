@@ -9,6 +9,7 @@ export function Drawer({
   children,
   eyebrow,
   footer,
+  headerActions,
   onClose,
   open,
   title,
@@ -16,6 +17,7 @@ export function Drawer({
   children: ReactNode;
   eyebrow?: ReactNode;
   footer?: ReactNode;
+  headerActions?: ReactNode;
   onClose: () => void;
   open: boolean;
   title: ReactNode;
@@ -85,15 +87,18 @@ export function Drawer({
             ) : null}
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button
-            aria-label="Fechar painel"
-            className="button button--ghost button--icon button--sm"
-            onClick={onClose}
-            ref={closeRef}
-            type="button"
-          >
-            <span aria-hidden="true">×</span>
-          </button>
+          <div className="drawer__header-actions">
+            {headerActions}
+            <button
+              aria-label="Fechar painel"
+              className="button button--ghost button--icon button--sm"
+              onClick={onClose}
+              ref={closeRef}
+              type="button"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
         </header>
         <div className="drawer__body">{children}</div>
         {footer ? <footer className="drawer__footer">{footer}</footer> : null}

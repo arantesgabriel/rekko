@@ -8,10 +8,14 @@ export function ProjectDemandsPanel({
   demands,
   filter,
   onOpenDemand,
+  slug,
+  timezone,
 }: {
   demands: DemandListItem[];
   filter: { kind: string; query: string; status: string };
   onOpenDemand: (demandId: string) => void;
+  slug: string;
+  timezone: string;
 }) {
   const filtered =
     Boolean(filter.query) || filter.status !== "ALL" || filter.kind !== "ALL";
@@ -47,7 +51,12 @@ export function ProjectDemandsPanel({
           }
         />
       ) : (
-        <ProjectDemandTable demands={demands} onOpen={onOpenDemand} />
+        <ProjectDemandTable
+          demands={demands}
+          onOpen={onOpenDemand}
+          slug={slug}
+          timezone={timezone}
+        />
       )}
     </section>
   );

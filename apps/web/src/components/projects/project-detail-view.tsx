@@ -100,7 +100,9 @@ export function ProjectDetailView({
           <ProjectOverview
             demandsHref={tabHref(slug, project.id, "demands", filter)}
             onOpenDemand={setSelectedDemandId}
+            slug={slug}
             summary={summary}
+            timezone={timezone}
             unfilteredDemands={demands}
           />
         ) : null}
@@ -109,6 +111,8 @@ export function ProjectDetailView({
             demands={demands}
             filter={filter}
             onOpenDemand={setSelectedDemandId}
+            slug={slug}
+            timezone={timezone}
           />
         ) : null}
         {view === "activity" ? (

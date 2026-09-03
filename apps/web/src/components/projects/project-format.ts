@@ -9,6 +9,23 @@ export function formatDuration(seconds: number) {
   );
 }
 
+export function formatTracked(seconds: number) {
+  return seconds >= 60 ? formatDuration(seconds) : "—";
+}
+
+export function formatUpdated(
+  date: Date | null,
+  timezone: string,
+): { label: string; title?: string } {
+  if (!date) return { label: "—" };
+  const full = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: timezone,
+  }).format(date);
+  return { label: formatActivityDay(date, timezone) ?? "—", title: full };
+}
+
 export function formatActivityDay(date: Date | null, timezone: string) {
   if (!date) return null;
   const today = new Intl.DateTimeFormat("en-CA", {

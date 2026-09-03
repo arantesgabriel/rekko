@@ -4,24 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { DemandActionsMenu } from "@/components/demands/demand-actions-menu";
+import { DemandStatus } from "@/components/demands/demand-status";
 import { DemandForm } from "@/components/projects/new-demand-form";
+import { formatDuration } from "@/components/projects/project-format";
 import { Drawer } from "@/components/ui/drawer";
-import { formatEstimate, workItemStatusLabel } from "@/modules/projects/domain";
+import { formatEstimate } from "@/modules/projects/domain";
 import type {
   DemandListItem,
   DemandProjectOption,
 } from "@/modules/projects/service";
-
-function formatDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(seconds, 0) / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return (
-    [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
-      .filter(Boolean)
-      .join(" ") || "0m"
-  );
-}
 
 function formatRecordDate(date: Date, timezone: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -40,6 +31,15 @@ function formatRecordTime(date: Date, timezone: string) {
     timeZone: timezone,
     hour12: false,
   }).format(date);
+}
+
+function recordDurationLabel(record: {
+  durationSeconds: number;
+  endedAt: Date | null;
+}) {
+  if (!record.endedAt) return "Em andamento";
+  if (record.durationSeconds < 60) return null;
+  return formatDuration(record.durationSeconds);
 }
 
 export function DemandDrawer({
@@ -83,7 +83,6 @@ export function DemandDrawer({
     setDirty(false);
     setEditing(true);
   };
-  const identifier = demand?.externalIdentifier ?? "Demanda";
   const title = isCreate
     ? "Nova demanda"
     : editing
@@ -93,26 +92,45 @@ export function DemandDrawer({
   const formProjects = projectId
     ? projects.filter((project) => project.id === projectId)
     : projects;
+  const visibleRecords =
+    demand?.recentRecords.filter(
+      (record) => !record.endedAt || record.durationSeconds >= 60,
+    ) ?? [];
 
   return (
     <Drawer
-      eyebrow={isCreate ? "Trabalho operacional" : identifier}
-      onClose={requestClose}
-      open={open}
-      title={title}
-      {...(!isCreate && !editing && canManage && demand.source === "MANUAL"
-        ? {
-            footer: (
+      {...(demand?.externalIdentifier && !isCreate && !editing
+        ? { eyebrow: demand.externalIdentifier }
+        : {})}
+      headerActions={
+        !isCreate && !editing && demand ? (
+          <>
+            {canManage && demand.source === "MANUAL" ? (
               <button
-                className="button button--primary"
+                className="button button--ghost button--sm"
                 onClick={beginEditing}
                 type="button"
               >
-                Editar demanda
+                Editar
               </button>
-            ),
-          }
-        : {})}
+            ) : null}
+            {canManage ? (
+              <DemandActionsMenu
+                canManage={canManage}
+                demand={demand}
+                onEdit={beginEditing}
+                projects={projects}
+                slug={slug}
+                {...(onChanged ? { onChanged } : {})}
+                {...(onFeedback ? { onFeedback } : {})}
+              />
+            ) : null}
+          </>
+        ) : undefined
+      }
+      onClose={requestClose}
+      open={open}
+      title={title}
     >
       {isCreate || editing ? (
         <>
@@ -140,45 +158,28 @@ export function DemandDrawer({
       ) : (
         <div className="demand-drawer__content">
           <div className="demand-drawer__topline">
-            <span
-              className={`demand-status demand-status--${demand.status.toLowerCase()}`}
-            >
-              <span aria-hidden="true" />
-              {workItemStatusLabel[demand.status]}
-            </span>
-            {canManage ? (
-              <DemandActionsMenu
-                canManage={canManage}
-                demand={demand}
-                onEdit={beginEditing}
-                projects={projects}
-                slug={slug}
-                {...(onChanged ? { onChanged } : {})}
-                {...(onFeedback ? { onFeedback } : {})}
-              />
-            ) : null}
-          </div>
-          <div className="demand-drawer__context">
-            <span className="drawer-label">Projeto</span>
             <Link href={`/w/${slug}/projects/${demand.projectId}`}>
-              {demand.projectName} <span aria-hidden="true">→</span>
+              {demand.projectName}
             </Link>
-            <span className="drawer-meta">
-              {demand.source === "LINEAR" ? "Linear" : "Manual"}
-            </span>
+            <span aria-hidden="true">·</span>
+            <DemandStatus status={demand.status} />
           </div>
           <dl className="demand-drawer__facts">
             <div>
+              <dt>Registrado</dt>
+              <dd>
+                {demand.trackedSeconds >= 60
+                  ? formatDuration(demand.trackedSeconds)
+                  : "—"}
+              </dd>
+            </div>
+            <div>
               <dt>Estimativa</dt>
-              <dd>{formatEstimate(demand.estimatedMinutes)}</dd>
-            </div>
-            <div>
-              <dt>Tempo registrado</dt>
-              <dd>{formatDuration(demand.trackedSeconds)}</dd>
-            </div>
-            <div>
-              <dt>Registros</dt>
-              <dd>{demand.recordCount || "Nenhum"}</dd>
+              <dd>
+                {demand.estimatedMinutes
+                  ? formatEstimate(demand.estimatedMinutes)
+                  : "—"}
+              </dd>
             </div>
           </dl>
           {demand.parentWorkItemId ? (
@@ -193,31 +194,29 @@ export function DemandDrawer({
             </section>
           ) : null}
           <section
-            className="demand-drawer__section"
             aria-labelledby="demand-records-title"
+            className="demand-drawer__section"
           >
-            <div className="demand-drawer__section-heading">
-              <h3 id="demand-records-title">Registros recentes</h3>
-              <span>{demand.recordCount || "Nenhum"}</span>
-            </div>
-            {demand.recentRecords.length ? (
+            <h3 id="demand-records-title">Registros recentes</h3>
+            {visibleRecords.length ? (
               <ol className="demand-records">
-                {demand.recentRecords.map((record) => (
-                  <li key={record.id}>
-                    <div>
-                      <strong>
+                {visibleRecords.map((record) => {
+                  const duration = recordDurationLabel(record);
+                  return (
+                    <li key={record.id}>
+                      <span>
                         {formatRecordDate(record.startedAt, timezone)}
-                      </strong>
+                      </span>
                       <span>
                         {formatRecordTime(record.startedAt, timezone)}
                         {record.endedAt
                           ? ` → ${formatRecordTime(record.endedAt, timezone)}`
-                          : " · em andamento"}
+                          : " → agora"}
                       </span>
-                    </div>
-                    <time>{formatDuration(record.durationSeconds)}</time>
-                  </li>
-                ))}
+                      <time>{duration}</time>
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <p className="drawer-empty-copy">

@@ -46,3 +46,7 @@ export const workItemStatusLabel = {
   IN_PROGRESS: "Em andamento",
   DONE: "Concluída",
 } as const;
+
+export function demandStatusLabel(status: (typeof workItemStatuses)[number]) {
+  return status === "DONE" ? "Concluída" : "Ativa";
+}

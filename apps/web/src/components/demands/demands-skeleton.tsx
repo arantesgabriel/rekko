@@ -10,19 +10,15 @@ export function DemandsSkeleton() {
           <span className="skeleton-line skeleton-line--title" />
           <span className="skeleton-line skeleton-line--copy" />
         </div>
-        <div className="demands-skeleton__actions">
-          <span className="skeleton-control" />
-          <span className="skeleton-control skeleton-control--icon" />
-        </div>
+        <span className="skeleton-control skeleton-control--icon" />
       </div>
-      <div className="page-toolbar page-toolbar--surface" aria-hidden="true">
+      <div className="page-toolbar" aria-hidden="true">
         <span className="skeleton-control skeleton-control--wide" />
         <span className="skeleton-control" />
         <span className="skeleton-control" />
       </div>
       <div className="demands-skeleton__list" aria-hidden="true">
-        <span className="skeleton-line skeleton-line--section" />
-        {Array.from({ length: 6 }).map((_, index) => (
+        {Array.from({ length: 7 }).map((_, index) => (
           <span className="demands-skeleton__row" key={index} />
         ))}
       </div>

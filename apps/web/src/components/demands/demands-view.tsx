@@ -6,8 +6,10 @@ import type {
 } from "@/modules/projects/service";
 
 export function DemandsView({
+  activeTimerStatus,
   activeTimerWorkItemId,
   canManage,
+  counts,
   demands,
   hasActiveTimer,
   parentOptions,
@@ -16,8 +18,10 @@ export function DemandsView({
   slug,
   timezone,
 }: {
+  activeTimerStatus: "RUNNING" | "PAUSED" | null;
   activeTimerWorkItemId: string | null;
   canManage: boolean;
+  counts: { all: number; active: number; done: number };
   demands: DemandListItem[];
   hasActiveTimer: boolean;
   parentOptions: DemandParentOption[];
@@ -32,8 +36,10 @@ export function DemandsView({
 }) {
   return (
     <DemandsWorkspace
+      activeTimerStatus={activeTimerStatus}
       activeTimerWorkItemId={activeTimerWorkItemId}
       canManage={canManage}
+      counts={counts}
       demands={demands}
       hasActiveTimer={hasActiveTimer}
       parentOptions={parentOptions}

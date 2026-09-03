@@ -112,9 +112,6 @@ test("unifies the operational home and manages demands", async ({
     )
     .toBe(expectedControlHeight);
   if ((page.viewportSize()?.width ?? 1280) >= 768) {
-    const projectsLink = page
-      .locator(".page-header")
-      .getByRole("link", { name: "Projetos", exact: true });
     const rightBefore = await createDemand.evaluate(
       (button) => button.getBoundingClientRect().right,
     );
@@ -127,17 +124,14 @@ test("unifies the operational home and manages demands", async ({
     const rightAfter = await createDemand.evaluate(
       (button) => button.getBoundingClientRect().right,
     );
-    const gapAfter = await projectsLink.evaluate(
-      (link) =>
-        link.nextElementSibling!.getBoundingClientRect().left -
-        link.getBoundingClientRect().right,
-    );
     const labelFontSize = await createDemand
       .locator(".demands-create-button__label")
       .evaluate((label) => getComputedStyle(label).fontSize);
     expect(Math.abs(rightAfter - rightBefore)).toBeLessThanOrEqual(1);
-    expect(gapAfter).toBe(8);
     expect(labelFontSize).toBe("12px");
+    await expect(
+      page.locator(".page-header").getByRole("link", { name: "Projetos" }),
+    ).toHaveCount(0);
   }
   await createDemand.click();
   await page.getByLabel("Projeto *").selectOption({ label: projectName });
@@ -189,7 +183,7 @@ test("unifies the operational home and manages demands", async ({
     page
       .locator(".demand-row")
       .filter({ hasText: demandName })
-      .locator(".demand-row__time"),
+      .locator(".demand-row__tracked"),
   ).toContainText("1h");
   await expect
     .poll(() =>

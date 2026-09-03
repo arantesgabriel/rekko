@@ -207,12 +207,13 @@ export async function listDemands(input: {
       )!,
     );
   }
-  if (input.status === "ACTIVE")
-    filters.push(inArray(workItem.status, ["TODO", "IN_PROGRESS"]));
-  if (input.status === "DONE") filters.push(eq(workItem.status, "DONE"));
   if (input.projectId) filters.push(eq(workItem.projectId, input.projectId));
+  const listFilters = [...filters];
+  if (input.status === "ACTIVE")
+    listFilters.push(inArray(workItem.status, ["TODO", "IN_PROGRESS"]));
+  if (input.status === "DONE") listFilters.push(eq(workItem.status, "DONE"));
 
-  const [rows, projectOptions, parentOptions] = await Promise.all([
+  const [rows, statusRows, projectOptions, parentOptions] = await Promise.all([
     db
       .select({
         id: workItem.id,
@@ -238,8 +239,23 @@ export async function listDemands(input: {
           eq(project.workspaceId, context.id),
         ),
       )
-      .where(and(...filters))
+      .where(and(...listFilters))
       .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
+    db
+      .select({
+        status: workItem.status,
+        total: count(),
+      })
+      .from(workItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, workItem.projectId),
+          eq(project.workspaceId, context.id),
+        ),
+      )
+      .where(and(...filters))
+      .groupBy(workItem.status),
     db
       .select({ id: project.id, name: project.name })
       .from(project)
@@ -281,8 +297,19 @@ export async function listDemands(input: {
       summaries.get(row.id),
     ),
   );
+  const doneCount = statusRows
+    .filter((row) => row.status === "DONE")
+    .reduce((sum, row) => sum + Number(row.total), 0);
+  const activeCount = statusRows
+    .filter((row) => row.status !== "DONE")
+    .reduce((sum, row) => sum + Number(row.total), 0);
   return {
     context,
+    counts: {
+      all: activeCount + doneCount,
+      active: activeCount,
+      done: doneCount,
+    },
     demands,
     projectOptions: projectOptions satisfies DemandProjectOption[],
     parentOptions: parentOptions satisfies DemandParentOption[],

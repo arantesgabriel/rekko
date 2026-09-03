@@ -34,7 +34,9 @@ export default async function DemandsPage({
     <PageContainer width="lg">
       <DemandsView
         canManage={data.context.role !== "MEMBER"}
+        counts={data.counts}
         demands={data.demands}
+        activeTimerStatus={activeTimer?.status ?? null}
         activeTimerWorkItemId={activeTimer?.workItemId ?? null}
         hasActiveTimer={Boolean(activeTimer)}
         parentOptions={data.parentOptions}
