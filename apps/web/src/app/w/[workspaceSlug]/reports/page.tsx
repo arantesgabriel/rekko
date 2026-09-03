@@ -43,7 +43,6 @@ export default async function ReportsPage({
     <PageContainer width="lg">
       <PageHeader
         description="Confira as horas por colaborador, projeto e demanda. O relatório usa a timezone do Workspace."
-        eyebrow={data.context.name}
         title="Relatórios"
       />
       <ReportsView

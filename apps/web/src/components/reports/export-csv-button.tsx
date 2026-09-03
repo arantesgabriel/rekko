@@ -33,7 +33,7 @@ export function ExportCsvButton({ href }: { href: string }) {
   return (
     <div className="reports-export">
       <button
-        className="button button--primary"
+        className="button button--secondary"
         disabled={pending}
         onClick={exportCsv}
         type="button"

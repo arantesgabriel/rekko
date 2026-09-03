@@ -1,16 +1,16 @@
 import { PageContainer } from "@/components/ui/page-container";
 
-export default function TodayLoading() {
+export default function HomeLoading() {
   return (
     <PageContainer width="lg">
       <div
-        className="today-skeleton"
-        aria-label="Carregando seu dia"
+        className="home-skeleton"
+        aria-label="Carregando a Home"
         role="status"
       >
-        <div className="today-skeleton__heading" aria-hidden="true" />
-        <div className="today-skeleton__summary" aria-hidden="true" />
-        <div className="today-skeleton__timeline" aria-hidden="true" />
+        <div className="home-skeleton__heading" aria-hidden="true" />
+        <div className="home-skeleton__summary" aria-hidden="true" />
+        <div className="home-skeleton__timeline" aria-hidden="true" />
       </div>
     </PageContainer>
   );

@@ -42,6 +42,23 @@ export function formatReportDate(value: Date, timezone: string) {
   );
 }
 
+export function formatReportDisplayDate(value: Date, timezone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  }).format(value);
+}
+
+export function formatReportShortDisplayDate(value: Date, timezone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+  }).format(value);
+}
+
 export function formatReportDateTime(value: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
@@ -53,6 +70,19 @@ export function formatReportDateTime(value: Date, timezone: string) {
     year: "numeric",
   }).formatToParts(value);
   return `${formatReportDate(value, timezone)} ${part(parts, "hour")}:${part(parts, "minute")}`;
+}
+
+export function formatReportDisplayDateTime(value: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  }).formatToParts(value);
+  return `${formatReportDisplayDate(value, timezone)} ${part(parts, "hour")}:${part(parts, "minute")}`;
 }
 
 export function formatReportInputDate(value: Date, timezone: string) {

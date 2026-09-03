@@ -24,24 +24,6 @@ export function HomeIcon({ className }: IconProps) {
   );
 }
 
-export function TimelineIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 20 20"
-    >
-      <path
-        d="M3 5.5h5.5M10.5 5.5H17M3 10h8M13 10h4M3 14.5h3.5M8.5 14.5H17"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
 export function ProjectsIcon({ className }: IconProps) {
   return (
     <svg
@@ -60,6 +42,25 @@ export function ProjectsIcon({ className }: IconProps) {
         y="3.5"
       />
       <path d="M3.5 8h13" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+export function DemandsIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d="M5 4.5h10M5 9.5h6M5 14.5h10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.6"
+      />
+      <circle cx="14" cy="9.5" r="1.3" fill="currentColor" />
     </svg>
   );
 }

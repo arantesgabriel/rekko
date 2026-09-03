@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  formatReportDate,
-  formatReportDateTime,
+  formatReportDisplayDate,
+  formatReportDisplayDateTime,
   formatReportDuration,
+  formatReportInputTime,
+  formatReportShortDisplayDate,
 } from "@/modules/reports/domain";
 import type { ReportFilterOptions, ReportRow } from "@/modules/reports/service";
 import type { ReportQuery } from "@/modules/reports/schemas";
@@ -39,7 +41,6 @@ export function ReportsView({
     <div className="reports-page">
       <section className="reports-toolbar" aria-label="Filtros do relatório">
         <div>
-          <span className="eyebrow">Relação de horas</span>
           <p className="reports-toolbar__timezone">
             Horários em {data.timezone}
           </p>
@@ -117,13 +118,69 @@ function ReportFilters({
   query: ReportQuery;
   workItems: ReportFilterOptions["workItems"];
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [period, setPeriod] = useState<ReportQuery["period"]>(query.period);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const syncDisclosure = () => setFiltersOpen(media.matches);
+
+    syncDisclosure();
+    media.addEventListener("change", syncDisclosure);
+    return () => media.removeEventListener("change", syncDisclosure);
+  }, []);
+
   return (
-    <form className="reports-filters" method="get">
+    <details
+      className="reports-filter-disclosure"
+      onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+      open={filtersOpen}
+    >
+      <summary>
+        <span>
+          <strong>Filtros</strong>
+          <small>{getReportPeriodLabel(period)}</small>
+        </span>
+        <span className="button button--secondary button--sm">Abrir</span>
+      </summary>
+      <form className="reports-filters" method="get">
+        <ReportFilterFields
+          canViewWorkspace={canViewWorkspace}
+          people={people}
+          period={period}
+          projects={projects}
+          query={query}
+          setPeriod={setPeriod}
+          workItems={workItems}
+        />
+      </form>
+    </details>
+  );
+}
+
+function ReportFilterFields({
+  canViewWorkspace,
+  people,
+  period,
+  projects,
+  query,
+  setPeriod,
+  workItems,
+}: {
+  canViewWorkspace: boolean;
+  people: ReportFilterOptions["people"];
+  period: ReportQuery["period"];
+  projects: ReportFilterOptions["projects"];
+  query: ReportQuery;
+  setPeriod: (period: ReportQuery["period"]) => void;
+  workItems: ReportFilterOptions["workItems"];
+}) {
+  return (
+    <>
       <label>
         <span>Período</span>
         <select
-          defaultValue={query.period}
+          value={period}
           name="period"
           onChange={(event) =>
             setPeriod(event.currentTarget.value as ReportQuery["period"])
@@ -195,8 +252,16 @@ function ReportFilters({
       <button className="button button--secondary" type="submit">
         Aplicar filtros
       </button>
-    </form>
+    </>
   );
+}
+
+function getReportPeriodLabel(period: ReportQuery["period"]) {
+  if (period === "today") return "Hoje";
+  if (period === "this_week") return "Esta semana";
+  if (period === "last_week") return "Semana passada";
+  if (period === "this_month") return "Este mês";
+  return "Período personalizado";
 }
 
 function ReportTable({
@@ -237,7 +302,7 @@ function ReportTable({
           {data.rows.map((row) => (
             <tr key={row.segmentId}>
               <td data-label="Data">
-                {formatReportDate(row.startedAt, data.timezone)}
+                {formatReportDisplayDate(row.startedAt, data.timezone)}
               </td>
               <td data-label="Colaborador">
                 <strong>{row.collaboratorName}</strong>
@@ -249,10 +314,10 @@ function ReportTable({
                 {row.description ? <small>{row.description}</small> : null}
               </td>
               <td data-label="Início">
-                {formatReportDateTime(row.startedAt, data.timezone)}
+                {formatReportDisplayDateTime(row.startedAt, data.timezone)}
               </td>
               <td data-label="Fim">
-                {formatReportDateTime(row.endedAt, data.timezone)}
+                {formatReportDisplayDateTime(row.endedAt, data.timezone)}
               </td>
               <td data-label="Duração">
                 {formatReportDuration(row.durationSeconds)}
@@ -302,31 +367,45 @@ function ReportMobileList({
     <ul className="reports-mobile-list" aria-label="Horas registradas">
       {data.rows.map((row) => (
         <li key={row.segmentId}>
-          <div className="reports-mobile-list__topline">
-            <strong>{formatReportDate(row.startedAt, data.timezone)}</strong>
-            <b>{formatReportDuration(row.durationSeconds)}</b>
-          </div>
-          <strong>{row.collaboratorName}</strong>
-          <span>{row.email}</span>
-          <span>
-            {row.projectName} · {row.workItemTitle ?? "Sem demanda"}
-          </span>
-          <small>
-            {formatReportDateTime(row.startedAt, data.timezone)} →{" "}
-            {formatReportDateTime(row.endedAt, data.timezone)} ·{" "}
-            {row.source === "TIMER" ? "Timer" : "Manual"}
-          </small>
-          {canCorrectTime ? (
-            <TimeEntryActions
-              key={timeEntryActionKey(row)}
-              projects={projects}
-              row={row}
-              currentUserId={currentUserId}
-              timezone={timezone}
-              workItems={workItems}
-              workspaceSlug={workspaceSlug}
-            />
-          ) : null}
+          <details className="reports-mobile-list__details">
+            <summary>
+              <span className="reports-mobile-list__topline">
+                <strong>
+                  {formatReportShortDisplayDate(row.startedAt, data.timezone)}
+                </strong>
+                <b>{formatReportDuration(row.durationSeconds)}</b>
+              </span>
+              <span className="reports-mobile-list__project">
+                {row.projectName}
+              </span>
+              <span className="reports-mobile-list__item">
+                {row.workItemTitle ?? "Sem demanda"}
+              </span>
+            </summary>
+            <div className="reports-mobile-list__expanded">
+              <div className="reports-mobile-list__person">
+                <strong>{row.collaboratorName}</strong>
+                <span>{row.email}</span>
+              </div>
+              <small>
+                {formatReportInputTime(row.startedAt, data.timezone)}–
+                {formatReportInputTime(row.endedAt, data.timezone)} ·{" "}
+                {row.source === "TIMER" ? "Timer" : "Manual"}
+              </small>
+              {row.description ? <small>{row.description}</small> : null}
+              {canCorrectTime ? (
+                <TimeEntryActions
+                  key={timeEntryActionKey(row)}
+                  projects={projects}
+                  row={row}
+                  currentUserId={currentUserId}
+                  timezone={timezone}
+                  workItems={workItems}
+                  workspaceSlug={workspaceSlug}
+                />
+              ) : null}
+            </div>
+          </details>
         </li>
       ))}
     </ul>

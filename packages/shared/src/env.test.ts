@@ -42,4 +42,21 @@ describe("environment validation", () => {
       }),
     ).toThrow("must be 72 in production");
   });
+
+  it("keeps local grace overrides compatible and enforces production policy", () => {
+    expect(
+      parseServerEnv({
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
+        EMAIL_VERIFICATION_GRACE_HOURS: "876000",
+        NODE_ENV: "development",
+      }).EMAIL_VERIFICATION_GRACE_HOURS,
+    ).toBe(876000);
+    expect(() =>
+      parseServerEnv({
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55322/postgres",
+        EMAIL_VERIFICATION_GRACE_HOURS: "876000",
+        NODE_ENV: "production",
+      }),
+    ).toThrow("must be 72 in production");
+  });
 });

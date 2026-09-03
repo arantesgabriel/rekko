@@ -1,13 +1,24 @@
-import { Suspense } from "react";
-import { AuthForm } from "@/components/auth/auth-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
-export const metadata = { title: "Confirmar email" };
-export default function VerifyPage() {
+
+import { EmailVerificationCard } from "@/components/auth/email-verification-card";
+
+export const metadata = { title: "Confirmar e-mail" };
+
+export default async function VerifyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    email?: string | string[];
+    token?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const email = typeof params.email === "string" ? params.email : undefined;
+  const token = typeof params.token === "string" ? params.token : undefined;
+
   return (
-    <AuthLayout>
-      <Suspense>
-        <AuthForm mode="verify" />
-      </Suspense>
+    <AuthLayout variant="verification">
+      <EmailVerificationCard email={email} token={token} />
     </AuthLayout>
   );
 }

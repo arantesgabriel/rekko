@@ -16,6 +16,7 @@ import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 import { AppAccountMenu } from "@/components/app-shell/account-menu";
 import {
   CollapseIcon,
+  DemandsIcon,
   ExpandIcon,
   HomeIcon,
   IntegrationsIcon,
@@ -24,7 +25,6 @@ import {
   MenuIcon,
   ProjectsIcon,
   ReportsIcon,
-  TimelineIcon,
 } from "@/components/app-shell/icons";
 
 const SIDEBAR_COOKIE = "rekko-sidebar";
@@ -113,7 +113,12 @@ function MobileShellControls({
   const drawerTitleId = useId();
 
   useEffect(() => {
+    const pageScroll =
+      document.querySelector<HTMLElement>(".app-shell__scroll");
+    const previousOverflow = pageScroll?.style.overflow;
+
     if (!drawerOpen) return;
+    if (pageScroll) pageScroll.style.overflow = "hidden";
     drawerCloseRef.current?.focus();
     const menuButton = menuButtonRef.current;
     function onKey(event: KeyboardEvent) {
@@ -122,6 +127,7 @@ function MobileShellControls({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
+      if (pageScroll) pageScroll.style.overflow = previousOverflow ?? "";
       menuButton?.focus();
     };
   }, [drawerOpen]);
@@ -244,23 +250,21 @@ function SidebarBody({
           current={pathname === home}
           href={home}
           icon={<HomeIcon />}
-          label="Hoje"
-        />
-        <SidebarItem
-          collapsed={collapsed}
-          current={false}
-          href={`${home}#timeline-title`}
-          icon={<TimelineIcon />}
-          label="Timeline"
+          label="Home"
           {...sidebarItemBehavior}
         />
         <SidebarItem
           collapsed={collapsed}
-          current={
-            pathname.startsWith(`${home}/work`) ||
-            pathname.startsWith(`${home}/projects`)
-          }
+          current={pathname.startsWith(`${home}/work`)}
           href={`${home}/work`}
+          icon={<DemandsIcon />}
+          label="Demandas"
+          {...sidebarItemBehavior}
+        />
+        <SidebarItem
+          collapsed={collapsed}
+          current={pathname.startsWith(`${home}/projects`)}
+          href={`${home}/projects`}
           icon={<ProjectsIcon />}
           label="Projetos"
           {...sidebarItemBehavior}
@@ -370,19 +374,17 @@ function MobileBottomNav({
       current: pathname === home,
       href: home,
       icon: <HomeIcon />,
-      label: "Hoje",
+      label: "Home",
     },
     {
-      current: false,
-      href: `${home}#timeline-title`,
-      icon: <TimelineIcon />,
-      label: "Timeline",
-    },
-    {
-      current:
-        pathname.startsWith(`${home}/work`) ||
-        pathname.startsWith(`${home}/projects`),
+      current: pathname.startsWith(`${home}/work`),
       href: `${home}/work`,
+      icon: <DemandsIcon />,
+      label: "Demandas",
+    },
+    {
+      current: pathname.startsWith(`${home}/projects`),
+      href: `${home}/projects`,
       icon: <ProjectsIcon />,
       label: "Projetos",
     },

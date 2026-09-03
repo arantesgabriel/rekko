@@ -1,4 +1,4 @@
-import { TodayView } from "@/components/timeline/today-view";
+import { HomeView } from "@/components/timeline/home-view";
 import { PageContainer } from "@/components/ui/page-container";
 import { requireCoreSession } from "@/modules/auth/session";
 import { getLinearConnection } from "@/modules/integrations/linear/service";
@@ -7,8 +7,9 @@ import {
   getGettingStartedProgress,
   listManualTimeTargets,
 } from "@/modules/timeline/service";
+import { dateInTimezone } from "@/modules/timeline/domain";
 
-export default async function TodayPage({
+export default async function HomePage({
   params,
   searchParams,
 }: PageProps<"/w/[workspaceSlug]"> & {
@@ -33,14 +34,15 @@ export default async function TodayPage({
   ]);
   return (
     <PageContainer width="lg">
-      <TodayView
+      <HomeView
+        gaps={timeline.gaps}
         slug={workspaceSlug}
         date={timeline.date}
         timezone={timeline.timezone}
         blocks={timeline.blocks}
-        gaps={timeline.gaps}
         trackedSeconds={timeline.trackedSeconds}
         isToday={timeline.isToday}
+        todayDate={dateInTimezone(new Date(), timeline.timezone)}
         targets={targets}
         gettingStarted={{
           ...gettingStarted,

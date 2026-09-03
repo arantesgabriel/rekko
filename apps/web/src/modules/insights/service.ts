@@ -1,5 +1,5 @@
 import { project, timeEntry, timeSegment, user, workItem } from "@rekko/db";
-import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/modules/workspaces/service";
@@ -45,7 +45,6 @@ export async function getInsights(input: {
     start: input.query.start ?? "",
     end: input.query.end ?? "",
   });
-  const trackedSeconds = sql<number>`floor(sum(extract(epoch from (least(coalesce(${timeSegment.endedAt}, ${now.toISOString()}::timestamptz), ${window.end.toISOString()}::timestamptz) - greatest(${timeSegment.startedAt}, ${window.start.toISOString()}::timestamptz)))))`;
   const filters = [
     eq(timeSegment.workspaceId, context.id),
     eq(timeEntry.workspaceId, context.id),
@@ -66,22 +65,15 @@ export async function getInsights(input: {
       workItemId: workItem.id,
       workItemTitle: workItem.title,
       workItemEstimatedMinutes: workItem.estimatedMinutes,
-      trackedSeconds,
+      startedAt: timeSegment.startedAt,
+      endedAt: timeSegment.endedAt,
     })
     .from(timeSegment)
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
     .innerJoin(project, eq(project.id, timeEntry.projectId))
     .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(and(...filters))
-    .groupBy(
-      project.id,
-      project.name,
-      project.estimatedMinutes,
-      workItem.id,
-      workItem.title,
-      workItem.estimatedMinutes,
-    )
-    .orderBy(desc(trackedSeconds));
+    .orderBy(asc(timeSegment.startedAt));
 
   const segments = rows.map((row) => ({
     projectId: row.projectId,
@@ -90,12 +82,15 @@ export async function getInsights(input: {
     workItemId: row.workItemId,
     workItemTitle: row.workItemTitle,
     workItemEstimatedMinutes: row.workItemEstimatedMinutes,
-    startedAt: window.start,
-    endedAt: new Date(
-      window.start.getTime() + Number(row.trackedSeconds) * 1000,
-    ),
+    startedAt: row.startedAt,
+    endedAt: row.endedAt,
   }));
-  const aggregation = aggregateInsightSegments(segments, window, now);
+  const aggregation = aggregateInsightSegments(
+    segments,
+    window,
+    now,
+    person.timezone,
+  );
   const projects = await db
     .select({
       id: project.id,

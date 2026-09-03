@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { ProjectForm } from "@/components/projects/project-form";
+import { NewDemandForm } from "@/components/projects/new-demand-form";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireCoreSession } from "@/modules/auth/session";
 import { requireWorkspace } from "@/modules/workspaces/service";
+import { listProjects } from "@/modules/projects/service";
 import { getLinearConnection } from "@/modules/integrations/linear/service";
 import { LinearBrowser } from "@/components/linear/linear-browser";
 import { importLinearIssuesAction } from "@/modules/integrations/linear/actions";
@@ -25,11 +27,30 @@ export default async function NewProjectPage({
     typeof query.existingProjectId === "string"
       ? query.existingProjectId
       : undefined;
-  const context = await requireWorkspace(
+  const mode = query.mode === "demand";
+  await requireWorkspace(
     session.user.id,
     workspaceSlug,
-    existingProjectId ? undefined : "project:manage",
+    mode || !existingProjectId ? "project:manage" : undefined,
   );
+  if (mode) {
+    const { projects } = await listProjects(session.user.id, workspaceSlug);
+    const activeProjects = projects
+      .filter((project) => project.status === "ACTIVE")
+      .map(({ id, name }) => ({ id, name }));
+    return (
+      <PageContainer width="narrow">
+        <Link className="back-link" href={`/w/${workspaceSlug}/work`}>
+          ← Voltar para demandas
+        </Link>
+        <PageHeader
+          description="Dê um contexto ao trabalho e registre seu tempo com mais clareza."
+          title="Nova demanda"
+        />
+        <NewDemandForm projects={activeProjects} slug={workspaceSlug} />
+      </PageContainer>
+    );
+  }
   const manual = query.source === "manual";
   const linear = query.source === "linear";
   const { connection } = await getLinearConnection({
@@ -38,7 +59,7 @@ export default async function NewProjectPage({
   });
   return (
     <PageContainer width="narrow">
-      <Link className="back-link" href={`/w/${workspaceSlug}/work`}>
+      <Link className="back-link" href={`/w/${workspaceSlug}/projects`}>
         ← Voltar para projetos
       </Link>
       <PageHeader
@@ -49,7 +70,6 @@ export default async function NewProjectPage({
               ? "Pesquise e selecione somente as demandas que importam para este projeto."
               : "Escolha de onde o trabalho virá."
         }
-        eyebrow={context.name}
         title={
           manual
             ? "Criar projeto manual"

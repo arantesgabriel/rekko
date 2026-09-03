@@ -1,4 +1,4 @@
-import { project, workItem } from "@rekko/db";
+import { project, timeEntry, timeSegment, workItem } from "@rekko/db";
 import {
   and,
   asc,
@@ -6,7 +6,10 @@ import {
   desc,
   eq,
   ilike,
+  inArray,
   isNull,
+  ne,
+  or,
   type SQL,
 } from "drizzle-orm";
 
@@ -42,6 +45,167 @@ export async function listProjects(userId: string, slug: string) {
     .groupBy(project.id)
     .orderBy(desc(project.updatedAt));
   return { context, projects: rows };
+}
+
+export type DemandListItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  source: "MANUAL" | "LINEAR";
+  externalIdentifier: string | null;
+  externalUrl: string | null;
+  parentWorkItemId: string | null;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  isActive: boolean;
+  estimatedMinutes: number | null;
+  projectId: string;
+  projectName: string;
+  projectSource: "MANUAL" | "LINEAR";
+  projectStatus: "ACTIVE" | "COMPLETED";
+  trackedSeconds: number;
+  recordCount: number;
+  lastActivityAt: Date | null;
+  isRunning: boolean;
+};
+
+export type DemandProjectOption = { id: string; name: string };
+
+export async function listDemands(input: {
+  userId: string;
+  slug: string;
+  search?: string;
+  status?: "ALL" | "ACTIVE" | "DONE";
+  projectId?: string;
+}) {
+  const context = await requireWorkspace(input.userId, input.slug);
+  const filters: SQL[] = [
+    eq(workItem.workspaceId, context.id),
+    isNull(workItem.archivedAt),
+    isNull(project.archivedAt),
+  ];
+  const search = input.search?.trim();
+  if (search) {
+    filters.push(
+      or(
+        ilike(workItem.title, `%${search}%`),
+        ilike(workItem.externalIdentifier, `%${search}%`),
+        ilike(project.name, `%${search}%`),
+      )!,
+    );
+  }
+  if (input.status === "ACTIVE")
+    filters.push(inArray(workItem.status, ["TODO", "IN_PROGRESS"]));
+  if (input.status === "DONE") filters.push(eq(workItem.status, "DONE"));
+  if (input.projectId) filters.push(eq(workItem.projectId, input.projectId));
+
+  const [rows, projectOptions] = await Promise.all([
+    db
+      .select({
+        id: workItem.id,
+        title: workItem.title,
+        description: workItem.description,
+        source: workItem.source,
+        externalIdentifier: workItem.externalIdentifier,
+        externalUrl: workItem.externalUrl,
+        parentWorkItemId: workItem.parentWorkItemId,
+        status: workItem.status,
+        isActive: workItem.isActive,
+        estimatedMinutes: workItem.estimatedMinutes,
+        projectId: project.id,
+        projectName: project.name,
+        projectSource: project.source,
+        projectStatus: project.status,
+      })
+      .from(workItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, workItem.projectId),
+          eq(project.workspaceId, context.id),
+        ),
+      )
+      .where(and(...filters))
+      .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
+    db
+      .select({ id: project.id, name: project.name })
+      .from(project)
+      .where(
+        and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
+      )
+      .orderBy(asc(project.name)),
+  ]);
+
+  const itemIds = rows.map((row) => row.id);
+  const segments = itemIds.length
+    ? await db
+        .select({
+          entryId: timeEntry.id,
+          workItemId: timeEntry.workItemId,
+          startedAt: timeSegment.startedAt,
+          endedAt: timeSegment.endedAt,
+        })
+        .from(timeSegment)
+        .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+        .where(
+          and(
+            eq(timeSegment.workspaceId, context.id),
+            eq(timeSegment.userId, input.userId),
+            eq(timeEntry.userId, input.userId),
+            ne(timeEntry.status, "ARCHIVED"),
+            inArray(timeEntry.workItemId, itemIds),
+          ),
+        )
+    : [];
+  const now = new Date();
+  const summaries = new Map<
+    string,
+    {
+      trackedSeconds: number;
+      entryIds: Set<string>;
+      lastActivityAt: Date | null;
+      isRunning: boolean;
+    }
+  >();
+  for (const segment of segments) {
+    if (!segment.workItemId) continue;
+    const summary = summaries.get(segment.workItemId) ?? {
+      trackedSeconds: 0,
+      entryIds: new Set<string>(),
+      lastActivityAt: null,
+      isRunning: false,
+    };
+    const end = segment.endedAt ?? now;
+    summary.trackedSeconds += Math.max(
+      0,
+      Math.floor((end.getTime() - segment.startedAt.getTime()) / 1000),
+    );
+    summary.entryIds.add(segment.entryId);
+    summary.isRunning ||= segment.endedAt === null;
+    const activityAt = segment.endedAt ?? segment.startedAt;
+    if (
+      !summary.lastActivityAt ||
+      activityAt.getTime() > summary.lastActivityAt.getTime()
+    ) {
+      summary.lastActivityAt = activityAt;
+    }
+    summaries.set(segment.workItemId, summary);
+  }
+
+  const demands: DemandListItem[] = rows.map((row) => {
+    const summary = summaries.get(row.id);
+    return {
+      ...row,
+      trackedSeconds: summary?.trackedSeconds ?? 0,
+      recordCount: summary?.entryIds.size ?? 0,
+      lastActivityAt: summary?.lastActivityAt ?? null,
+      isRunning: summary?.isRunning ?? false,
+    };
+  });
+  return {
+    context,
+    demands,
+    projectOptions: projectOptions satisfies DemandProjectOption[],
+  };
 }
 
 export async function requireProject(

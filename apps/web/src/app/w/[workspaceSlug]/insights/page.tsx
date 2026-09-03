@@ -1,6 +1,5 @@
 import { InsightsView } from "@/components/insights/insights-view";
 import { PageContainer } from "@/components/ui/page-container";
-import { PageHeader } from "@/components/ui/page-header";
 import { requireCoreSession } from "@/modules/auth/session";
 import { getInsights } from "@/modules/insights/service";
 import { parseInsightsQuery } from "@/modules/insights/schemas";
@@ -24,12 +23,7 @@ export default async function InsightsPage({
   });
 
   return (
-    <PageContainer width="lg">
-      <PageHeader
-        description="Veja onde seu tempo foi usado e compare o registrado com as estimativas disponíveis."
-        eyebrow={data.context.name}
-        title="Insights"
-      />
+    <PageContainer width="wide">
       <InsightsView data={data} />
     </PageContainer>
   );

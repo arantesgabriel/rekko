@@ -43,8 +43,14 @@ export type InsightComparison = {
   source: "PROJECT" | "WORK_ITEMS" | "MIXED";
 };
 
+export type InsightDay = {
+  date: string;
+  trackedSeconds: number;
+};
+
 export type InsightAggregation = {
   trackedSeconds: number;
+  days: InsightDay[];
   projects: InsightProject[];
   workItems: InsightWorkItem[];
   comparisonItems: InsightWorkItem[];
@@ -121,6 +127,7 @@ export function aggregateInsightSegments(
   segments: readonly InsightSegment[],
   window: Interval,
   now: Date,
+  timezone = "UTC",
 ): InsightAggregation {
   const projects = new Map<string, InsightProject>();
   const workItems = new Map<string, InsightWorkItem>();
@@ -212,17 +219,48 @@ export function aggregateInsightSegments(
       }
     : null;
 
+  const days = buildInsightDays(window, timezone).map((date) => {
+    const day = dayWindow(date, timezone);
+    const trackedSeconds = segments.reduce((total, segment) => {
+      const clipped = clipInterval(
+        { start: segment.startedAt, end: segment.endedAt ?? now },
+        {
+          start: day.start > window.start ? day.start : window.start,
+          end: day.end < window.end ? day.end : window.end,
+        },
+      );
+      return total + (clipped ? intervalSeconds(clipped) : 0);
+    }, 0);
+    return { date, trackedSeconds };
+  });
+
   return {
     trackedSeconds: projectList.reduce(
       (total, project) => total + project.trackedSeconds,
       0,
     ),
+    days,
     projects: projectList,
     workItems: workItemList,
     comparisonItems,
     comparison,
     comparisonProjects,
   };
+}
+
+function buildInsightDays(window: Interval, timezone: string) {
+  const firstDate = dateOnlyInTimezone(window.start, timezone);
+  const lastDate = dateOnlyInTimezone(
+    new Date(window.end.getTime() - 1),
+    timezone,
+  );
+  const dates: string[] = [];
+  let current = firstDate;
+  while (current <= lastDate) {
+    dates.push(current);
+    current = shiftDate(current, 1);
+  }
+  return dates;
 }
 
 function comparisonFromItems(

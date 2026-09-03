@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import { requireCoreSession } from "@/modules/auth/session";
@@ -82,8 +83,9 @@ export async function archiveProjectAction(slug: string, projectId: string) {
     redirect(`/w/${slug}/projects/${projectId}?error=archive`);
   }
   revalidatePath(`/w/${slug}/work`);
+  revalidatePath(`/w/${slug}/projects`);
   revalidatePath(`/w/${slug}/insights`);
-  redirect(`/w/${slug}/work?archived=1`);
+  redirect(`/w/${slug}/projects?archived=1`);
 }
 
 export async function createWorkItemAction(
@@ -110,6 +112,32 @@ export async function createWorkItemAction(
   } catch (error) {
     return mappedError(error);
   }
+}
+
+export async function createGlobalWorkItemAction(
+  slug: string,
+  _state: ProjectActionState,
+  formData: FormData,
+) {
+  const session = await requireCoreSession(`/w/${slug}/work/new?mode=demand`);
+  const projectId = z.uuid().safeParse(formData.get("projectId"));
+  const parsed = parseWorkItemForm(formData);
+  if (!projectId.success || !parsed.success)
+    return errorState("Revise o projeto, os dados da demanda e a estimativa.");
+  try {
+    await createWorkItem({
+      actorUserId: session.user.id,
+      slug,
+      projectId: projectId.data,
+      ...parsed.data,
+    });
+  } catch (error) {
+    return mappedError(error);
+  }
+  revalidatePath(`/w/${slug}/work`);
+  revalidatePath(`/w/${slug}/projects/${projectId.data}`);
+  revalidatePath(`/w/${slug}/insights`);
+  redirect(`/w/${slug}/work?created=1`);
 }
 
 export async function updateWorkItemAction(
