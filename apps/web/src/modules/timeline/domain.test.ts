@@ -116,13 +116,13 @@ describe("timeline intervals", () => {
     );
   });
 
-  it("formats compact durations without treating zero minutes as a session", () => {
-    expect(formatCompactDuration(0)).toBe("0m");
-    expect(formatCompactDuration(45)).toBe("0m");
+  it("formats compact durations with seconds below one minute", () => {
+    expect(formatCompactDuration(0)).toBe("0s");
+    expect(formatCompactDuration(45)).toBe("45s");
     expect(formatCompactDuration(90)).toBe("1m");
     expect(formatCompactDuration(4980)).toBe("1h 23m");
     expect(formatWeekStripDuration(0)).toBe("—");
-    expect(formatWeekStripDuration(59)).toBe("—");
+    expect(formatWeekStripDuration(59)).toBe("59s");
     expect(formatWeekStripDuration(3600)).toBe("1h");
   });
 });

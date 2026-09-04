@@ -418,31 +418,27 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
   const authentication = rowNamed("Authentication");
   await authentication.getByRole("button", { name: "Iniciar" }).click();
   await expect(
-    page.getByRole("complementary", { name: "Timer atual" }),
+    page.getByRole("complementary", { name: "Sessão atual" }),
   ).toContainText("Authentication");
   await page.getByRole("button", { name: "Pausar" }).click();
   await expect(
-    page.getByRole("complementary", { name: "Timer atual" }),
+    page.getByRole("complementary", { name: "Sessão atual" }),
   ).toContainText("Pausado");
   await page.reload();
   await expect(page.getByRole("button", { name: "Retomar" })).toBeVisible();
   await page.getByRole("button", { name: "Retomar" }).click();
   const googleLogin = rowNamed("Google login");
-  await googleLogin.getByRole("button", { name: "Trocar" }).click();
+  await googleLogin.getByRole("button", { name: "Iniciar" }).click();
   await expect(
-    page.getByRole("complementary", { name: "Timer atual" }),
+    page.getByRole("heading", { name: "Trocar atividade?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Trocar", exact: true }).click();
+  await expect(
+    page.getByRole("complementary", { name: "Sessão atual" }),
   ).toContainText("Google login");
-  const mobileTimerMenu = page.locator("details.timer-switcher--mobile");
-  if ((page.viewportSize()?.width ?? 1024) < 768) {
-    await mobileTimerMenu.locator("summary").click();
-    await mobileTimerMenu
-      .getByRole("button", { name: "Encerrar timer" })
-      .click();
-  } else {
-    await page.getByRole("button", { name: "Encerrar" }).click();
-  }
+  await page.getByRole("button", { name: "Encerrar" }).click();
   await expect(
-    page.getByRole("complementary", { name: "Timer atual" }),
+    page.getByRole("complementary", { name: "Sessão atual" }),
   ).toHaveCount(0);
   const googleActions = page
     .locator("article.demand-row")

@@ -18,24 +18,18 @@ import type {
 } from "@/modules/projects/service";
 
 export function DemandsWorkspace({
-  activeTimerStatus,
-  activeTimerWorkItemId,
   canManage,
   counts,
   demands,
-  hasActiveTimer,
   parentOptions,
   projectOptions,
   query,
   slug,
   timezone,
 }: {
-  activeTimerStatus: "RUNNING" | "PAUSED" | null;
-  activeTimerWorkItemId: string | null;
   canManage: boolean;
   counts: { all: number; active: number; done: number };
   demands: DemandListItem[];
-  hasActiveTimer: boolean;
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
   query: {
@@ -135,12 +129,9 @@ export function DemandsWorkspace({
         />
       ) : (
         <DemandList
-          activeTimerStatus={activeTimerStatus}
-          activeTimerWorkItemId={activeTimerWorkItemId}
           canManage={canManage}
           context="workspace"
           demands={demands}
-          hasActiveTimer={hasActiveTimer}
           onChanged={refresh}
           onEdit={(id) => openDemand(id, true)}
           onFeedback={showFeedback}

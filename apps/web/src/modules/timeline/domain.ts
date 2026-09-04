@@ -147,17 +147,17 @@ export function isDisplayableSession(block: {
 }
 
 export function formatCompactDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(0, seconds) / 60);
-  if (minutes <= 0) return "0m";
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
+  const total = Math.max(0, Math.floor(seconds));
+  if (total < 60) return `${total}s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return [hours ? `${hours}h` : "", minutes ? `${minutes}m` : ""]
     .filter(Boolean)
     .join(" ");
 }
 
 export function formatWeekStripDuration(seconds: number) {
-  return Math.floor(Math.max(0, seconds) / 60) <= 0
+  return Math.floor(Math.max(0, seconds)) <= 0
     ? "—"
     : formatCompactDuration(seconds);
 }

@@ -14,6 +14,8 @@ import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 import { AppAccountMenu } from "@/components/app-shell/account-menu";
+import { ActiveSession } from "@/components/time-tracking/active-session";
+import { useOptionalActiveSession } from "@/components/time-tracking/active-session-provider";
 import {
   CollapseIcon,
   DemandsIcon,
@@ -36,7 +38,6 @@ export function AppShell({
   banner,
   children,
   collapsed: initialCollapsed,
-  timer,
   userName,
   userRoleLabel,
   workspaces,
@@ -45,7 +46,6 @@ export function AppShell({
   banner?: ReactNode;
   children: ReactNode;
   collapsed: boolean;
-  timer?: ReactNode;
   userName: string;
   userRoleLabel: string;
   workspaces: WorkspaceOption[];
@@ -53,6 +53,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const tracking = useOptionalActiveSession();
 
   function persistCollapsed(next: boolean) {
     setCollapsed(next);
@@ -63,7 +64,7 @@ export function AppShell({
     <div
       className="app-shell"
       data-collapsed={collapsed ? "true" : undefined}
-      data-has-timer={timer ? "true" : undefined}
+      data-has-timer={tracking?.session ? "true" : undefined}
     >
       <aside className="app-sidebar" aria-label="Barra lateral">
         <SidebarBody
@@ -89,7 +90,7 @@ export function AppShell({
           {banner ? <div className="app-notice">{banner}</div> : null}
           {children}
         </div>
-        {timer}
+        <ActiveSession />
         <MobileBottomNav pathname={pathname} workspaceSlug={workspaceSlug} />
       </div>
     </div>

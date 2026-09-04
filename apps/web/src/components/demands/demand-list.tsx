@@ -5,12 +5,9 @@ import type {
 } from "@/modules/projects/service";
 
 export function DemandList({
-  activeTimerStatus,
-  activeTimerWorkItemId,
   canManage,
   context,
   demands,
-  hasActiveTimer,
   onChanged,
   onEdit,
   onFeedback,
@@ -19,12 +16,9 @@ export function DemandList({
   slug,
   timezone,
 }: {
-  activeTimerStatus?: "RUNNING" | "PAUSED" | null;
-  activeTimerWorkItemId?: string | null;
   canManage?: boolean;
   context: "workspace" | "project";
   demands: DemandListItem[];
-  hasActiveTimer?: boolean;
   onChanged?: () => void;
   onEdit?: (demandId: string) => void;
   onFeedback?: (message: string) => void;
@@ -56,12 +50,7 @@ export function DemandList({
             onOpen={onOpen}
             slug={slug}
             timezone={timezone}
-            {...(activeTimerStatus !== undefined ? { activeTimerStatus } : {})}
-            {...(activeTimerWorkItemId !== undefined
-              ? { activeTimerWorkItemId }
-              : {})}
             {...(canManage !== undefined ? { canManage } : {})}
-            {...(hasActiveTimer !== undefined ? { hasActiveTimer } : {})}
             {...(onChanged ? { onChanged } : {})}
             {...(onEdit ? { onEdit: () => onEdit(demand.id) } : {})}
             {...(onFeedback ? { onFeedback } : {})}

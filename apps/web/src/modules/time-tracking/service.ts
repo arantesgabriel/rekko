@@ -267,6 +267,7 @@ export async function getCurrentTimer(
     .select({
       id: timeEntry.id,
       workspaceId: timeEntry.workspaceId,
+      workspaceSlug: workspace.slug,
       projectId: timeEntry.projectId,
       workItemId: timeEntry.workItemId,
       status: timeEntry.status,
@@ -274,9 +275,11 @@ export async function getCurrentTimer(
       durationSeconds: timeEntry.durationSeconds,
       projectName: project.name,
       workItemTitle: workItem.title,
+      workItemIdentifier: workItem.externalIdentifier,
     })
     .from(timeEntry)
     .innerJoin(project, eq(project.id, timeEntry.projectId))
+    .innerJoin(workspace, eq(workspace.id, timeEntry.workspaceId))
     .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(
       and(
@@ -293,10 +296,13 @@ export async function getCurrentTimer(
     .from(timeSegment)
     .where(eq(timeSegment.timeEntryId, entry.id))
     .orderBy(asc(timeSegment.startedAt));
+  const now = clock.now();
+  const closed = segments.filter((segment) => segment.endedAt);
   return {
     ...entry,
     status: activeStatus,
-    elapsedSeconds: durationSeconds(segments, clock.now()),
+    accumulatedSeconds: durationSeconds(closed, now),
+    elapsedSeconds: durationSeconds(segments, now),
     openSegmentStartedAt:
       segments.find((segment) => !segment.endedAt)?.startedAt ?? null,
   };

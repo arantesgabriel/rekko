@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { GettingStarted } from "@/components/timeline/getting-started";
 import { StartTimerButton } from "@/components/time-tracking/timer-controls";
+import { useOptionalActiveSession } from "@/components/time-tracking/active-session-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   saveManualTimeAction,
@@ -83,7 +84,6 @@ export function HomeView({
   blocks,
   date,
   gettingStarted,
-  hasActiveTimer,
   isToday,
   recentItems,
   slug,
@@ -101,7 +101,6 @@ export function HomeView({
     hasManualEntry: boolean;
     hasTrackedTask: boolean;
   };
-  hasActiveTimer: boolean;
   isToday: boolean;
   recentItems: RecentItem[];
   slug: string;
@@ -111,6 +110,8 @@ export function HomeView({
   trackedSeconds: number;
   weekDays: WeekDay[];
 }) {
+  const tracking = useOptionalActiveSession();
+  const hasActiveTimer = Boolean(tracking?.session);
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
@@ -168,6 +169,13 @@ export function HomeView({
   const activeBlock = isToday
     ? displayBlocks.find((block) => block.active)
     : undefined;
+  const nowActivity =
+    isToday && tracking?.session
+      ? {
+          workItemTitle: tracking.session.workItemTitle,
+          projectName: tracking.session.projectName,
+        }
+      : activeBlock;
   const continueItems = useMemo(() => {
     if (hasActiveTimer || !isToday) return [];
     return recentItems
@@ -275,20 +283,20 @@ export function HomeView({
 
       {isToday ? (
         <section
-          className={`home-now${activeBlock ? " is-active" : " is-idle"}`}
+          className={`home-now${nowActivity ? " is-active" : " is-idle"}`}
           aria-labelledby="home-now-title"
         >
           <h2 id="home-now-title">Agora</h2>
-          {activeBlock ? (
+          {nowActivity ? (
             <div className="home-now__active">
               <span className="home-now__dot" aria-hidden="true" />
               <div className="home-now__activity">
                 <strong>
-                  {activeBlock.workItemTitle ?? activeBlock.projectName}
+                  {nowActivity.workItemTitle ?? nowActivity.projectName}
                 </strong>
                 <span>
-                  {activeBlock.workItemTitle
-                    ? activeBlock.projectName
+                  {nowActivity.workItemTitle
+                    ? nowActivity.projectName
                     : "Projeto"}
                 </span>
               </div>
@@ -428,8 +436,8 @@ export function HomeView({
                   slug={slug}
                   projectId={item.projectId}
                   workItemId={item.id}
-                  activeOnItem={false}
-                  hasActiveTimer={false}
+                  projectName={item.projectName}
+                  workItemTitle={item.title}
                 />
               </li>
             ))}
@@ -491,8 +499,8 @@ export function HomeView({
                         slug={slug}
                         projectId={item.projectId}
                         workItemId={item.id}
-                        activeOnItem={item.id === activeBlock?.workItemId}
-                        hasActiveTimer={hasActiveTimer}
+                        projectName={item.projectName}
+                        workItemTitle={item.title}
                       />
                     </li>
                   ))}

@@ -9,6 +9,7 @@ import {
   formatUpdated,
 } from "@/components/projects/project-format";
 import { StartTimerButton } from "@/components/time-tracking/timer-controls";
+import { useOptionalActiveSession } from "@/components/time-tracking/active-session-provider";
 import { formatEstimate } from "@/modules/projects/domain";
 import type {
   DemandListItem,
@@ -22,12 +23,9 @@ function demandTitle(demand: DemandListItem) {
 }
 
 export function DemandRow({
-  activeTimerStatus,
-  activeTimerWorkItemId,
   canManage,
   context,
   demand,
-  hasActiveTimer,
   onEdit,
   onFeedback,
   onOpen,
@@ -36,12 +34,9 @@ export function DemandRow({
   slug,
   timezone,
 }: {
-  activeTimerStatus?: "RUNNING" | "PAUSED" | null;
-  activeTimerWorkItemId?: string | null;
   canManage?: boolean;
   context: "workspace" | "project";
   demand: DemandListItem;
-  hasActiveTimer?: boolean;
   onChanged?: () => void;
   onEdit?: () => void;
   onFeedback?: (message: string) => void;
@@ -56,12 +51,12 @@ export function DemandRow({
   const estimate = demand.estimatedMinutes
     ? formatEstimate(demand.estimatedMinutes)
     : "—";
-  const sessionOnItem = activeTimerWorkItemId === demand.id;
   const canStart =
-    context === "workspace" &&
     demand.projectStatus === "ACTIVE" &&
     demand.isActive &&
     demand.status !== "DONE";
+  const tracking = useOptionalActiveSession();
+  const sessionOnItem = tracking?.session?.workItemId === demand.id;
 
   function openUnlessControl(target: EventTarget | null) {
     const node = target instanceof Element ? target : null;
@@ -72,7 +67,7 @@ export function DemandRow({
 
   return (
     <article
-      className={`demand-row demand-row--${context}${demand.isRunning ? " is-running" : ""}`}
+      className={`demand-row demand-row--${context}${sessionOnItem ? " is-running" : ""}`}
       onClick={(event) => openUnlessControl(event.target)}
     >
       <button
@@ -103,7 +98,7 @@ export function DemandRow({
       <div className="demand-row__metric demand-row__tracked">
         <span>{tracked}</span>
         {context === "workspace" &&
-        demand.trackedSeconds >= 60 &&
+        demand.trackedSeconds > 0 &&
         demand.recordCount > 0 ? (
           <small className="demand-row__count">
             {demand.recordCount === 1
@@ -126,35 +121,34 @@ export function DemandRow({
           {updated.label}
         </time>
       ) : null}
-      {context === "workspace" ? (
-        <div className="demand-row__actions">
-          {canStart ? (
-            <StartTimerButton
-              activeOnItem={sessionOnItem}
-              hasActiveTimer={Boolean(hasActiveTimer)}
-              projectId={demand.projectId}
-              sessionStatus={sessionOnItem ? (activeTimerStatus ?? null) : null}
-              slug={slug}
-              workItemId={demand.id}
-            />
-          ) : null}
-          {canManage && projects ? (
-            <DemandActionsMenu
-              canManage={canManage}
-              demand={demand}
-              projects={projects}
-              slug={slug}
-              {...(onChanged ? { onChanged } : {})}
-              {...(onEdit ? { onEdit } : {})}
-              {...(onFeedback ? { onFeedback } : {})}
-            />
-          ) : null}
-        </div>
-      ) : (
-        <span aria-hidden="true" className="demand-row__go">
-          →
-        </span>
-      )}
+      <div className="demand-row__actions">
+        {canStart ? (
+          <StartTimerButton
+            projectId={demand.projectId}
+            projectName={demand.projectName}
+            slug={slug}
+            workItemId={demand.id}
+            workItemIdentifier={demand.externalIdentifier}
+            workItemTitle={demand.title}
+          />
+        ) : null}
+        {context === "workspace" && canManage && projects ? (
+          <DemandActionsMenu
+            canManage={canManage}
+            demand={demand}
+            projects={projects}
+            slug={slug}
+            {...(onChanged ? { onChanged } : {})}
+            {...(onEdit ? { onEdit } : {})}
+            {...(onFeedback ? { onFeedback } : {})}
+          />
+        ) : null}
+        {context === "project" ? (
+          <span aria-hidden="true" className="demand-row__go">
+            →
+          </span>
+        ) : null}
+      </div>
     </article>
   );
 }

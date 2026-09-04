@@ -112,7 +112,9 @@ export function ConfirmationDialog({
           </button>
         </header>
         <div className="confirmation-dialog__body">
-          <p id={descriptionId}>{description}</p>
+          <div className="confirmation-dialog__description" id={descriptionId}>
+            {description}
+          </div>
           {errorMessage ? (
             <p className="form-message form-message--error" role="alert">
               {errorMessage}

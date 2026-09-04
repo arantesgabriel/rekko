@@ -112,9 +112,21 @@ export function DemandFilters({
           ))}
         </div>
         <label className="demand-project-filter">
-          <span aria-hidden="true" className="demand-project-filter__prefix">
-            Projeto
-          </span>
+        {hasFilters ? (
+          <button
+            aria-label="Limpar filtros"
+            className="button button--ghost button--sm demand-filters__clear"
+            onClick={() => {
+              setQuery("");
+              setStatus("ALL");
+              setProjectId("");
+              updateRoute({ query: "", status: "ALL", projectId: "" });
+            }}
+            type="button"
+          >
+            Limpar
+          </button>
+        ) : null}
           <span className="sr-only">Filtrar por projeto</span>
           <select
             aria-label="Filtrar por projeto"
@@ -132,21 +144,6 @@ export function DemandFilters({
             ))}
           </select>
         </label>
-        {hasFilters ? (
-          <button
-            aria-label="Limpar filtros"
-            className="button button--ghost button--sm demand-filters__clear"
-            onClick={() => {
-              setQuery("");
-              setStatus("ALL");
-              setProjectId("");
-              updateRoute({ query: "", status: "ALL", projectId: "" });
-            }}
-            type="button"
-          >
-            Limpar
-          </button>
-        ) : null}
       </div>
     </div>
   );

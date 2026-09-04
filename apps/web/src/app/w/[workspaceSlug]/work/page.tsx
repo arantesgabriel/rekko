@@ -2,7 +2,6 @@ import { DemandsView } from "@/components/demands/demands-view";
 import { PageContainer } from "@/components/ui/page-container";
 import { requireCoreSession } from "@/modules/auth/session";
 import { listDemands } from "@/modules/projects/service";
-import { getCurrentTimer } from "@/modules/time-tracking/service";
 
 export const metadata = { title: "Demandas" };
 
@@ -20,25 +19,19 @@ export default async function DemandsPage({
   const projectId = typeof query.projectId === "string" ? query.projectId : "";
   const status =
     query.status === "ACTIVE" || query.status === "DONE" ? query.status : "ALL";
-  const [data, activeTimer] = await Promise.all([
-    listDemands({
-      userId: session.user.id,
-      slug: workspaceSlug,
-      ...(search ? { search } : {}),
-      ...(projectId ? { projectId } : {}),
-      status,
-    }),
-    getCurrentTimer(session.user.id),
-  ]);
+  const data = await listDemands({
+    userId: session.user.id,
+    slug: workspaceSlug,
+    ...(search ? { search } : {}),
+    ...(projectId ? { projectId } : {}),
+    status,
+  });
   return (
     <PageContainer width="lg">
       <DemandsView
         canManage={data.context.role !== "MEMBER"}
         counts={data.counts}
         demands={data.demands}
-        activeTimerStatus={activeTimer?.status ?? null}
-        activeTimerWorkItemId={activeTimer?.workItemId ?? null}
-        hasActiveTimer={Boolean(activeTimer)}
         parentOptions={data.parentOptions}
         projectOptions={data.projectOptions}
         query={{ projectId, search, status }}

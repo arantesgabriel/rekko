@@ -1,16 +1,15 @@
 export function formatDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(seconds, 0) / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return (
-    [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
-      .filter(Boolean)
-      .join(" ") || "0m"
-  );
+  const total = Math.max(0, Math.floor(seconds));
+  if (total < 60) return `${total}s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return [hours ? `${hours}h` : "", minutes ? `${minutes}m` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function formatTracked(seconds: number) {
-  return seconds >= 60 ? formatDuration(seconds) : "—";
+  return seconds > 0 ? formatDuration(seconds) : "—";
 }
 
 export function formatUpdated(

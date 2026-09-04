@@ -1065,6 +1065,10 @@
   overflow: auto;
 }
 
+.app-shell[data-has-timer] .app-shell__scroll {
+  padding-bottom: 6.75rem;
+}
+
 .page-container {
   margin: 0 auto;
   max-width: var(--page-max);
@@ -2670,6 +2674,24 @@
     scroll-padding-top: 72px;
   }
 
+  .app-shell[data-has-timer] .app-shell__scroll {
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .active-session {
+    bottom: calc(64px + 12px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    max-width: none;
+    right: 12px;
+    width: auto;
+  }
+
+  .active-session__details,
+  .active-session__picker {
+    max-height: min(52dvh, 420px);
+    overflow: auto;
+  }
+
   .app-bottom-nav {
     align-items: stretch;
     background: var(--surface-primary);
@@ -3456,7 +3478,7 @@
 .demand-list--project .demand-row {
   grid-template-columns:
     minmax(0, 1.4fr) minmax(7rem, 0.7fr) minmax(5.5rem, 0.5fr)
-    minmax(5.5rem, 0.5fr) 1.25rem;
+    minmax(5.5rem, 0.5fr) minmax(7.5rem, auto);
 }
 
 .demand-list--workspace .demand-list__head,
@@ -3797,6 +3819,16 @@
   gap: var(--space-5);
 }
 
+.demand-drawer__session {
+  align-items: center;
+  color: var(--brand-foreground);
+  display: inline-flex;
+  font-size: var(--font-caption);
+  font-weight: var(--weight-semibold);
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
 .demand-drawer__topline {
   align-items: center;
   display: flex;
@@ -3946,7 +3978,7 @@
   .demand-list--project .demand-row {
     grid-template-columns:
       minmax(0, 1.5fr) minmax(7rem, 0.8fr) minmax(5.5rem, 0.6fr)
-      1.25rem;
+      minmax(7.5rem, auto);
   }
 
   .demand-list--project .demand-list__head > span:nth-child(4),
@@ -5006,12 +5038,6 @@
   }
 }
 
-/* The timer remains visible above bottom navigation, but secondary actions
-   move into a compact menu on touch layouts. */
-.timer-dock__actions--mobile {
-  display: none;
-}
-
 .time-entry-actions__mobile {
   display: none;
 }
@@ -5033,56 +5059,6 @@
 }
 
 @media (max-width: 767px) {
-  .timer-dock {
-    gap: var(--space-2);
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 0;
-    padding: var(--space-2) var(--space-4);
-  }
-
-  .timer-dock__context {
-    gap: var(--space-2);
-  }
-
-  .timer-dock__context > div > span {
-    display: none;
-  }
-
-  .timer-dock__context strong {
-    font-size: var(--font-body-sm);
-  }
-
-  .timer-dock__time {
-    font-size: 1rem;
-  }
-
-  .timer-dock__actions--desktop {
-    display: flex;
-    flex-wrap: wrap;
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
-
-  .timer-dock__actions--mobile {
-    display: none;
-  }
-
-  .timer-switcher--mobile .timer-switcher__panel {
-    bottom: calc(100% + 8px);
-    max-height: min(70dvh, 520px);
-    min-width: min(300px, calc(100vw - 24px));
-    padding: 12px;
-  }
-
-  .timer-switcher--mobile .timer-switcher__panel > form {
-    border-top: 1px solid var(--border-default);
-    padding-top: 10px;
-  }
-
-  .timer-switcher--mobile .timer-switcher__panel > form .button {
-    width: 100%;
-  }
-
   .time-entry-actions__desktop {
     display: none;
   }
@@ -5172,15 +5148,11 @@
 }
 
 @media (max-width: 359px) {
-  .timer-dock {
+  .active-session {
     padding-inline: 10px;
   }
 
-  .timer-dock__context strong {
-    font-size: 12px;
-  }
-
-  .timer-dock__time {
+  .active-session__copy small {
     display: none;
   }
 }
@@ -7907,7 +7879,7 @@
   }
 
   .action-toast {
-    bottom: calc(var(--space-4) + var(--timer-dock-height));
+    bottom: calc(var(--space-4) + 4.5rem + env(safe-area-inset-bottom, 0px));
     left: var(--space-4);
     right: var(--space-4);
   }

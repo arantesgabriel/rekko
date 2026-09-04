@@ -8,19 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CompactCreateButton } from "@/components/ui/compact-create-button";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatDuration } from "@/components/projects/project-format";
 import { projectStatusLabel } from "@/modules/projects/domain";
 import type { ProjectListItem } from "@/modules/projects/service";
-
-function formatDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(seconds, 0) / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return (
-    [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
-      .filter(Boolean)
-      .join(" ") || "0m"
-  );
-}
 
 function formatActivity(date: Date | null, timezone: string) {
   if (!date) return null;

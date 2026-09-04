@@ -8,6 +8,7 @@ import { DemandStatus } from "@/components/demands/demand-status";
 import { DemandForm } from "@/components/projects/new-demand-form";
 import { formatDuration } from "@/components/projects/project-format";
 import { Drawer } from "@/components/ui/drawer";
+import { useOptionalActiveSession } from "@/components/time-tracking/active-session-provider";
 import { formatEstimate } from "@/modules/projects/domain";
 import type {
   DemandListItem,
@@ -38,7 +39,6 @@ function recordDurationLabel(record: {
   endedAt: Date | null;
 }) {
   if (!record.endedAt) return "Em andamento";
-  if (record.durationSeconds < 60) return null;
   return formatDuration(record.durationSeconds);
 }
 
@@ -71,7 +71,12 @@ export function DemandDrawer({
 }) {
   const [editing, setEditing] = useState(startInEdit);
   const [dirty, setDirty] = useState(false);
+  const tracking = useOptionalActiveSession();
   const isCreate = !demand;
+  const sessionOnDemand =
+    demand && tracking?.session?.workItemId === demand.id
+      ? tracking.session.status
+      : null;
 
   if (!open) return null;
   const requestClose = () => {
@@ -92,10 +97,7 @@ export function DemandDrawer({
   const formProjects = projectId
     ? projects.filter((project) => project.id === projectId)
     : projects;
-  const visibleRecords =
-    demand?.recentRecords.filter(
-      (record) => !record.endedAt || record.durationSeconds >= 60,
-    ) ?? [];
+  const visibleRecords = demand?.recentRecords ?? [];
 
   return (
     <Drawer
@@ -164,11 +166,17 @@ export function DemandDrawer({
             <span aria-hidden="true">·</span>
             <DemandStatus status={demand.status} />
           </div>
+          {sessionOnDemand ? (
+            <p className="demand-drawer__session">
+              <span aria-hidden="true" className="timer-status-dot" />
+              {sessionOnDemand === "PAUSED" ? "Pausado" : "Em andamento"}
+            </p>
+          ) : null}
           <dl className="demand-drawer__facts">
             <div>
               <dt>Registrado</dt>
               <dd>
-                {demand.trackedSeconds >= 60
+                {demand.trackedSeconds > 0
                   ? formatDuration(demand.trackedSeconds)
                   : "—"}
               </dd>

@@ -889,14 +889,14 @@ function getChartScale(days: InsightDay[]) {
 }
 
 function formatDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(seconds, 0) / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return (
-    [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
-      .filter(Boolean)
-      .join(" ") || "0m"
-  );
+  const total = Math.max(0, Math.floor(seconds));
+  if (total === 0) return "0s";
+  if (total < 60) return `${total}s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return [hours ? `${hours}h` : "", minutes ? `${minutes}m` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function formatAxisDuration(seconds: number) {
