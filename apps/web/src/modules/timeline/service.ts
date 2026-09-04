@@ -118,6 +118,7 @@ export async function saveManualTime(
       start: input.start,
       end: input.end,
     });
+    if (durationSeconds <= 0) throw new ManualTimeError("INVALID_INTERVAL");
     if (input.entryId) {
       const [existing] = await tx
         .select()
@@ -216,6 +217,119 @@ export async function saveManualTime(
       endedAt: input.end,
     });
     return created.id;
+  });
+}
+
+export async function updateOwnTimeEntry(
+  input: {
+    actorUserId: string;
+    slug: string;
+    entryId: string;
+    start: Date;
+    end: Date;
+  },
+  clock: Clock = systemClock,
+) {
+  if (!(input.start < input.end)) throw new ManualTimeError("INVALID_INTERVAL");
+  if (input.end > clock.now()) throw new ManualTimeError("FUTURE_INTERVAL");
+  const context = await requireWorkspace(input.actorUserId, input.slug);
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${input.actorUserId}))`,
+    );
+    const [existing] = await tx
+      .select()
+      .from(timeEntry)
+      .where(
+        and(
+          eq(timeEntry.id, input.entryId),
+          eq(timeEntry.userId, input.actorUserId),
+          eq(timeEntry.workspaceId, context.id),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!existing) throw new ManualTimeError("ENTRY_NOT_FOUND");
+    if (existing.status !== "COMPLETED" || existing.archivedAt)
+      throw new ManualTimeError("ENTRY_NOT_EDITABLE");
+    const segments = await tx
+      .select()
+      .from(timeSegment)
+      .where(eq(timeSegment.timeEntryId, existing.id))
+      .for("update");
+    if (segments.length !== 1 || !segments[0]?.endedAt)
+      throw new ManualTimeError("MULTI_SEGMENT_ENTRY");
+    const conflicts = await tx
+      .select({ id: timeSegment.id })
+      .from(timeSegment)
+      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .where(
+        and(
+          eq(timeSegment.userId, input.actorUserId),
+          eq(timeSegment.workspaceId, context.id),
+          ne(timeEntry.status, "ARCHIVED"),
+          ne(timeSegment.timeEntryId, existing.id),
+          lt(timeSegment.startedAt, input.end),
+          or(isNull(timeSegment.endedAt), gt(timeSegment.endedAt, input.start)),
+        ),
+      )
+      .limit(1);
+    if (conflicts.length) throw new ManualTimeError("OVERLAP");
+    const currentSegment = segments[0];
+    const durationSeconds = intervalSeconds({
+      start: input.start,
+      end: input.end,
+    });
+    if (durationSeconds <= 0) throw new ManualTimeError("INVALID_INTERVAL");
+    await tx
+      .update(timeEntry)
+      .set({
+        startedAt: input.start,
+        finishedAt: input.end,
+        durationSeconds,
+        updatedAt: clock.now(),
+      })
+      .where(eq(timeEntry.id, existing.id));
+    await tx
+      .update(timeSegment)
+      .set({ startedAt: input.start, endedAt: input.end })
+      .where(eq(timeSegment.id, currentSegment.id));
+    await recordAudit(tx, {
+      workspaceId: context.id,
+      actorUserId: input.actorUserId,
+      entityType: "time_entry",
+      entityId: existing.id,
+      action: "time_entry_updated",
+      beforeJson: buildTimeEntryAuditSnapshot({
+        userId: existing.userId,
+        projectId: existing.projectId,
+        workItemId: existing.workItemId,
+        source: existing.source,
+        status: existing.status,
+        startedAt: existing.startedAt,
+        finishedAt: existing.finishedAt,
+        durationSeconds: existing.durationSeconds,
+        archivedAt: existing.archivedAt,
+        segmentId: currentSegment.id,
+        segmentStartedAt: currentSegment.startedAt,
+        segmentEndedAt: currentSegment.endedAt,
+      }),
+      afterJson: buildTimeEntryAuditSnapshot({
+        userId: existing.userId,
+        projectId: existing.projectId,
+        workItemId: existing.workItemId,
+        source: existing.source,
+        status: existing.status,
+        startedAt: input.start,
+        finishedAt: input.end,
+        durationSeconds,
+        archivedAt: existing.archivedAt,
+        segmentId: currentSegment.id,
+        segmentStartedAt: input.start,
+        segmentEndedAt: input.end,
+      }),
+    });
+    return existing.id;
   });
 }
 

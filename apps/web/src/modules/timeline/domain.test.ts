@@ -125,4 +125,10 @@ describe("timeline intervals", () => {
     expect(formatWeekStripDuration(59)).toBe("59s");
     expect(formatWeekStripDuration(3600)).toBe("1h");
   });
+
+  it("converts overnight local times without inverting the interval", () => {
+    const start = zonedDateTimeToUtc("2026-09-03T22:41:00", "UTC");
+    const end = zonedDateTimeToUtc("2026-09-04T00:37:00", "UTC");
+    expect(end.getTime() - start.getTime()).toBe((1 * 60 + 56) * 60 * 1000);
+  });
 });

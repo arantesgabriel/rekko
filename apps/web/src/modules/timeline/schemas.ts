@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const ownTimeEntryIntervalSchema = z.object({
+  startDate: z.iso.date(),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  endDate: z.iso.date(),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+});
+
 export const manualTimeInputSchema = z.object({
   entryId: z
     .string()

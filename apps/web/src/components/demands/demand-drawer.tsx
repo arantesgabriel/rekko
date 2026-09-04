@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { DemandActionsMenu } from "@/components/demands/demand-actions-menu";
 import { DemandStatus } from "@/components/demands/demand-status";
+import { DemandTimeRecords } from "@/components/demands/demand-time-records";
 import { DemandForm } from "@/components/projects/new-demand-form";
 import { formatDuration } from "@/components/projects/project-format";
 import { Drawer } from "@/components/ui/drawer";
@@ -14,33 +15,6 @@ import type {
   DemandListItem,
   DemandProjectOption,
 } from "@/modules/projects/service";
-
-function formatRecordDate(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    timeZone: timezone,
-  })
-    .format(date)
-    .replace(" de ", " ");
-}
-
-function formatRecordTime(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: timezone,
-    hour12: false,
-  }).format(date);
-}
-
-function recordDurationLabel(record: {
-  durationSeconds: number;
-  endedAt: Date | null;
-}) {
-  if (!record.endedAt) return "Em andamento";
-  return formatDuration(record.durationSeconds);
-}
 
 export function DemandDrawer({
   canManage,
@@ -97,7 +71,6 @@ export function DemandDrawer({
   const formProjects = projectId
     ? projects.filter((project) => project.id === projectId)
     : projects;
-  const visibleRecords = demand?.recentRecords ?? [];
 
   return (
     <Drawer
@@ -201,37 +174,13 @@ export function DemandDrawer({
               <p className="demand-drawer__description">{demand.description}</p>
             </section>
           ) : null}
-          <section
-            aria-labelledby="demand-records-title"
-            className="demand-drawer__section"
-          >
-            <h3 id="demand-records-title">Registros recentes</h3>
-            {visibleRecords.length ? (
-              <ol className="demand-records">
-                {visibleRecords.map((record) => {
-                  const duration = recordDurationLabel(record);
-                  return (
-                    <li key={record.id}>
-                      <span>
-                        {formatRecordDate(record.startedAt, timezone)}
-                      </span>
-                      <span>
-                        {formatRecordTime(record.startedAt, timezone)}
-                        {record.endedAt
-                          ? ` → ${formatRecordTime(record.endedAt, timezone)}`
-                          : " → agora"}
-                      </span>
-                      <time>{duration}</time>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <p className="drawer-empty-copy">
-                Ainda não há tempo registrado nesta demanda.
-              </p>
-            )}
-          </section>
+          <DemandTimeRecords
+            demand={demand}
+            slug={slug}
+            timezone={timezone}
+            {...(onChanged ? { onChanged } : {})}
+            {...(onFeedback ? { onFeedback } : {})}
+          />
           {demand.source === "LINEAR" && demand.externalUrl ? (
             <a
               className="button button--secondary demand-drawer__external"

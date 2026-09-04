@@ -36,6 +36,7 @@ export function Drawer({
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        if (document.querySelector("[data-overlay-dialog='true']")) return;
         event.preventDefault();
         onClose();
         return;

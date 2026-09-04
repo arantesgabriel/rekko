@@ -171,7 +171,10 @@ export async function archiveTimeEntryAction(
 }
 
 function revalidateTimeEntryPaths(slug: string) {
+  revalidatePath("/w", "layout");
   revalidatePath(`/w/${slug}`);
-  revalidatePath(`/w/${slug}/reports`);
+  revalidatePath(`/w/${slug}/work`);
+  revalidatePath(`/w/${slug}/projects`);
   revalidatePath(`/w/${slug}/insights`);
+  revalidatePath(`/w/${slug}/reports`);
 }

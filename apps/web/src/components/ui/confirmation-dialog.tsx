@@ -15,6 +15,7 @@ export function ConfirmationDialog({
   onConfirm,
   open,
   pending = false,
+  pendingLabel = "Salvando…",
   title,
   tone = "primary",
 }: {
@@ -26,6 +27,7 @@ export function ConfirmationDialog({
   onConfirm: () => void;
   open: boolean;
   pending?: boolean;
+  pendingLabel?: string;
   title: string;
   tone?: "danger" | "primary";
 }) {
@@ -45,6 +47,7 @@ export function ConfirmationDialog({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopImmediatePropagation();
         if (!pending) onClose();
         return;
       }
@@ -79,6 +82,7 @@ export function ConfirmationDialog({
   const dialog = (
     <div
       className="confirmation-dialog-backdrop"
+      data-overlay-dialog="true"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !pending) onClose();
       }}
@@ -138,7 +142,7 @@ export function ConfirmationDialog({
             onClick={onConfirm}
             type="button"
           >
-            {pending ? "Salvando…" : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </button>
         </footer>
       </section>

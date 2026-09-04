@@ -171,6 +171,7 @@ export type DemandListItem = {
 export type DemandTimeRecord = {
   id: string;
   source: "TIMER" | "MANUAL";
+  status: "RUNNING" | "PAUSED" | "COMPLETED" | "ARCHIVED";
   description: string | null;
   startedAt: Date;
   endedAt: Date | null;
@@ -615,6 +616,7 @@ async function getDemandSummaries(
     const record = summary.records.get(segment.entryId) ?? {
       id: segment.entryId,
       source: segment.entrySource,
+      status: segment.entryStatus,
       description: segment.entryDescription,
       startedAt: segment.entryStartedAt,
       endedAt: segment.entryFinishedAt,
@@ -671,7 +673,14 @@ function toDemandListItem(
     projectSource: projectData.source,
     projectStatus: projectData.status,
     trackedSeconds: summary?.trackedSeconds ?? 0,
-    recordCount: summary?.entryIds.size ?? 0,
+    recordCount: summary
+      ? [...summary.records.values()].filter(
+          (record) =>
+            record.status === "COMPLETED" &&
+            Boolean(record.endedAt) &&
+            record.durationSeconds > 0,
+        ).length
+      : 0,
     lastActivityAt: summary?.lastActivityAt ?? null,
     isRunning: summary?.isRunning ?? false,
     recentRecords,

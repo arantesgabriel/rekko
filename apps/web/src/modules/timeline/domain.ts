@@ -116,6 +116,19 @@ export function dateInTimezone(date: Date, timezone: string) {
   return `${p.year}-${p.month}-${p.day}`;
 }
 
+export function clockTimeInTimezone(date: Date, timezone: string) {
+  const p = partsInTimezone(date, timezone);
+  return `${p.hour}:${p.minute}`;
+}
+
+export function localDateTimeToUtc(
+  date: string,
+  time: string,
+  timezone: string,
+) {
+  return zonedDateTimeToUtc(`${date}T${time}:00`, timezone);
+}
+
 /** Calendar-day arithmetic for `YYYY-MM-DD` values (noon UTC, no DST edge). */
 export function addCalendarDays(date: string, amount: number) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new RangeError("Invalid date");
