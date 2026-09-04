@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 
 import { AppShell } from "@/components/app-shell/app-shell";
 import { VerificationBanner } from "@/components/auth/verification-banner";
-import { TimerDock } from "@/components/time-tracking/timer-controls";
+import type { ActiveSessionSnapshot } from "@/components/time-tracking/active-session-model";
+import { ActiveSessionProvider } from "@/components/time-tracking/active-session-provider";
 import { requireCoreSession } from "@/modules/auth/session";
 import {
   listUserWorkspaces,
@@ -13,6 +14,24 @@ import {
   getCurrentTimer,
   listTimerTargets,
 } from "@/modules/time-tracking/service";
+
+function toSnapshot(
+  timer: NonNullable<Awaited<ReturnType<typeof getCurrentTimer>>>,
+): ActiveSessionSnapshot {
+  return {
+    id: timer.id,
+    status: timer.status,
+    projectId: timer.projectId,
+    projectName: timer.projectName,
+    workItemId: timer.workItemId,
+    workItemTitle: timer.workItemTitle,
+    workItemIdentifier: timer.workItemIdentifier,
+    accumulatedSeconds: timer.accumulatedSeconds,
+    openSegmentStartedAt: timer.openSegmentStartedAt?.toISOString() ?? null,
+    startedAt: timer.startedAt.toISOString(),
+    workspaceSlug: timer.workspaceSlug,
+  };
+}
 
 export default async function WorkspaceLayout({
   children,
@@ -28,16 +47,21 @@ export default async function WorkspaceLayout({
     listTimerTargets(session.user.id),
   ]);
   return (
-    <AppShell
-      banner={<VerificationBanner user={session.user} />}
-      collapsed={sidebarCookie === "collapsed"}
-      timer={timer ? <TimerDock timer={timer} targets={timerTargets} /> : null}
-      userName={session.user.name}
-      userRoleLabel={workspaceRoleLabel[current.role]}
-      workspaceSlug={workspaceSlug}
-      workspaces={workspaces}
+    <ActiveSessionProvider
+      initialSession={timer ? toSnapshot(timer) : null}
+      targets={timerTargets.items}
+      timezone={current.timezone}
     >
-      {children}
-    </AppShell>
+      <AppShell
+        banner={<VerificationBanner user={session.user} />}
+        collapsed={sidebarCookie === "collapsed"}
+        userName={session.user.name}
+        userRoleLabel={workspaceRoleLabel[current.role]}
+        workspaceSlug={workspaceSlug}
+        workspaces={workspaces}
+      >
+        {children}
+      </AppShell>
+    </ActiveSessionProvider>
   );
 }

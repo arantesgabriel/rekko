@@ -4,6 +4,8 @@ import {
   auditLog,
   project,
   user,
+  timeEntry,
+  timeSegment,
   workspace,
   workspaceMember,
   workItem,
@@ -16,10 +18,14 @@ import { createWorkspace } from "@/modules/workspaces/service";
 
 import {
   archiveProject,
+  archiveWorkItem,
   createProject,
   createWorkItem,
+  duplicateWorkItem,
   getProjectPage,
   listProjects,
+  moveWorkItem,
+  setWorkItemStatus,
   updateWorkItem,
 } from "./service";
 
@@ -67,6 +73,12 @@ describe.sequential("projects and work items with PostgreSQL", () => {
     await db
       .delete(auditLog)
       .where(inArray(auditLog.workspaceId, workspaceIds));
+    await db
+      .delete(timeSegment)
+      .where(inArray(timeSegment.workspaceId, workspaceIds));
+    await db
+      .delete(timeEntry)
+      .where(inArray(timeEntry.workspaceId, workspaceIds));
     await db
       .delete(workItem)
       .where(inArray(workItem.workspaceId, workspaceIds));
@@ -167,6 +179,166 @@ describe.sequential("projects and work items with PostgreSQL", () => {
         parentWorkItemId: child.id,
       }),
     ).rejects.toMatchObject({ code: "PARENT_CYCLE" });
+  });
+
+  it("manages the demand lifecycle without changing its project context", async () => {
+    const source = await createProject({
+      actorUserId: ids.owner,
+      slug,
+      name: "Demand lifecycle source",
+      description: null,
+      status: "ACTIVE",
+      estimatedMinutes: null,
+    });
+    const target = await createProject({
+      actorUserId: ids.owner,
+      slug,
+      name: "Demand lifecycle target",
+      description: null,
+      status: "ACTIVE",
+      estimatedMinutes: null,
+    });
+    const item = await createWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      projectId: source.id,
+      title: "Lifecycle demand",
+      description: "Keep the operational context intact.",
+      status: "IN_PROGRESS",
+      estimatedMinutes: 45,
+      parentWorkItemId: null,
+    });
+
+    await setWorkItemStatus({
+      actorUserId: ids.admin,
+      slug,
+      itemId: item.id,
+      status: "DONE",
+    });
+    const completed = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: source.id,
+    });
+    expect(
+      completed.demandItems.find((demand) => demand.id === item.id),
+    ).toMatchObject({
+      status: "DONE",
+      isActive: false,
+    });
+
+    const duplicate = await duplicateWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      itemId: item.id,
+    });
+    await moveWorkItem({
+      actorUserId: ids.admin,
+      slug,
+      itemId: item.id,
+      targetProjectId: target.id,
+    });
+    const moved = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: target.id,
+    });
+    expect(
+      moved.demandItems.find((demand) => demand.id === item.id),
+    ).toMatchObject({
+      projectId: target.id,
+      title: "Lifecycle demand",
+    });
+
+    await archiveWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      itemId: duplicate.id,
+    });
+    const sourceAfterArchive = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: source.id,
+    });
+    expect(sourceAfterArchive.demandItems).toHaveLength(0);
+  });
+
+  it("derives project time from demand-linked segments only", async () => {
+    const trackedProject = await createProject({
+      actorUserId: ids.owner,
+      slug,
+      name: "Demand totals",
+      description: null,
+      status: "ACTIVE",
+      estimatedMinutes: null,
+    });
+    const demand = await createWorkItem({
+      actorUserId: ids.owner,
+      slug,
+      projectId: trackedProject.id,
+      title: "Tracked demand",
+      description: null,
+      status: "IN_PROGRESS",
+      estimatedMinutes: null,
+      parentWorkItemId: null,
+    });
+    const [legacyEntry] = await db
+      .insert(timeEntry)
+      .values({
+        workspaceId: workspaceIds[0]!,
+        userId: ids.owner,
+        projectId: trackedProject.id,
+        workItemId: null,
+        source: "MANUAL",
+        status: "COMPLETED",
+        startedAt: new Date("2026-09-01T08:00:00Z"),
+        finishedAt: new Date("2026-09-01T12:00:00Z"),
+        durationSeconds: 4 * 60 * 60,
+      })
+      .returning({ id: timeEntry.id });
+    const [linkedEntry] = await db
+      .insert(timeEntry)
+      .values({
+        workspaceId: workspaceIds[0]!,
+        userId: ids.owner,
+        projectId: trackedProject.id,
+        workItemId: demand.id,
+        source: "MANUAL",
+        status: "COMPLETED",
+        startedAt: new Date("2026-09-01T13:00:00Z"),
+        finishedAt: new Date("2026-09-01T14:00:00Z"),
+        durationSeconds: 60 * 60,
+      })
+      .returning({ id: timeEntry.id });
+    expect(legacyEntry).toBeDefined();
+    expect(linkedEntry).toBeDefined();
+    await db.insert(timeSegment).values([
+      {
+        timeEntryId: legacyEntry!.id,
+        userId: ids.owner,
+        workspaceId: workspaceIds[0]!,
+        startedAt: new Date("2026-09-01T08:00:00Z"),
+        endedAt: new Date("2026-09-01T12:00:00Z"),
+      },
+      {
+        timeEntryId: linkedEntry!.id,
+        userId: ids.owner,
+        workspaceId: workspaceIds[0]!,
+        startedAt: new Date("2026-09-01T13:00:00Z"),
+        endedAt: new Date("2026-09-01T14:00:00Z"),
+      },
+    ]);
+
+    const projects = await listProjects(ids.owner, slug);
+    expect(
+      projects.projects.find((item) => item.id === trackedProject.id),
+    ).toMatchObject({ trackedSeconds: 60 * 60 });
+    const detail = await getProjectPage({
+      userId: ids.owner,
+      slug,
+      projectId: trackedProject.id,
+    });
+    expect(detail.projectSummary.trackedSeconds).toBe(60 * 60);
   });
 
   it("archives with audit, hides the project and blocks later mutation", async () => {

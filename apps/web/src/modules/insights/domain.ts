@@ -139,6 +139,7 @@ export function aggregateInsightSegments(
     );
     if (!clipped) continue;
     const seconds = intervalSeconds(clipped);
+    if (seconds <= 0) continue;
     const project = projects.get(segment.projectId) ?? {
       projectId: segment.projectId,
       projectName: segment.projectName,

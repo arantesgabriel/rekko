@@ -6,11 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 type StatusFilter = "ALL" | "ACTIVE" | "DONE";
 
 export function DemandFilters({
+  counts,
   initialProjectId,
   initialQuery,
   initialStatus,
   projects,
 }: {
+  counts: { all: number; active: number; done: number };
   initialProjectId: string;
   initialQuery: string;
   initialStatus: StatusFilter;
@@ -75,24 +77,24 @@ export function DemandFilters({
         <input
           aria-label="Buscar demandas"
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar por nome, código ou projeto…"
+          placeholder="Buscar demandas…"
           type="search"
           value={query}
         />
       </label>
       <div className="demand-filters__controls">
         <div
+          aria-label="Filtrar demandas por status"
           className="demand-status-tabs"
           role="tablist"
-          aria-label="Filtrar demandas por status"
         >
           {(
             [
-              ["ALL", "Todas"],
-              ["ACTIVE", "Ativas"],
-              ["DONE", "Concluídas"],
+              ["ALL", "Todas", counts.all],
+              ["ACTIVE", "Ativas", counts.active],
+              ["DONE", "Concluídas", counts.done],
             ] as const
-          ).map(([value, label]) => (
+          ).map(([value, label, count]) => (
             <button
               aria-selected={status === value}
               className={status === value ? "is-selected" : undefined}
@@ -104,11 +106,27 @@ export function DemandFilters({
               role="tab"
               type="button"
             >
-              {label}
+              <span className="demand-status-tabs__label">{label}</span>
+              <span className="demand-status-tabs__count">{count}</span>
             </button>
           ))}
         </div>
         <label className="demand-project-filter">
+        {hasFilters ? (
+          <button
+            aria-label="Limpar filtros"
+            className="button button--ghost button--sm demand-filters__clear"
+            onClick={() => {
+              setQuery("");
+              setStatus("ALL");
+              setProjectId("");
+              updateRoute({ query: "", status: "ALL", projectId: "" });
+            }}
+            type="button"
+          >
+            Limpar
+          </button>
+        ) : null}
           <span className="sr-only">Filtrar por projeto</span>
           <select
             aria-label="Filtrar por projeto"
@@ -126,20 +144,6 @@ export function DemandFilters({
             ))}
           </select>
         </label>
-        {hasFilters ? (
-          <button
-            className="button button--ghost button--sm demand-filters__clear"
-            onClick={() => {
-              setQuery("");
-              setStatus("ALL");
-              setProjectId("");
-              updateRoute({ query: "", status: "ALL", projectId: "" });
-            }}
-            type="button"
-          >
-            Limpar filtros
-          </button>
-        ) : null}
       </div>
     </div>
   );

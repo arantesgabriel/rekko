@@ -320,7 +320,7 @@ async function selectReportRows(
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
     .innerJoin(user, eq(user.id, timeEntry.userId))
     .innerJoin(project, eq(project.id, timeEntry.projectId))
-    .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .leftJoin(
       workspaceMember,
       and(
@@ -343,6 +343,7 @@ async function countReportRows(scope: ReportScope) {
     .select({ rowCount: count(), totalSeconds })
     .from(timeSegment)
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(reportWhere(scope));
   return summary ?? { rowCount: 0, totalSeconds: 0 };
 }

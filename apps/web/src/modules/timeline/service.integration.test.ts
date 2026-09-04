@@ -22,7 +22,12 @@ import {
 } from "@/modules/time-tracking/service";
 import { createWorkspace } from "@/modules/workspaces/service";
 import type { Clock } from "@/modules/time-tracking/clock";
-import { getDailyTimeline, saveManualTime } from "./service";
+import {
+  getDailyTimeline,
+  saveManualTime,
+  updateOwnTimeEntry,
+} from "./service";
+import { archiveTimeEntry } from "@/modules/time-tracking/admin-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
 const owner = `timeline-owner-${suffix}`;
@@ -63,6 +68,11 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
     });
     workspaceIds.push(createdWorkspace.id);
     slug = createdWorkspace.slug;
+    await db.insert(workspaceMember).values({
+      workspaceId: createdWorkspace.id,
+      userId: other,
+      role: "MEMBER",
+    });
     const createdProject = await createProject({
       actorUserId: owner,
       slug,
@@ -142,7 +152,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           actorUserId: owner,
           slug,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: null,
           ...interval("2026-08-27T09:00:00Z", "2026-08-27T10:00:00Z"),
         },
@@ -155,7 +165,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           actorUserId: owner,
           slug,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: null,
           ...interval("2026-08-27T08:30:00Z", "2026-08-27T09:30:00Z"),
         },
@@ -182,7 +192,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           actorUserId: owner,
           slug,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: null,
           ...interval("2026-08-28T09:15:00Z", "2026-08-28T09:45:00Z"),
         },
@@ -195,7 +205,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           actorUserId: owner,
           slug,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: null,
           ...interval("2026-08-28T08:30:00Z", "2026-08-28T09:30:00Z"),
         },
@@ -217,7 +227,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           slug,
           entryId: manual!.id,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: "Atualizado",
           ...interval("2026-08-27T07:30:00Z", "2026-08-27T08:30:00Z"),
         },
@@ -231,7 +241,7 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
           slug,
           entryId: manual!.id,
           projectId,
-          workItemId: null,
+          workItemId: itemId,
           description: null,
           ...interval("2026-08-27T06:00:00Z", "2026-08-27T07:00:00Z"),
         },
@@ -258,5 +268,91 @@ describe.sequential("manual time and timeline with PostgreSQL", () => {
       ["2026-08-28T09:00:00.000Z", "2026-08-28T09:15:00.000Z"],
       ["2026-08-28T09:45:00.000Z", "2026-08-28T10:00:00.000Z"],
     ]);
+  });
+
+  it("lets the owner edit a completed timer entry and rejects zero duration", async () => {
+    mutable.value = new Date("2026-08-29T12:00:00Z");
+    await startTimer(
+      { actorUserId: owner, slug, projectId, workItemId: itemId },
+      clock,
+    );
+    mutable.value = new Date("2026-08-29T13:00:00Z");
+    const timerId = await finishTimer(owner, clock);
+    mutable.value = new Date("2026-08-29T18:00:00Z");
+    await updateOwnTimeEntry(
+      {
+        actorUserId: owner,
+        slug,
+        entryId: timerId,
+        start: new Date("2026-08-29T12:00:00Z"),
+        end: new Date("2026-08-29T13:30:00Z"),
+      },
+      clock,
+    );
+    expect(
+      (await db.select().from(timeEntry).where(eq(timeEntry.id, timerId)))[0],
+    ).toMatchObject({ durationSeconds: 5400 });
+    await expect(
+      updateOwnTimeEntry(
+        {
+          actorUserId: owner,
+          slug,
+          entryId: timerId,
+          start: new Date("2026-08-29T12:00:00Z"),
+          end: new Date("2026-08-29T12:00:00Z"),
+        },
+        clock,
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_INTERVAL" });
+    await expect(
+      updateOwnTimeEntry(
+        {
+          actorUserId: other,
+          slug,
+          entryId: timerId,
+          start: new Date("2026-08-29T12:00:00Z"),
+          end: new Date("2026-08-29T14:00:00Z"),
+        },
+        clock,
+      ),
+    ).rejects.toMatchObject({ code: "ENTRY_NOT_FOUND" });
+    await archiveTimeEntry(
+      { actorUserId: owner, slug, entryId: timerId },
+      clock,
+    );
+    expect(
+      (await db.select().from(timeEntry).where(eq(timeEntry.id, timerId)))[0]
+        ?.status,
+    ).toBe("ARCHIVED");
+  });
+
+  it("preserves overnight intervals when editing own time", async () => {
+    mutable.value = new Date("2026-08-31T12:00:00Z");
+    const id = await saveManualTime(
+      {
+        actorUserId: owner,
+        slug,
+        projectId,
+        workItemId: itemId,
+        description: null,
+        start: new Date("2026-08-30T22:41:00Z"),
+        end: new Date("2026-08-31T00:37:00Z"),
+      },
+      clock,
+    );
+    await updateOwnTimeEntry(
+      {
+        actorUserId: owner,
+        slug,
+        entryId: id,
+        start: new Date("2026-08-30T22:41:00Z"),
+        end: new Date("2026-08-31T00:37:00Z"),
+      },
+      clock,
+    );
+    expect(
+      (await db.select().from(timeEntry).where(eq(timeEntry.id, id)))[0]
+        ?.durationSeconds,
+    ).toBe(1 * 3600 + 56 * 60);
   });
 });

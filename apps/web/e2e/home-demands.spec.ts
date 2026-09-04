@@ -48,24 +48,110 @@ test("unifies the operational home and manages demands", async ({
   await page.getByRole("button", { name: "Hoje", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${workspacePath}$`));
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto", exact: true }).click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 
-  await page.goto(`${workspacePath}/work/new?mode=demand`);
+  await page.goto(`${workspacePath}/projects`);
+  const projectCard = page.locator(".project-card").filter({
+    has: page.getByRole("heading", { name: projectName }),
+  });
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard).not.toContainText("Sem estimativa");
+  await expect(projectCard.locator(".project-card__stat")).toHaveCount(2);
+  await expect(projectCard.locator("dt")).toHaveText([
+    "Tempo registrado",
+    "Demandas",
+  ]);
+  await expect
+    .poll(() =>
+      projectCard
+        .locator(".project-card__stat")
+        .first()
+        .evaluate((element) => getComputedStyle(element).animationName),
+    )
+    .toBe("project-card-content-in");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect
+    .poll(() =>
+      projectCard
+        .locator(".project-card__stat")
+        .first()
+        .evaluate((element) => getComputedStyle(element).animationName),
+    )
+    .toBe("none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect(
+    (await projectCard.boundingBox())?.width ?? Infinity,
+  ).toBeLessThanOrEqual(448);
+  await projectCard.click();
+  await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
+  await expect(
+    page.getByText("Contexto para organizar demandas e reconstruir seu tempo."),
+  ).toHaveCount(0);
+  await expect(page.getByText("Sem estimativa")).toHaveCount(0);
+
+  await page.goto(`${workspacePath}/work`);
+  const createDemand = page.getByRole("button", {
+    name: "Nova demanda",
+    exact: true,
+  });
+  const expectedControlHeight =
+    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "36px";
+  await expect
+    .poll(() =>
+      createDemand.evaluate((button) => getComputedStyle(button).height),
+    )
+    .toBe(expectedControlHeight);
+  if ((page.viewportSize()?.width ?? 1280) >= 768) {
+    const rightBefore = await createDemand.evaluate(
+      (button) => button.getBoundingClientRect().right,
+    );
+    await createDemand.hover();
+    await expect
+      .poll(() =>
+        createDemand.evaluate((button) => button.getBoundingClientRect().width),
+      )
+      .toBeGreaterThan(100);
+    const rightAfter = await createDemand.evaluate(
+      (button) => button.getBoundingClientRect().right,
+    );
+    const labelFontSize = await createDemand
+      .locator(".demands-create-button__label")
+      .evaluate((label) => getComputedStyle(label).fontSize);
+    expect(Math.abs(rightAfter - rightBefore)).toBeLessThanOrEqual(1);
+    expect(labelFontSize).toBe("12px");
+    await expect(
+      page.locator(".page-header").getByRole("link", { name: "Projetos" }),
+    ).toHaveCount(0);
+  }
+  await createDemand.click();
   await page.getByLabel("Projeto *").selectOption({ label: projectName });
   await page.getByLabel("Título *").fill(demandName);
   await page.getByLabel("Descrição").fill("Análise do provider");
-  await page.getByRole("button", { name: "Criar demanda" }).click();
-  await expect(page).toHaveURL(/\/work\?created=1$/);
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`${workspacePath}/work$`));
   await expect(page.getByText(demandName, { exact: true })).toBeVisible();
   await expect(page.getByText("Ativa", { exact: true })).toBeVisible();
   await expect(
     page.locator(".demand-row").getByRole("link", { name: projectName }),
   ).toBeVisible();
+  await page.getByRole("button", { name: demandName, exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: demandName, exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Fechar painel" }).click();
 
   const search = page.getByLabel("Buscar demandas");
   await search.fill("Provider Analysis");
@@ -97,7 +183,7 @@ test("unifies the operational home and manages demands", async ({
     page
       .locator(".demand-row")
       .filter({ hasText: demandName })
-      .locator(".demand-row__time"),
+      .locator(".demand-row__tracked"),
   ).toContainText("1h");
   await expect
     .poll(() =>

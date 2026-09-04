@@ -10,6 +10,7 @@ import {
 import {
   and,
   asc,
+  desc,
   eq,
   gt,
   isNotNull,
@@ -28,11 +29,14 @@ import { requireWorkspace } from "@/modules/workspaces/service";
 import type { Clock } from "@/modules/time-tracking/clock";
 import { systemClock } from "@/modules/time-tracking/clock";
 import {
+  addCalendarDays,
   calculateGaps,
   clipInterval,
   dateInTimezone,
   dayWindow,
   intervalSeconds,
+  weekDates,
+  zonedDateTimeToUtc,
 } from "./domain";
 import { ManualTimeError } from "./errors";
 
@@ -43,7 +47,7 @@ type ManualInput = {
   start: Date;
   end: Date;
   projectId: string;
-  workItemId: string | null;
+  workItemId: string;
   description: string | null;
 };
 
@@ -62,24 +66,22 @@ async function validateTarget(input: ManualInput) {
     )
     .limit(1);
   if (!targetProject) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
-  if (input.workItemId) {
-    const [item] = await db
-      .select({ id: workItem.id })
-      .from(workItem)
-      .where(
-        and(
-          eq(workItem.id, input.workItemId),
-          eq(workItem.projectId, input.projectId),
-          eq(workItem.workspaceId, context.id),
-          eq(workItem.isActive, true),
-          eq(workItem.isTrackable, true),
-          isNull(workItem.archivedAt),
-          ne(workItem.status, "DONE"),
-        ),
-      )
-      .limit(1);
-    if (!item) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
-  }
+  const [item] = await db
+    .select({ id: workItem.id })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.id, input.workItemId),
+        eq(workItem.projectId, input.projectId),
+        eq(workItem.workspaceId, context.id),
+        eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
+        isNull(workItem.archivedAt),
+        ne(workItem.status, "DONE"),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new ManualTimeError("TARGET_NOT_TRACKABLE");
   return context;
 }
 
@@ -116,6 +118,7 @@ export async function saveManualTime(
       start: input.start,
       end: input.end,
     });
+    if (durationSeconds <= 0) throw new ManualTimeError("INVALID_INTERVAL");
     if (input.entryId) {
       const [existing] = await tx
         .select()
@@ -217,6 +220,119 @@ export async function saveManualTime(
   });
 }
 
+export async function updateOwnTimeEntry(
+  input: {
+    actorUserId: string;
+    slug: string;
+    entryId: string;
+    start: Date;
+    end: Date;
+  },
+  clock: Clock = systemClock,
+) {
+  if (!(input.start < input.end)) throw new ManualTimeError("INVALID_INTERVAL");
+  if (input.end > clock.now()) throw new ManualTimeError("FUTURE_INTERVAL");
+  const context = await requireWorkspace(input.actorUserId, input.slug);
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${input.actorUserId}))`,
+    );
+    const [existing] = await tx
+      .select()
+      .from(timeEntry)
+      .where(
+        and(
+          eq(timeEntry.id, input.entryId),
+          eq(timeEntry.userId, input.actorUserId),
+          eq(timeEntry.workspaceId, context.id),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!existing) throw new ManualTimeError("ENTRY_NOT_FOUND");
+    if (existing.status !== "COMPLETED" || existing.archivedAt)
+      throw new ManualTimeError("ENTRY_NOT_EDITABLE");
+    const segments = await tx
+      .select()
+      .from(timeSegment)
+      .where(eq(timeSegment.timeEntryId, existing.id))
+      .for("update");
+    if (segments.length !== 1 || !segments[0]?.endedAt)
+      throw new ManualTimeError("MULTI_SEGMENT_ENTRY");
+    const conflicts = await tx
+      .select({ id: timeSegment.id })
+      .from(timeSegment)
+      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .where(
+        and(
+          eq(timeSegment.userId, input.actorUserId),
+          eq(timeSegment.workspaceId, context.id),
+          ne(timeEntry.status, "ARCHIVED"),
+          ne(timeSegment.timeEntryId, existing.id),
+          lt(timeSegment.startedAt, input.end),
+          or(isNull(timeSegment.endedAt), gt(timeSegment.endedAt, input.start)),
+        ),
+      )
+      .limit(1);
+    if (conflicts.length) throw new ManualTimeError("OVERLAP");
+    const currentSegment = segments[0];
+    const durationSeconds = intervalSeconds({
+      start: input.start,
+      end: input.end,
+    });
+    if (durationSeconds <= 0) throw new ManualTimeError("INVALID_INTERVAL");
+    await tx
+      .update(timeEntry)
+      .set({
+        startedAt: input.start,
+        finishedAt: input.end,
+        durationSeconds,
+        updatedAt: clock.now(),
+      })
+      .where(eq(timeEntry.id, existing.id));
+    await tx
+      .update(timeSegment)
+      .set({ startedAt: input.start, endedAt: input.end })
+      .where(eq(timeSegment.id, currentSegment.id));
+    await recordAudit(tx, {
+      workspaceId: context.id,
+      actorUserId: input.actorUserId,
+      entityType: "time_entry",
+      entityId: existing.id,
+      action: "time_entry_updated",
+      beforeJson: buildTimeEntryAuditSnapshot({
+        userId: existing.userId,
+        projectId: existing.projectId,
+        workItemId: existing.workItemId,
+        source: existing.source,
+        status: existing.status,
+        startedAt: existing.startedAt,
+        finishedAt: existing.finishedAt,
+        durationSeconds: existing.durationSeconds,
+        archivedAt: existing.archivedAt,
+        segmentId: currentSegment.id,
+        segmentStartedAt: currentSegment.startedAt,
+        segmentEndedAt: currentSegment.endedAt,
+      }),
+      afterJson: buildTimeEntryAuditSnapshot({
+        userId: existing.userId,
+        projectId: existing.projectId,
+        workItemId: existing.workItemId,
+        source: existing.source,
+        status: existing.status,
+        startedAt: input.start,
+        finishedAt: input.end,
+        durationSeconds,
+        archivedAt: existing.archivedAt,
+        segmentId: currentSegment.id,
+        segmentStartedAt: input.start,
+        segmentEndedAt: input.end,
+      }),
+    });
+    return existing.id;
+  });
+}
+
 export async function getDailyTimeline(input: {
   userId: string;
   slug: string;
@@ -250,7 +366,7 @@ export async function getDailyTimeline(input: {
     .from(timeSegment)
     .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
     .innerJoin(project, eq(project.id, timeEntry.projectId))
-    .leftJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
     .where(
       and(
         eq(timeEntry.userId, input.userId),
@@ -298,6 +414,111 @@ export async function getDailyTimeline(input: {
     ),
     isToday: selectedDate === dateInTimezone(now, person.timezone),
   };
+}
+
+export async function getWeekDaySummaries(input: {
+  userId: string;
+  slug: string;
+  date?: string;
+  clock?: Clock;
+}) {
+  const clock = input.clock ?? systemClock;
+  const context = await requireWorkspace(input.userId, input.slug);
+  const [person] = await db
+    .select({ timezone: user.timezone })
+    .from(user)
+    .where(eq(user.id, input.userId))
+    .limit(1);
+  if (!person) throw new Error("User timezone not found");
+  const selectedDate =
+    input.date ?? dateInTimezone(clock.now(), person.timezone);
+  const dates = weekDates(selectedDate);
+  const weekStart = dates[0]!;
+  const weekEndExclusive = addCalendarDays(dates[6]!, 1);
+  const window = {
+    start: zonedDateTimeToUtc(`${weekStart}T00:00:00`, person.timezone),
+    end: zonedDateTimeToUtc(`${weekEndExclusive}T00:00:00`, person.timezone),
+  };
+  const rows = await db
+    .select({
+      startedAt: timeSegment.startedAt,
+      endedAt: timeSegment.endedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .where(
+      and(
+        eq(timeEntry.userId, input.userId),
+        eq(timeEntry.workspaceId, context.id),
+        ne(timeEntry.status, "ARCHIVED"),
+        lt(timeSegment.startedAt, window.end),
+        or(isNull(timeSegment.endedAt), gt(timeSegment.endedAt, window.start)),
+      ),
+    );
+  const now = clock.now();
+  return dates.map((date) => {
+    const day = dayWindow(date, person.timezone);
+    const trackedSeconds = rows.reduce((total, row) => {
+      const clipped = clipInterval(
+        { start: row.startedAt, end: row.endedAt ?? now },
+        day,
+      );
+      return total + (clipped ? intervalSeconds(clipped) : 0);
+    }, 0);
+    return { date, trackedSeconds };
+  });
+}
+
+export async function listRecentWorkItems(
+  userId: string,
+  slug: string,
+  limit = 8,
+) {
+  const context = await requireWorkspace(userId, slug);
+  const rows = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      title: workItem.title,
+      projectName: project.name,
+      startedAt: timeSegment.startedAt,
+    })
+    .from(timeSegment)
+    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+    .innerJoin(project, eq(project.id, timeEntry.projectId))
+    .where(
+      and(
+        eq(timeEntry.userId, userId),
+        eq(timeEntry.workspaceId, context.id),
+        ne(timeEntry.status, "ARCHIVED"),
+        eq(workItem.isActive, true),
+        eq(workItem.isTrackable, true),
+        ne(workItem.status, "DONE"),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .orderBy(desc(timeSegment.startedAt))
+    .limit(40);
+  const seen = new Set<string>();
+  const items: {
+    id: string;
+    projectId: string;
+    title: string;
+    projectName: string;
+  }[] = [];
+  for (const row of rows) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    items.push({
+      id: row.id,
+      projectId: row.projectId,
+      title: row.title,
+      projectName: row.projectName,
+    });
+    if (items.length >= limit) break;
+  }
+  return items;
 }
 
 export async function listManualTimeTargets(userId: string, slug: string) {
@@ -378,6 +599,7 @@ export async function getGettingStartedProgress(userId: string, slug: string) {
           eq(timeEntry.userId, userId),
           eq(timeEntry.workspaceId, context.id),
           eq(timeEntry.source, "MANUAL"),
+          isNotNull(timeEntry.workItemId),
           ne(timeEntry.status, "ARCHIVED"),
         ),
       )

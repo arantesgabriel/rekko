@@ -344,7 +344,7 @@ Entregar o diferencial conceitual central do Rekko.
 - [x] início;
 - [x] fim;
 - [x] Project;
-- [x] Work Item opcional;
+- [x] Work Item obrigatório;
 - [x] descrição;
 - [x] cálculo server-side;
 - [x] detecção de overlap.

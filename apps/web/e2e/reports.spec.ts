@@ -20,7 +20,10 @@ async function openMobileDisclosure(
   page: import("@playwright/test").Page,
   selector: string,
 ) {
-  const summary = page.locator(`${selector} > summary`);
+  const summary = page
+    .locator(`${selector} > summary`)
+    .filter({ visible: true })
+    .first();
   if ((page.viewportSize()?.width ?? 1024) < 768) await summary.click();
 }
 
@@ -59,11 +62,16 @@ async function createProject(
   projectName: string,
 ) {
   const workspacePath = new URL(page.url()).pathname;
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 }
 
@@ -72,7 +80,7 @@ async function addManualTime(
   projectName: string,
   start: string,
   end: string,
-  workItemName?: string,
+  workItemName: string,
 ) {
   const workspacePath = workspaceRoot(page);
   await page.goto(workspacePath);
@@ -82,14 +90,31 @@ async function addManualTime(
   await page
     .locator('select[name="projectId"]')
     .selectOption({ label: projectName });
-  if (workItemName) {
-    await page.locator('select[name="workItemId"]').selectOption({
-      label: workItemName,
-    });
-  }
+  await page.locator('select[name="workItemId"]').selectOption({
+    label: workItemName,
+  });
   await page.getByRole("button", { name: "Salvar tempo" }).click();
   await expect(page.locator(".time-drawer")).toHaveCount(0);
   await expect(page.locator(".timeline-block").first()).toBeVisible();
+}
+
+async function createDemand(
+  page: import("@playwright/test").Page,
+  projectName: string,
+  demandName: string,
+) {
+  const workspacePath = workspaceRoot(page);
+  await page.goto(`${workspacePath}/work`);
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Projeto *").selectOption({ label: projectName });
+  await page.getByLabel("Título *").fill(demandName);
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: demandName, exact: true }),
+  ).toBeVisible();
 }
 
 function workspaceRoot(page: import("@playwright/test").Page) {
@@ -104,6 +129,7 @@ test("Owner reviews Workspace hours and downloads a UTF-8 CSV", async ({
   test.setTimeout(60_000);
   const stamp = `${testInfo.project.name}-${Date.now()}`;
   const projectName = `CSV Project ${stamp}`;
+  const demandName = `CSV Demand ${stamp}`;
   await signUp(page, {
     email: `reports-owner-${stamp}@example.com`,
     name: "Reports Owner",
@@ -111,7 +137,8 @@ test("Owner reviews Workspace hours and downloads a UTF-8 CSV", async ({
   await completeOnboarding(page, `Reports ${stamp}`);
   const workspacePath = new URL(page.url()).pathname;
   await createProject(page, projectName);
-  await addManualTime(page, projectName, "08:00", "09:30");
+  await createDemand(page, projectName, demandName);
+  await addManualTime(page, projectName, "08:00", "09:30", demandName);
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.getByRole("heading", { name: "Relatórios" })).toBeVisible();
@@ -180,17 +207,24 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
   const ownerEmail = `reports-owner-member-${stamp}@example.com`;
   const memberEmail = `reports-member-${stamp}@example.com`;
   const projectName = `Shared Reports ${stamp}`;
+  const demandName = `Shared Demand ${stamp}`;
   await signUp(page, { email: ownerEmail, name: "Reports Owner" });
   await completeOnboarding(page, `Shared Reports ${stamp}`);
   const workspacePath = new URL(page.url()).pathname;
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: "Criar projeto" }).first().click();
-  await page.getByRole("link", { name: "Criar manualmente" }).click();
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
   await page.getByLabel("Nome *").fill(projectName);
-  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
-  await addManualTime(page, projectName, "08:00", "09:00");
+  await createDemand(page, projectName, demandName);
+  await addManualTime(page, projectName, "08:00", "09:00", demandName);
 
   await page.goto(`${workspacePath}/members`);
   await page.getByRole("heading", { name: "Membros" }).waitFor();
@@ -228,7 +262,7 @@ test("Member sees only their own hours while Owner sees the full Workspace", asy
   await expect(
     page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
-  await addManualTime(page, projectName, "10:00", "10:30");
+  await addManualTime(page, projectName, "06:00", "06:30", demandName);
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.getByRole("heading", { name: "Relatórios" })).toBeVisible();
@@ -268,11 +302,13 @@ test("Admin can review and export Workspace hours", async ({
   const ownerEmail = `reports-admin-owner-${stamp}@example.com`;
   const adminEmail = `reports-admin-${stamp}@example.com`;
   const projectName = `Admin Reports ${stamp}`;
+  const demandName = `Admin Demand ${stamp}`;
   await signUp(page, { email: ownerEmail, name: "Reports Owner" });
   await completeOnboarding(page, `Admin Reports ${stamp}`);
   const workspacePath = new URL(page.url()).pathname;
   await createProject(page, projectName);
-  await addManualTime(page, projectName, "08:00", "09:00");
+  await createDemand(page, projectName, demandName);
+  await addManualTime(page, projectName, "08:00", "09:00", demandName);
 
   await page.goto(`${workspacePath}/members`);
   const inviteForm = await openInviteForm(page);
@@ -305,7 +341,7 @@ test("Admin can review and export Workspace hours", async ({
   await expect(
     page.getByRole("heading", { name: "Nenhum tempo registrado neste dia." }),
   ).toBeVisible();
-  await addManualTime(page, projectName, "10:00", "10:30");
+  await addManualTime(page, projectName, "06:00", "06:30", demandName);
 
   await page.goto(`${workspacePath}/reports`);
   await openMobileDisclosure(page, "details.reports-filter-disclosure");
@@ -338,13 +374,14 @@ test("Reports shows a neutral empty state", async ({ page }, testInfo) => {
   ).toBeVisible();
 });
 
-test("demand filter excludes project-only entries from screen and CSV", async ({
+test("demand filter isolates one demand on screen and in CSV", async ({
   page,
 }, testInfo) => {
   test.setTimeout(60_000);
   const stamp = `${testInfo.project.name}-${Date.now()}`;
   const projectName = `Demand Filter ${stamp}`;
-  const workItemName = `card teste ${stamp}`;
+  const workItemName = `Target demand ${stamp}`;
+  const otherWorkItemName = `Other demand ${stamp}`;
   await signUp(page, {
     email: `reports-demand-filter-${stamp}@example.com`,
     name: "Demand Filter Owner",
@@ -352,21 +389,11 @@ test("demand filter excludes project-only entries from screen and CSV", async ({
   await completeOnboarding(page, `Demand Filter ${stamp}`);
   const workspacePath = new URL(page.url()).pathname;
   await createProject(page, projectName);
+  await createDemand(page, projectName, workItemName);
+  await createDemand(page, projectName, otherWorkItemName);
 
-  await page.goto(`${workspacePath}/work`);
-  await page.getByRole("link", { name: projectName }).click();
-  await page.locator("details.create-item > summary").click();
-  await page.getByLabel("Título *").fill(workItemName);
-  await page.getByRole("button", { name: "Criar demanda" }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Demandas" })
-      .locator("strong.card-title")
-      .filter({ hasText: workItemName }),
-  ).toBeVisible();
-
-  await addManualTime(page, projectName, "08:00", "09:00");
-  await addManualTime(page, projectName, "09:00", "10:00", workItemName);
+  await addManualTime(page, projectName, "06:00", "07:00", otherWorkItemName);
+  await addManualTime(page, projectName, "07:00", "08:00", workItemName);
 
   await page.goto(`${workspacePath}/reports`);
   await expect(page.locator(".reports-table tbody tr")).toHaveCount(2);
@@ -379,7 +406,7 @@ test("demand filter excludes project-only entries from screen and CSV", async ({
     workItemName,
   );
   await expect(page.locator(".reports-table tbody tr")).not.toContainText(
-    "Sem demanda",
+    otherWorkItemName,
   );
 
   const [download] = await Promise.all([
@@ -389,6 +416,6 @@ test("demand filter excludes project-only entries from screen and CSV", async ({
   const csv = await readFile((await download.path())!);
   const csvText = csv.toString("utf8");
   expect(csvText).toContain(workItemName);
-  expect(csvText).not.toContain("Sem demanda");
+  expect(csvText).not.toContain(otherWorkItemName);
   expect(csvText.match(/\r\n/g)?.length).toBe(2);
 });

@@ -170,16 +170,19 @@ describe.sequential("insights with PostgreSQL", () => {
       query: { period: "this_week" },
       now: new Date("2026-09-07T14:00:00Z"),
     });
-    expect(result.aggregation.trackedSeconds).toBe(135 * 60);
+    expect(result.aggregation.trackedSeconds).toBe(90 * 60);
     expect(result.aggregation.projects).toEqual([
       expect.objectContaining({
         projectId: firstProjectId,
-        trackedSeconds: 135 * 60,
+        trackedSeconds: 90 * 60,
       }),
     ]);
     expect(result.aggregation.workItems).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ workItemId: null, trackedSeconds: 45 * 60 }),
+        expect.objectContaining({
+          workItemId: estimatedItemId,
+          trackedSeconds: 90 * 60,
+        }),
       ]),
     );
   });
@@ -207,7 +210,7 @@ describe.sequential("insights with PostgreSQL", () => {
       query: { period: "this_week" },
       now: new Date("2026-09-07T14:00:00Z"),
     });
-    expect(result.aggregation.trackedSeconds).toBe(5 * 60 * 60);
+    expect(result.aggregation.trackedSeconds).toBe(0);
   });
 });
 

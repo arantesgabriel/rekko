@@ -19,7 +19,7 @@ type CorrectTimeEntryInput = {
   start: Date;
   end: Date;
   projectId: string;
-  workItemId: string | null;
+  workItemId: string;
   description: string | null;
 };
 
@@ -89,7 +89,6 @@ async function validateTarget(
     )
     .limit(1);
   if (!targetProject) throw new AdminTimeError("TARGET_NOT_FOUND");
-  if (!input.workItemId) return;
   const [targetWorkItem] = await tx
     .select({ id: workItem.id })
     .from(workItem)
@@ -215,13 +214,12 @@ export async function archiveTimeEntry(
   input: { actorUserId: string; slug: string; entryId: string },
   clock: Clock = systemClock,
 ) {
-  const context = await requireWorkspace(
-    input.actorUserId,
-    input.slug,
-    "time:correct",
-  );
+  const context = await requireWorkspace(input.actorUserId, input.slug);
   return db.transaction(async (tx) => {
     const entry = await lockEntryForUser(tx, input.entryId, context.id);
+    if (entry.userId !== input.actorUserId) {
+      await requireWorkspace(input.actorUserId, input.slug, "time:correct");
+    }
     if (entry.status !== "COMPLETED" || entry.archivedAt)
       throw new AdminTimeError("ENTRY_NOT_ARCHIVABLE");
     const [segment] = await tx

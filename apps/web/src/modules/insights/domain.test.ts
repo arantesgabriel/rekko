@@ -199,6 +199,33 @@ describe("insights domain", () => {
     expect(custom.end.toISOString()).toBe("2026-09-04T00:00:00.000Z");
   });
 
+  it("omits work items whose clipped duration is zero", () => {
+    const window = {
+      start: new Date("2026-09-07T00:00:00.000Z"),
+      end: new Date("2026-09-08T00:00:00.000Z"),
+    };
+    const result = aggregateInsightSegments(
+      [
+        {
+          ...project,
+          startedAt: new Date("2026-09-07T08:00:00.000Z"),
+          endedAt: new Date("2026-09-07T09:00:00.000Z"),
+        },
+        {
+          ...project,
+          workItemId: "item-zero",
+          workItemTitle: "Zero",
+          startedAt: new Date("2026-09-06T22:00:00.000Z"),
+          endedAt: new Date("2026-09-07T00:00:00.000Z"),
+        },
+      ],
+      window,
+      new Date("2026-09-07T12:00:00.000Z"),
+    );
+    expect(result.workItems.map((item) => item.workItemId)).toEqual(["item-a"]);
+    expect(result.trackedSeconds).toBe(60 * 60);
+  });
+
   it("rejects an inverted custom range", () => {
     expect(() =>
       periodWindow("custom", "UTC", new Date("2026-09-09T12:00:00.000Z"), {

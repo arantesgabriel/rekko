@@ -242,4 +242,18 @@ describe.sequential("time tracking with PostgreSQL", () => {
       ),
     ).rejects.toMatchObject({ code: "WORKSPACE_NOT_FOUND" });
   });
+
+  it("does not allow a project-only timer target", async () => {
+    await expect(
+      startTimer(
+        {
+          actorUserId: owner,
+          slug,
+          projectId,
+          workItemId: null as unknown as string,
+        },
+        clock,
+      ),
+    ).rejects.toMatchObject({ code: "TARGET_NOT_TRACKABLE" });
+  });
 });

@@ -11,7 +11,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 export const metadata: Metadata = {
   description: "Reconstrua seu tempo. Entenda sua jornada.",
   icons: {
-    icon: "/brand/logo/rekko-logo-purple.svg",
+    icon: "/brand/logo/rekko-logo-white.svg",
   },
   title: {
     default: "Rekko",

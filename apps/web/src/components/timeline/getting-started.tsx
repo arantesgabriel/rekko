@@ -76,12 +76,25 @@ export function GettingStarted({
   if (dismissed || completed === items.length) return null;
 
   return (
-    <aside className="getting-started" aria-label="Configuração do Rekko">
-      <div className="getting-started__copy">
-        <strong>Complete a configuração do Rekko</strong>
-        <span>
-          {completed}/{items.length}
-        </span>
+    <div className="getting-started" aria-label="Configuração do Rekko">
+      <div className="getting-started__top">
+        <div className="getting-started__copy">
+          <strong>Configuração do Rekko</strong>
+          <span>
+            {completed} de {items.length} concluídas
+          </span>
+        </div>
+        <button
+          aria-label="Dispensar configuração"
+          className="getting-started__dismiss"
+          onClick={() => {
+            window.localStorage.setItem(storageKey, "true");
+            window.dispatchEvent(new Event("rekko-getting-started-change"));
+          }}
+          type="button"
+        >
+          ×
+        </button>
       </div>
       <div
         className="getting-started__progress"
@@ -101,17 +114,6 @@ export function GettingStarted({
           Continuar <span aria-hidden="true">→</span>
         </Link>
       ) : null}
-      <button
-        aria-label="Dispensar configuração"
-        className="getting-started__dismiss"
-        onClick={() => {
-          window.localStorage.setItem(storageKey, "true");
-          window.dispatchEvent(new Event("rekko-getting-started-change"));
-        }}
-        type="button"
-      >
-        ×
-      </button>
-    </aside>
+    </div>
   );
 }

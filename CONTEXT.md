@@ -850,7 +850,7 @@ Campos mínimos:
 
 ```text
 Projeto
-Demanda opcional
+Demanda obrigatória
 Data
 Início
 Fim
@@ -858,6 +858,10 @@ Descrição opcional
 ```
 
 O sistema calcula automaticamente a duração.
+
+Projetos não recebem apontamentos diretamente e não podem iniciar, pausar ou
+trocar timers. O tempo de um Projeto é a soma do tempo registrado em suas
+Demandas.
 
 ---
 

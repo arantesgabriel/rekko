@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import { formatEstimate } from "@/modules/projects/domain";
 import type {
   InsightComparison,
@@ -13,30 +15,30 @@ import type {
 } from "@/modules/insights/domain";
 import type { InsightsResult } from "@/modules/insights/service";
 
+const MIN_DISPLAY_SECONDS = 60;
+
 export function InsightsView({ data }: { data: InsightsResult }) {
   const { aggregation } = data;
-  const periodLabel = getPeriodLabel(
-    data.period.period,
-    data.period.start,
-    data.period.end,
-  );
-  const hasTracked = aggregation.trackedSeconds > 0;
+  const hasTracked = aggregation.trackedSeconds >= MIN_DISPLAY_SECONDS;
   const highlights = hasTracked ? buildHighlights(aggregation) : [];
+  const rankedWorkItems = aggregation.workItems.filter(
+    (item) => item.trackedSeconds >= MIN_DISPLAY_SECONDS,
+  );
+  const rankedProjects = aggregation.projects.filter(
+    (item) => item.trackedSeconds >= MIN_DISPLAY_SECONDS,
+  );
 
   return (
     <div className="insights-page">
-      <header className="insights-header">
-        <div className="insights-header__copy">
-          <p className="insights-header__context">{periodLabel}</p>
-          <h1 className="page-title">Insights</h1>
-          <p className="insights-header__description">
-            Entenda como seu tempo foi distribuído e compare o realizado com o
-            planejado.
-          </p>
-          <p className="insights-toolbar__timezone">
-            Horários em {data.timezone}
-          </p>
-        </div>
+      <div className="insights-intro">
+        <PageHeader
+          description="Entenda como seu tempo foi distribuído e compare o realizado com o planejado."
+          title="Insights"
+        />
+        <p className="insights-timezone">Horários em {data.timezone}</p>
+      </div>
+
+      <PageToolbar label="Filtros de insights">
         <InsightsFilters
           period={data.period.period}
           projectId={data.period.projectId}
@@ -44,7 +46,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
           start={data.period.start}
           end={data.period.end}
         />
-      </header>
+      </PageToolbar>
 
       {!hasTracked ? (
         <EmptyState
@@ -56,18 +58,19 @@ export function InsightsView({ data }: { data: InsightsResult }) {
               Ir para Hoje
             </a>
           }
-          description="Você ainda não possui registros neste período. Comece uma atividade ou reconstrua um período na Timeline."
+          description="Registre tempo em uma demanda para começar a visualizar seus insights."
           title="Nenhum tempo registrado neste período."
         />
       ) : (
         <div className="insights-dashboard" aria-label="Resumo de insights">
-          <section className="insights-kpis" aria-label="Resumo do período">
-            <MetricCard
+          <section className="insights-summary" aria-label="Resumo do período">
+            <MetricStat
+              emphasis
               label="Tempo registrado"
               note="Todo o tempo com registro"
               seconds={aggregation.trackedSeconds}
             />
-            <MetricCard
+            <MetricStat
               label="Tempo estimado"
               note={
                 aggregation.comparison
@@ -85,7 +88,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
                   : "—"
               }
             />
-            <MetricCard
+            <MetricStat
               label="Diferença"
               note={
                 aggregation.comparison
@@ -105,20 +108,17 @@ export function InsightsView({ data }: { data: InsightsResult }) {
               }
               valueFormatter={(value) => formatDifference(value)}
             />
-            <MetricCard
+            <MetricStat
               label="Projetos trabalhados"
               note="No período selecionado"
-              seconds={aggregation.projects.length}
-              value={String(aggregation.projects.length)}
+              seconds={rankedProjects.length}
+              value={String(rankedProjects.length)}
               valueFormatter={(value) => String(Math.round(value))}
             />
           </section>
 
           <div className="insights-primary-grid">
-            <TimeTrendChart
-              comparison={aggregation.comparison}
-              days={aggregation.days}
-            />
+            <TimeTrendChart days={aggregation.days} />
             {highlights.length ? (
               <InsightHighlights items={highlights} />
             ) : null}
@@ -126,11 +126,11 @@ export function InsightsView({ data }: { data: InsightsResult }) {
 
           <div className="insights-distribution-grid">
             <ProjectDistribution
-              projects={aggregation.projects}
+              projects={rankedProjects}
               totalSeconds={aggregation.trackedSeconds}
             />
             <DemandDistribution
-              items={aggregation.workItems}
+              items={rankedWorkItems}
               totalSeconds={aggregation.trackedSeconds}
             />
           </div>
@@ -212,7 +212,7 @@ function InsightsFilterFields({
   return (
     <>
       <label>
-        <span>Período</span>
+        <span className="sr-only">Período</span>
         <select defaultValue={period} name="period">
           <option value="today">Hoje</option>
           <option value="this_week">Esta semana</option>
@@ -222,7 +222,7 @@ function InsightsFilterFields({
         </select>
       </label>
       <label>
-        <span>Projeto</span>
+        <span className="sr-only">Projeto</span>
         <select defaultValue={projectId ?? "all"} name="projectId">
           <option value="all">Todos os projetos</option>
           {projects.map((project) => (
@@ -245,13 +245,14 @@ function InsightsFilterFields({
         </>
       ) : null}
       <button className="button button--secondary button--sm" type="submit">
-        Aplicar filtros
+        Aplicar
       </button>
     </>
   );
 }
 
-function MetricCard({
+function MetricStat({
+  emphasis,
   label,
   note,
   seconds,
@@ -259,6 +260,7 @@ function MetricCard({
   value,
   valueFormatter,
 }: {
+  emphasis?: boolean;
   label: string;
   note: string;
   seconds?: number | null;
@@ -275,34 +277,31 @@ function MetricCard({
         : formatDuration(animatedValue ?? seconds);
 
   return (
-    <article className={`insights-kpi${tone ? ` is-${tone}` : ""}`}>
-      <div className="insights-kpi__label">
-        <span>{label}</span>
-        <span className="insights-kpi__mark" aria-hidden="true" />
-      </div>
+    <article
+      className={`insights-summary__metric${emphasis ? " is-emphasis" : ""}${
+        tone ? ` is-${tone}` : ""
+      }`}
+    >
+      <span>{label}</span>
       <strong>{displayValue}</strong>
       <p>{note}</p>
     </article>
   );
 }
 
-function TimeTrendChart({
-  comparison,
-  days,
-}: {
-  comparison: InsightComparison | null;
-  days: InsightDay[];
-}) {
+function TimeTrendChart({ days }: { days: InsightDay[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const maxSeconds = getNiceChartMax(days);
-  const registeredDays = days.filter((day) => day.trackedSeconds > 0).length;
+  const scale = getChartScale(days);
+  const registeredDays = days.filter(
+    (day) => day.trackedSeconds >= MIN_DISPLAY_SECONDS,
+  ).length;
 
   return (
     <section
-      className="insights-card insights-trend"
+      className="insights-panel insights-trend"
       aria-labelledby="trend-title"
     >
-      <div className="insights-card__header">
+      <div className="insights-panel__header">
         <div>
           <h2 className="card-title" id="trend-title">
             Tempo ao longo do período
@@ -311,23 +310,13 @@ function TimeTrendChart({
             {registeredDays} de {days.length} dias com tempo registrado
           </p>
         </div>
-        <div className="insights-legend" aria-label="Legenda do gráfico">
-          <span>
-            <i className="insights-legend__dot is-violet" /> Registrado
-          </span>
-          {comparison ? (
-            <span className="insights-legend__note">
-              Estimativa consolidada no período
-            </span>
-          ) : null}
-        </div>
       </div>
 
       <div className="insights-trend__chart" aria-labelledby="trend-title">
         <div className="insights-trend__axis" aria-hidden="true">
-          <span>{formatAxisDuration(maxSeconds)}</span>
-          <span>{formatAxisDuration(maxSeconds / 2)}</span>
-          <span>0m</span>
+          {scale.ticks.map((tick) => (
+            <span key={tick}>{formatAxisDuration(tick)}</span>
+          ))}
         </div>
         <div
           className="insights-trend__plot"
@@ -343,7 +332,7 @@ function TimeTrendChart({
             aria-hidden="true"
           />
           {days.map((day, index) => {
-            const ratio = day.trackedSeconds / maxSeconds;
+            const ratio = day.trackedSeconds / scale.max;
             const isActive = activeIndex === index;
             return (
               <div
@@ -365,10 +354,11 @@ function TimeTrendChart({
                   style={{ "--bar-ratio": ratio } as CSSProperties}
                   type="button"
                 >
-                  <span className="insights-trend__bar" aria-hidden="true" />
+                  {day.trackedSeconds > 0 ? (
+                    <span className="insights-trend__bar" aria-hidden="true" />
+                  ) : null}
                   {isActive ? (
                     <TrendTooltip
-                      comparison={comparison}
                       day={day}
                       edge={getTooltipEdge(index, days.length)}
                     />
@@ -382,67 +372,46 @@ function TimeTrendChart({
           })}
         </div>
       </div>
-      <p className="insights-trend__hint">
-        Passe o cursor ou toque em uma barra para ver o detalhe do dia.
-      </p>
     </section>
   );
 }
 
 function TrendTooltip({
-  comparison,
   day,
   edge,
 }: {
-  comparison: InsightComparison | null;
   day: InsightDay;
   edge: "first" | "last" | "middle";
 }) {
   return (
     <div className={`insights-chart-tooltip is-${edge}`} role="status">
-      <strong>{formatDateLabel(day.date)}</strong>
-      <dl>
-        <div>
-          <dt>Registrado</dt>
-          <dd>{formatDuration(day.trackedSeconds)}</dd>
-        </div>
-        {comparison ? (
-          <div>
-            <dt>Estimado no período</dt>
-            <dd>{formatEstimate(comparison.estimatedMinutes)}</dd>
-          </div>
-        ) : null}
-      </dl>
-      {comparison ? (
-        <small>
-          Comparação consolidada:{" "}
-          {formatDifference(comparison.differenceSeconds)}
-        </small>
-      ) : null}
+      <strong>{formatTooltipDate(day.date)}</strong>
+      <p>
+        Registrado: <span>{formatDuration(day.trackedSeconds)}</span>
+      </p>
     </div>
   );
 }
 
-function InsightHighlights({ items }: { items: string[] }) {
+function InsightHighlights({ items }: { items: Highlight[] }) {
   return (
     <section
-      className="insights-card insights-highlights"
+      className="insights-panel insights-highlights"
       aria-labelledby="highlights-title"
     >
-      <div className="insights-card__header">
+      <div className="insights-panel__header">
         <div>
           <h2 className="card-title" id="highlights-title">
             Destaques
           </h2>
-          <p>Leituras rápidas do período selecionado</p>
+          <p>Leituras rápidas do período</p>
         </div>
-        <span className="insights-highlights__pulse" aria-hidden="true" />
       </div>
       <ul>
         {items.map((item) => (
-          <li key={item}>
+          <li key={item.id}>
             <span className="insights-highlights__bullet" aria-hidden="true" />
-            <p>{item}</p>
+            <p>{item.content}</p>
           </li>
         ))}
       </ul>
@@ -459,10 +428,10 @@ function ProjectDistribution({
 }) {
   return (
     <section
-      className="insights-card insights-distribution"
+      className="insights-panel insights-distribution"
       aria-labelledby="projects-title"
     >
-      <div className="insights-card__header">
+      <div className="insights-panel__header">
         <div>
           <h2 className="card-title" id="projects-title">
             Tempo por projeto
@@ -473,18 +442,16 @@ function ProjectDistribution({
               : "Como o tempo se dividiu"}
           </p>
         </div>
-        <span className="insights-card__total">
-          {formatDuration(totalSeconds)}
-        </span>
       </div>
       <RankingList
         ariaLabel="Tempo registrado por projeto"
+        compact={projects.length === 1}
         items={projects.map((project) => ({
           id: project.projectId,
           label: project.projectName,
           detail: project.estimatedMinutes
             ? `Estimativa ${formatEstimate(project.estimatedMinutes)}`
-            : "Sem estimativa do projeto",
+            : "Sem estimativa",
           seconds: project.trackedSeconds,
         }))}
         totalSeconds={totalSeconds}
@@ -506,10 +473,10 @@ function DemandDistribution({
 
   return (
     <section
-      className="insights-card insights-distribution"
+      className="insights-panel insights-distribution"
       aria-labelledby="demands-title"
     >
-      <div className="insights-card__header">
+      <div className="insights-panel__header">
         <div>
           <h2 className="card-title" id="demands-title">
             Tempo por demanda
@@ -520,9 +487,6 @@ function DemandDistribution({
               : `${items.length} demandas com tempo registrado`}
           </p>
         </div>
-        <span className="insights-card__total">
-          Top {Math.min(items.length, 5)}
-        </span>
       </div>
       <RankingList
         ariaLabel="Tempo registrado por demanda"
@@ -551,10 +515,12 @@ function DemandDistribution({
 
 function RankingList({
   ariaLabel,
+  compact,
   items,
   totalSeconds,
 }: {
   ariaLabel: string;
+  compact?: boolean;
   items: Array<{
     id: string;
     label: string;
@@ -564,7 +530,10 @@ function RankingList({
   totalSeconds: number;
 }) {
   return (
-    <ul className="insights-ranking" aria-label={ariaLabel}>
+    <ul
+      className={`insights-ranking${compact ? " is-compact" : ""}`}
+      aria-label={ariaLabel}
+    >
       {items.map((item, index) => {
         const percentage = totalSeconds
           ? Math.round((item.seconds / totalSeconds) * 100)
@@ -612,16 +581,21 @@ function EstimateVsActual({
   const comparison = aggregation.comparison;
   return (
     <section
-      className="insights-card insights-comparison"
+      className="insights-panel insights-comparison"
       aria-labelledby="comparison-title"
     >
-      <div className="insights-card__header">
+      <div className="insights-panel__header">
         <div>
           <h2 className="card-title" id="comparison-title">
             Planejado vs realizado
           </h2>
           <p>
-            Uma leitura neutra da diferença entre estimativa e tempo registrado
+            {comparison
+              ? formatComparableCoverage(
+                  comparison.trackedSeconds,
+                  totalSeconds,
+                )
+              : "Uma leitura da diferença entre estimativa e tempo registrado"}
           </p>
         </div>
         {comparison ? (
@@ -629,21 +603,19 @@ function EstimateVsActual({
             className={`insights-difference ${getDifferenceTone(comparison)}`}
           >
             {formatDifference(comparison.differenceSeconds)}
+            <small>
+              {comparison.differenceSeconds > 0
+                ? "Acima do planejado"
+                : comparison.differenceSeconds < 0
+                  ? "Abaixo do planejado"
+                  : "Dentro do planejado"}
+            </small>
           </span>
         ) : null}
       </div>
 
       {comparison ? (
         <>
-          <div className="insights-comparison__context">
-            <strong>{getComparisonSourceLabel(comparison.source)}</strong>
-            <span>
-              {formatComparableCoverage(
-                comparison.trackedSeconds,
-                totalSeconds,
-              )}
-            </span>
-          </div>
           <div
             className="insights-comparison__summary"
             aria-label="Resumo do comparativo"
@@ -653,22 +625,9 @@ function EstimateVsActual({
               value={formatEstimate(comparison.estimatedMinutes)}
             />
             <ComparisonStat
-              label="Registrado comparável"
+              label="Registrado"
               value={formatDuration(comparison.trackedSeconds)}
             />
-            <ComparisonStat
-              label="Diferença"
-              tone={getDifferenceTone(comparison)}
-              value={formatDifference(comparison.differenceSeconds)}
-            />
-          </div>
-          <div className="insights-comparison__legend" aria-hidden="true">
-            <span>
-              <i className="is-violet" /> Estimado
-            </span>
-            <span>
-              <i className="is-blue" /> Registrado
-            </span>
           </div>
           <div
             className="insights-comparison__list"
@@ -684,6 +643,7 @@ function EstimateVsActual({
                 }
                 label={project.projectName}
                 key={project.projectId}
+                showDifference={aggregation.comparisonProjects.length > 1}
               />
             ))}
           </div>
@@ -722,10 +682,12 @@ function ComparisonRow({
   comparison,
   detail,
   label,
+  showDifference,
 }: {
   comparison: InsightComparison;
   detail: string;
   label: string;
+  showDifference: boolean;
 }) {
   const estimatedSeconds = comparison.estimatedMinutes * 60;
   const maxSeconds = Math.max(estimatedSeconds, comparison.trackedSeconds, 1);
@@ -736,23 +698,25 @@ function ComparisonRow({
           <strong>{label}</strong>
           <small>{detail}</small>
         </div>
-        <span
-          className={`insights-difference ${getDifferenceTone(comparison)}`}
-        >
-          {formatDifference(comparison.differenceSeconds)}
-        </span>
+        {showDifference ? (
+          <span
+            className={`insights-difference ${getDifferenceTone(comparison)}`}
+          >
+            {formatDifference(comparison.differenceSeconds)}
+          </span>
+        ) : null}
       </div>
       <div className="insights-comparison-row__bars">
         <ComparisonBar
           label="Estimado"
           seconds={estimatedSeconds}
-          tone="violet"
+          tone="muted"
           ratio={estimatedSeconds / maxSeconds}
         />
         <ComparisonBar
           label="Registrado"
           seconds={comparison.trackedSeconds}
-          tone="blue"
+          tone="violet"
           ratio={comparison.trackedSeconds / maxSeconds}
         />
       </div>
@@ -769,7 +733,7 @@ function ComparisonBar({
   label: string;
   ratio: number;
   seconds: number;
-  tone: "blue" | "violet";
+  tone: "muted" | "violet";
 }) {
   return (
     <div className="insights-comparison-bar">
@@ -784,23 +748,45 @@ function ComparisonBar({
   );
 }
 
+type Highlight = { id: string; content: ReactNode };
+
 function buildHighlights(aggregation: InsightsResult["aggregation"]) {
-  const highlights: string[] = [];
+  const highlights: Highlight[] = [];
   const comparison = aggregation.comparison;
 
   if (comparison) {
     if (comparison.differenceSeconds > 0) {
-      highlights.push(
-        `Você registrou ${formatDuration(comparison.differenceSeconds)} acima do estimado nas demandas comparáveis.`,
-      );
+      highlights.push({
+        id: "over",
+        content: (
+          <>
+            Você registrou{" "}
+            <strong>
+              {formatDuration(comparison.differenceSeconds)} acima do estimado
+            </strong>
+            .
+          </>
+        ),
+      });
     } else if (comparison.differenceSeconds < 0) {
-      highlights.push(
-        `Você registrou ${formatDuration(Math.abs(comparison.differenceSeconds))} abaixo do estimado nas demandas comparáveis.`,
-      );
+      highlights.push({
+        id: "under",
+        content: (
+          <>
+            Você registrou{" "}
+            <strong>
+              {formatDuration(Math.abs(comparison.differenceSeconds))} abaixo do
+              estimado
+            </strong>
+            .
+          </>
+        ),
+      });
     } else {
-      highlights.push(
-        "O tempo registrado nas demandas comparáveis ficou alinhado ao estimado.",
-      );
+      highlights.push({
+        id: "aligned",
+        content: "O tempo registrado ficou alinhado ao estimado.",
+      });
     }
   }
 
@@ -809,9 +795,15 @@ function buildHighlights(aggregation: InsightsResult["aggregation"]) {
     const percentage = Math.round(
       (topProject.trackedSeconds / aggregation.trackedSeconds) * 100,
     );
-    highlights.push(
-      `${percentage}% do seu tempo ficou concentrado no projeto ${topProject.projectName}.`,
-    );
+    highlights.push({
+      id: "project",
+      content: (
+        <>
+          <strong>{percentage}%</strong> do seu tempo ficou concentrado no
+          projeto {topProject.projectName}.
+        </>
+      ),
+    });
   }
 
   const busiestDay = aggregation.days.reduce<InsightDay | null>(
@@ -819,10 +811,17 @@ function buildHighlights(aggregation: InsightsResult["aggregation"]) {
       !current || day.trackedSeconds > current.trackedSeconds ? day : current,
     null,
   );
-  if (busiestDay && busiestDay.trackedSeconds > 0) {
-    highlights.push(
-      `${formatDateLabel(busiestDay.date)} foi o dia com maior volume: ${formatDuration(busiestDay.trackedSeconds)}.`,
-    );
+  if (busiestDay && busiestDay.trackedSeconds >= MIN_DISPLAY_SECONDS) {
+    const weekday = capitalizeLabel(formatWeekdayLabel(busiestDay.date));
+    highlights.push({
+      id: "busy-day",
+      content: (
+        <>
+          <strong>{weekday}</strong> foi o dia com maior volume:{" "}
+          <strong>{formatDuration(busiestDay.trackedSeconds)}</strong>.
+        </>
+      ),
+    });
   }
 
   return highlights.slice(0, 3);
@@ -848,7 +847,7 @@ function useAnimatedInteger(value: number | null) {
     if (value === null || reduceMotion) return;
 
     const startedAt = performance.now();
-    const duration = 520;
+    const duration = 420;
     let frame = 0;
     const tick = (now: number) => {
       const progress = Math.min((now - startedAt) / duration, 1);
@@ -863,31 +862,74 @@ function useAnimatedInteger(value: number | null) {
   return value === null ? null : reduceMotion ? value : displayValue;
 }
 
-function getNiceChartMax(days: InsightDay[]) {
+function getChartScale(days: InsightDay[]) {
   const max = Math.max(...days.map((day) => day.trackedSeconds), 1);
-  const hour = 60 * 60;
-  return Math.max(hour, Math.ceil(max / hour) * hour);
+  const minute = 60;
+  const candidates = [
+    15 * minute,
+    30 * minute,
+    45 * minute,
+    60 * minute,
+    90 * minute,
+    2 * 60 * minute,
+    3 * 60 * minute,
+    4 * 60 * minute,
+    6 * 60 * minute,
+    8 * 60 * minute,
+    12 * 60 * minute,
+    24 * 60 * minute,
+  ];
+  const niceMax =
+    candidates.find((value) => value >= max) ??
+    Math.ceil(max / (60 * minute)) * 60 * minute;
+  return {
+    max: niceMax,
+    ticks: [niceMax, niceMax / 2, 0],
+  };
 }
 
 function formatDuration(seconds: number) {
-  const minutes = Math.floor(Math.max(seconds, 0) / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return (
-    [hours ? `${hours}h` : "", rest ? `${rest}m` : ""]
-      .filter(Boolean)
-      .join(" ") || "0m"
-  );
+  const total = Math.max(0, Math.floor(seconds));
+  if (total === 0) return "0s";
+  if (total < 60) return `${total}s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return [hours ? `${hours}h` : "", minutes ? `${minutes}m` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function formatAxisDuration(seconds: number) {
-  const hours = Math.round(seconds / 60 / 60);
-  return hours ? `${hours}h` : `${Math.round(seconds / 60)}m`;
+  if (seconds === 0) return "0m";
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours && rest) return `${hours}h ${rest}m`;
+  if (hours) return `${hours}h`;
+  return `${minutes}m`;
 }
 
 function formatDifference(seconds: number) {
   if (seconds === 0) return "0m";
   return `${seconds > 0 ? "+" : "−"}${formatDuration(Math.abs(seconds))}`;
+}
+
+function formatTooltipDate(date: string) {
+  const weekday = capitalizeLabel(formatWeekdayLabel(date));
+  const rest = new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  })
+    .format(new Date(`${date}T12:00:00Z`))
+    .replace(" de ", " ")
+    .replace(".", "");
+  return `${weekday}, ${rest}`;
+}
+
+function capitalizeLabel(value: string) {
+  if (!value) return value;
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
 }
 
 function formatDateLabel(date: string) {
@@ -899,6 +941,13 @@ function formatDateLabel(date: string) {
   })
     .format(new Date(`${date}T12:00:00Z`))
     .replace(".", "");
+}
+
+function formatWeekdayLabel(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+    weekday: "long",
+  }).format(new Date(`${date}T12:00:00Z`));
 }
 
 function formatDayLabel(date: string, count: number) {

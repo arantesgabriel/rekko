@@ -208,9 +208,10 @@ export function TimeEntryActions({
                     onChange={(event) =>
                       setWorkItemId(event.currentTarget.value)
                     }
+                    required
                     value={workItemId}
                   >
-                    <option value="">Sem demanda</option>
+                    <option value="">Selecione uma demanda</option>
                     {visibleWorkItems.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.externalIdentifier
