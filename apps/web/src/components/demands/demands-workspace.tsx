@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CreateDemandButton } from "@/components/demands/create-demand-button";
+import type { DemandListQuery } from "@/components/demands/demand-query";
 import { DemandDrawer } from "@/components/demands/demand-drawer";
 import { DemandFilters } from "@/components/demands/demand-filters";
 import { DemandList } from "@/components/demands/demand-list";
@@ -32,11 +33,7 @@ export function DemandsWorkspace({
   demands: DemandListItem[];
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
-  query: {
-    projectId: string;
-    search: string;
-    status: "ALL" | "ACTIVE" | "DONE";
-  };
+  query: DemandListQuery;
   slug: string;
   timezone: string;
 }) {
@@ -53,7 +50,11 @@ export function DemandsWorkspace({
     ? parentOptions.filter((parent) => parent.projectId === query.projectId)
     : [];
   const hasFilters = Boolean(
-    query.search || query.projectId || query.status !== "ALL",
+    query.search ||
+    query.projectId ||
+    query.status !== "ALL" ||
+    query.sort !== "updated" ||
+    query.dir !== "desc",
   );
 
   const closeDrawer = useCallback(() => {
@@ -103,40 +104,59 @@ export function DemandsWorkspace({
       <PageToolbar label="Busca e filtros">
         <DemandFilters
           counts={counts}
+          initialDir={query.dir}
           initialProjectId={query.projectId}
           initialQuery={query.search}
+          initialSort={query.sort}
           initialStatus={query.status}
-          key={`${query.search}:${query.status}:${query.projectId}`}
+          key={`${query.search}:${query.status}:${query.projectId}:${query.sort}:${query.dir}`}
           projects={projectOptions}
         />
       </PageToolbar>
 
       {demands.length === 0 ? (
-        <EmptyState
-          actions={
-            hasFilters || !canManage ? null : (
-              <button
-                className="button button--primary"
-                onClick={() => setCreateOpen(true)}
-                type="button"
-              >
-                + Nova demanda
-              </button>
-            )
-          }
-          description={emptyDescription}
-          title={emptyTitle}
-        />
+        <>
+          {hasFilters ? (
+            <DemandList
+              canManage={canManage}
+              context="workspace"
+              counts={counts}
+              demands={[]}
+              onOpen={() => undefined}
+              projects={projectOptions}
+              query={query}
+              slug={slug}
+              timezone={timezone}
+            />
+          ) : null}
+          <EmptyState
+            actions={
+              hasFilters || !canManage ? null : (
+                <button
+                  className="button button--primary"
+                  onClick={() => setCreateOpen(true)}
+                  type="button"
+                >
+                  + Nova demanda
+                </button>
+              )
+            }
+            description={emptyDescription}
+            title={emptyTitle}
+          />
+        </>
       ) : (
         <DemandList
           canManage={canManage}
           context="workspace"
+          counts={counts}
           demands={demands}
           onChanged={refresh}
           onEdit={(id) => openDemand(id, true)}
           onFeedback={showFeedback}
           onOpen={(id) => openDemand(id)}
           projects={projectOptions}
+          query={query}
           slug={slug}
           timezone={timezone}
         />

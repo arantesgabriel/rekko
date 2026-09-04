@@ -17,6 +17,11 @@ import { db } from "@/lib/db";
 import { requireWorkspace } from "@/modules/workspaces/service";
 import { recordAudit } from "@/modules/audit/service";
 
+import {
+  sortDemands,
+  type DemandSortDir,
+  type DemandSortKey,
+} from "./demand-sort";
 import { createsParentCycle } from "./domain";
 import { ProjectError } from "./errors";
 
@@ -191,6 +196,8 @@ export async function listDemands(input: {
   search?: string;
   status?: "ALL" | "ACTIVE" | "DONE";
   projectId?: string;
+  sort?: DemandSortKey;
+  dir?: DemandSortDir;
 }) {
   const context = await requireWorkspace(input.userId, input.slug);
   const filters: SQL[] = [
@@ -286,17 +293,21 @@ export async function listDemands(input: {
     input.userId,
     rows.map((row) => row.id),
   );
-  const demands = rows.map((row) =>
-    toDemandListItem(
-      row,
-      {
-        id: row.projectId,
-        name: row.projectName,
-        source: row.projectSource,
-        status: row.projectStatus,
-      },
-      summaries.get(row.id),
+  const demands = sortDemands(
+    rows.map((row) =>
+      toDemandListItem(
+        row,
+        {
+          id: row.projectId,
+          name: row.projectName,
+          source: row.projectSource,
+          status: row.projectStatus,
+        },
+        summaries.get(row.id),
+      ),
     ),
+    input.sort ?? "updated",
+    input.dir ?? "desc",
   );
   const doneCount = statusRows
     .filter((row) => row.status === "DONE")
