@@ -1,6 +1,7 @@
 import { DemandsView } from "@/components/demands/demands-view";
 import { PageContainer } from "@/components/ui/page-container";
 import { requireCoreSession } from "@/modules/auth/session";
+import { parseDemandSort } from "@/modules/projects/demand-sort";
 import { listDemands } from "@/modules/projects/service";
 
 export const metadata = { title: "Demandas" };
@@ -19,12 +20,18 @@ export default async function DemandsPage({
   const projectId = typeof query.projectId === "string" ? query.projectId : "";
   const status =
     query.status === "ACTIVE" || query.status === "DONE" ? query.status : "ALL";
+  const { sort, dir } = parseDemandSort(
+    typeof query.sort === "string" ? query.sort : undefined,
+    typeof query.dir === "string" ? query.dir : undefined,
+  );
   const data = await listDemands({
     userId: session.user.id,
     slug: workspaceSlug,
     ...(search ? { search } : {}),
     ...(projectId ? { projectId } : {}),
     status,
+    sort,
+    dir,
   });
   return (
     <PageContainer width="lg">
@@ -34,7 +41,7 @@ export default async function DemandsPage({
         demands={data.demands}
         parentOptions={data.parentOptions}
         projectOptions={data.projectOptions}
-        query={{ projectId, search, status }}
+        query={{ dir, projectId, search, sort, status }}
         slug={workspaceSlug}
         timezone={data.context.timezone}
       />

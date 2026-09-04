@@ -1,3 +1,4 @@
+import type { DemandListQuery } from "@/components/demands/demand-query";
 import { DemandsWorkspace } from "@/components/demands/demands-workspace";
 import type {
   DemandListItem,
@@ -20,11 +21,7 @@ export function DemandsView({
   demands: DemandListItem[];
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
-  query: {
-    projectId: string;
-    search: string;
-    status: "ALL" | "ACTIVE" | "DONE";
-  };
+  query: DemandListQuery;
   slug: string;
   timezone: string;
 }) {
