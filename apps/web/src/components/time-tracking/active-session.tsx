@@ -86,16 +86,30 @@ export function ActiveSession() {
       if (originalTitle.current) document.title = originalTitle.current;
       return;
     }
-    if (!originalTitle.current) originalTitle.current = document.title;
-    const elapsed = liveElapsedSeconds({
-      status: session.status,
-      accumulatedSeconds: session.accumulatedSeconds,
-      openSegmentStartedAt: session.openSegmentStartedAt,
-      nowMs: now,
-    });
-    const clock = formatDuration(elapsed).slice(0, 5);
-    document.title = `${session.status === "RUNNING" ? "● " : ""}${clock} · Rekko`;
-  }, [now, session]);
+
+    const isTimerTitle = (value: string) =>
+      /^(● )?\d{2}:\d{2}:\d{2} · Rekko$/.test(value);
+    if (!originalTitle.current || isTimerTitle(originalTitle.current)) {
+      const current = document.title;
+      if (!isTimerTitle(current)) originalTitle.current = current;
+    }
+
+    const writeTitle = (nowMs: number) => {
+      const elapsed = liveElapsedSeconds({
+        status: session.status,
+        accumulatedSeconds: session.accumulatedSeconds,
+        openSegmentStartedAt: session.openSegmentStartedAt,
+        nowMs,
+      });
+      const prefix = session.status === "RUNNING" ? "● " : "";
+      document.title = `${prefix}${formatDuration(elapsed)} · Rekko`;
+    };
+
+    writeTitle(Date.now());
+    if (session.status !== "RUNNING") return;
+    const id = window.setInterval(() => writeTitle(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [session]);
 
   useEffect(() => {
     if (!detailsOpen && !pickerOpen) return;
