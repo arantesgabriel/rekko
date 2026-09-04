@@ -58,8 +58,21 @@ export function ActiveSession() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [leaving, setLeaving] = useState(false);
   const detailsId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const leaveTimer = useRef<number>(0);
+
+  function requestFinish() {
+    if (leaving || busy !== "idle") return;
+    setLeaving(true);
+    setPickerOpen(false);
+    setDetailsOpen(false);
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => {
+      void finish().finally(() => setLeaving(false));
+    }, 180);
+  }
 
   useEffect(() => {
     if (!session || session.status !== "RUNNING") return;
@@ -96,6 +109,10 @@ export function ActiveSession() {
     return () => window.removeEventListener("keydown", onKey);
   }, [detailsOpen, pickerOpen]);
 
+  useEffect(() => {
+    return () => window.clearTimeout(leaveTimer.current);
+  }, []);
+
   const elapsed = session
     ? liveElapsedSeconds({
         status: session.status,
@@ -129,14 +146,14 @@ export function ActiveSession() {
   if (!session && !toast && !pendingSwitch) return null;
 
   const running = session?.status === "RUNNING";
-  const pending = busy !== "idle";
+  const pending = busy !== "idle" || leaving;
 
   return (
     <>
       {session ? (
         <aside
           aria-label="Sessão atual"
-          className={`active-session active-session--${session.status.toLowerCase()}${detailsOpen ? " is-open" : ""}`}
+          className={`active-session active-session--${session.status.toLowerCase()}${detailsOpen ? " is-open" : ""}${leaving ? " is-leaving" : ""}${busy !== "idle" ? ` is-${busy}` : ""}`}
         >
           <button
             aria-controls={detailsId}
@@ -145,7 +162,11 @@ export function ActiveSession() {
             onClick={() => setDetailsOpen((open) => !open)}
             type="button"
           >
-            <span aria-hidden="true" className="active-session__indicator" />
+            <span
+              aria-hidden="true"
+              className="active-session__indicator"
+              key={session.status}
+            />
             <span className="sr-only">
               {running ? "Em andamento" : "Pausado"}
             </span>
@@ -171,7 +192,9 @@ export function ActiveSession() {
                 title="Pausar"
                 type="button"
               >
-                <PauseIcon />
+                <span className="active-session__glyph">
+                  <PauseIcon />
+                </span>
               </button>
             ) : (
               <button
@@ -182,18 +205,22 @@ export function ActiveSession() {
                 title="Retomar"
                 type="button"
               >
-                <PlayIcon />
+                <span className="active-session__glyph">
+                  <PlayIcon />
+                </span>
               </button>
             )}
             <button
               aria-label={busy === "stopping" ? "Salvando" : "Encerrar"}
               className="button button--ghost button--icon active-session__icon active-session__stop"
               disabled={pending}
-              onClick={() => void finish()}
+              onClick={() => requestFinish()}
               title="Encerrar"
               type="button"
             >
-              <StopIcon />
+              <span className="active-session__glyph">
+                <StopIcon />
+              </span>
             </button>
             <button
               aria-expanded={pickerOpen}
@@ -250,7 +277,7 @@ export function ActiveSession() {
               <button
                 className="button button--ghost active-session__finish-text"
                 disabled={pending}
-                onClick={() => void finish()}
+                onClick={() => requestFinish()}
                 type="button"
               >
                 {busy === "stopping" ? "Salvando…" : "Encerrar sessão"}

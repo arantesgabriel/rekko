@@ -1557,7 +1557,7 @@ html {
 }
 
 .active-session {
-  animation: active-session-in var(--motion-fast) var(--ease-out);
+  animation: active-session-in 200ms var(--ease-out);
   background: var(--surface-elevated);
   border: 1px solid color-mix(in srgb, var(--border-default) 80%, transparent);
   border-radius: var(--radius-lg);
@@ -1570,8 +1570,23 @@ html {
   padding: 10px 12px;
   position: fixed;
   right: 24px;
+  transform: translateY(0);
+  transition:
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    background-color 180ms var(--ease-out),
+    border-color 180ms var(--ease-out);
   width: min(34rem, calc(100vw - var(--sidebar-current) - 48px));
   z-index: var(--z-sticky);
+}
+.active-session:hover,
+.active-session:focus-within {
+  box-shadow: var(--shadow-floating);
+  transform: translateY(-2px);
+}
+.active-session.is-leaving {
+  animation: active-session-out 200ms var(--ease-out) forwards;
+  pointer-events: none;
 }
 .active-session--paused {
   background: var(--surface-primary);
@@ -1580,24 +1595,46 @@ html {
   align-items: center;
   background: transparent;
   border: 0;
+  border-radius: var(--radius-md);
   color: inherit;
   cursor: pointer;
   display: grid;
   gap: var(--space-3);
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
-  padding: 0;
+  padding: 2px 0;
   text-align: left;
+  transition: opacity 160ms var(--ease-out);
+}
+.active-session--paused .active-session__main {
+  opacity: 0.88;
 }
 .active-session__indicator {
   background: var(--brand-violet);
   border-radius: var(--radius-pill);
   display: inline-block;
   height: 8px;
+  transform-origin: center;
+  transition:
+    background-color 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
   width: 8px;
+  animation: active-session-dot-in 220ms var(--ease-out);
+}
+.active-session--running .active-session__indicator {
+  animation:
+    active-session-dot-in 220ms var(--ease-out),
+    active-session-live 2.8s var(--ease-ui) 220ms infinite;
 }
 .active-session--paused .active-session__indicator {
+  animation: active-session-dot-in 220ms var(--ease-out);
   background: var(--text-muted);
+  transform: scale(0.85);
+}
+.active-session.is-pausing .active-session__clock,
+.active-session.is-resuming .active-session__clock,
+.active-session.is-stopping .active-session__clock {
+  animation: active-session-clock-tick 180ms var(--ease-out);
 }
 .active-session__copy {
   display: grid;
@@ -1624,6 +1661,10 @@ html {
   letter-spacing: -0.03em;
   min-width: 8.4ch;
   text-align: right;
+  transition: opacity 160ms var(--ease-out);
+}
+.active-session--paused .active-session__clock {
+  opacity: 0.72;
 }
 .active-session__controls {
   align-self: center;
@@ -1639,6 +1680,25 @@ html {
 .active-session__icon {
   min-height: 36px;
   min-width: 36px;
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+.active-session__icon:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+.active-session__icon:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.active-session__glyph {
+  align-items: center;
+  display: inline-flex;
+}
+.active-session.is-pausing .active-session__glyph,
+.active-session.is-resuming .active-session__glyph,
+.active-session.is-stopping .active-session__glyph {
+  animation: active-session-glyph 180ms var(--ease-out);
 }
 .active-session__icon svg {
   height: 14px;
@@ -1649,6 +1709,7 @@ html {
 }
 .active-session__details,
 .active-session__picker {
+  animation: active-session-panel-in 180ms var(--ease-out);
   background: var(--surface-primary);
   border-top: 1px solid var(--border-default);
   display: grid;
@@ -1688,6 +1749,12 @@ html {
 .active-session__picker input {
   width: 100%;
 }
+.active-session__picker input:focus,
+.active-session__picker input:focus-visible {
+  border-color: var(--text-secondary);
+  box-shadow: none;
+  outline: none;
+}
 .active-session__picker ul {
   list-style: none;
   margin: 0;
@@ -1704,11 +1771,13 @@ html {
   display: grid;
   padding: 8px;
   text-align: left;
+  transition: background-color 140ms var(--ease-out);
   width: 100%;
 }
 .active-session__picker button:hover,
 .active-session__picker button:focus-visible {
   background: var(--surface-hover);
+  outline: none;
 }
 .active-session__picker span {
   color: var(--text-muted);
@@ -1741,6 +1810,44 @@ html {
     transform: translateY(8px);
   }
 }
+@keyframes active-session-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes active-session-dot-in {
+  from {
+    opacity: 0.4;
+    transform: scale(0.6);
+  }
+}
+@keyframes active-session-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes active-session-clock-tick {
+  50% {
+    transform: translateY(-1px);
+  }
+}
+@keyframes active-session-glyph {
+  from {
+    opacity: 0.35;
+    transform: scale(0.86);
+  }
+}
+@keyframes active-session-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
 
 .timer-status-dot {
   background: var(--brand-violet);
@@ -1761,8 +1868,25 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .active-session {
+  .active-session,
+  .active-session.is-leaving,
+  .active-session--running .active-session__indicator,
+  .active-session__details,
+  .active-session__picker,
+  .active-session.is-pausing .active-session__glyph,
+  .active-session.is-resuming .active-session__glyph,
+  .active-session.is-stopping .active-session__glyph,
+  .active-session.is-pausing .active-session__clock,
+  .active-session.is-resuming .active-session__clock,
+  .active-session.is-stopping .active-session__clock {
     animation: none;
+  }
+  .active-session,
+  .active-session:hover,
+  .active-session:focus-within,
+  .active-session__icon:hover:not(:disabled),
+  .active-session__icon:active:not(:disabled) {
+    transform: none;
   }
 }
 
