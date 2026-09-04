@@ -34,6 +34,7 @@ export function StartTimerButton({
   const pending = busy === "starting" || busy === "switching";
   return (
     <button
+      aria-label={compact ? "Iniciar atividade" : undefined}
       className={`button button--ghost button--sm start-timer-button start-timer-button--start${compact ? " start-timer-button--compact" : ""}`}
       disabled={pending}
       onClick={() =>
@@ -46,10 +47,13 @@ export function StartTimerButton({
           workItemIdentifier,
         })
       }
+      title={compact ? "Iniciar atividade" : undefined}
       type="button"
     >
       {pending ? (
         "Aguarde…"
+      ) : compact ? (
+        <span aria-hidden="true">▶</span>
       ) : (
         <>
           <span aria-hidden="true">▶</span>

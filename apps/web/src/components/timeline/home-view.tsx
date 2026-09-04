@@ -281,176 +281,182 @@ export function HomeView({
         </div>
       </div>
 
-      {isToday ? (
-        <section
-          className={`home-now${nowActivity ? " is-active" : " is-idle"}`}
-          aria-labelledby="home-now-title"
-        >
-          <h2 id="home-now-title">Agora</h2>
-          {nowActivity ? (
-            <div className="home-now__active">
-              <span className="home-now__dot" aria-hidden="true" />
-              <div className="home-now__activity">
-                <strong>
-                  {nowActivity.workItemTitle ?? nowActivity.projectName}
-                </strong>
-                <span>
-                  {nowActivity.workItemTitle
-                    ? nowActivity.projectName
-                    : "Projeto"}
+      <div className="home-layout">
+        <div className="home-layout__main">
+          {isToday ? (
+            <section
+              className={`home-now${nowActivity ? " is-active" : " is-idle"}`}
+              aria-labelledby="home-now-title"
+            >
+              <h2 id="home-now-title">Agora</h2>
+              {nowActivity ? (
+                <div className="home-now__active">
+                  <span className="home-now__dot" aria-hidden="true" />
+                  <div className="home-now__activity">
+                    <strong>
+                      {nowActivity.workItemTitle ?? nowActivity.projectName}
+                    </strong>
+                    <span>
+                      {nowActivity.workItemTitle
+                        ? nowActivity.projectName
+                        : "Projeto"}
+                    </span>
+                  </div>
+                </div>
+              ) : targets.items.length === 0 ? (
+                <div className="home-now__idle">
+                  <p>Nenhuma demanda disponível.</p>
+                  <Link
+                    className="button button--primary"
+                    href={`/w/${slug}/work/new`}
+                  >
+                    Criar demanda
+                  </Link>
+                </div>
+              ) : (
+                <div className="home-now__idle">
+                  <p>Nenhuma atividade em andamento</p>
+                  <button
+                    className="button button--primary"
+                    onClick={openStart}
+                    type="button"
+                  >
+                    <span aria-hidden="true">+</span> Iniciar atividade
+                  </button>
+                </div>
+              )}
+            </section>
+          ) : (
+            <p className="home-day-hint">
+              {isFuture
+                ? "Ainda não há registros para este dia."
+                : "Neste dia você pode adicionar registros ou reconstruir períodos sem registro."}
+            </p>
+          )}
+
+          <section
+            className="home-timeline"
+            aria-labelledby="home-timeline-title"
+          >
+            <div className="home-section-heading">
+              <div className="home-section-heading__lead">
+                <h2 id="home-timeline-title">Registros</h2>
+                <span className="home-section-heading__total">
+                  {formatCompactDuration(trackedSeconds)}
                 </span>
               </div>
-            </div>
-          ) : targets.items.length === 0 ? (
-            <div className="home-now__idle">
-              <p>
-                Nenhuma demanda disponível. Crie uma demanda para começar a
-                registrar seu tempo.
-              </p>
-              <Link
-                className="button button--primary"
-                href={`/w/${slug}/work/new`}
-              >
-                Criar demanda
-              </Link>
-            </div>
-          ) : (
-            <div className="home-now__idle">
-              <p>Nenhuma atividade em andamento</p>
               <button
-                className="button button--primary"
-                onClick={openStart}
+                className="home-add-time"
+                onClick={() => openEditor({ start: "09:00", end: "10:00" })}
                 type="button"
               >
-                <span aria-hidden="true">+</span> Iniciar atividade
+                + Adicionar registro
               </button>
             </div>
-          )}
-        </section>
-      ) : (
-        <p className="home-day-hint">
-          {isFuture
-            ? "Ainda não há registros para este dia."
-            : "Neste dia você pode adicionar registros ou reconstruir períodos sem registro."}
-        </p>
-      )}
 
-      <section className="home-timeline" aria-labelledby="home-timeline-title">
-        <div className="home-section-heading">
-          <div className="home-section-heading__lead">
-            <h2 id="home-timeline-title">Registros</h2>
-            <span className="home-section-heading__total">
-              {formatCompactDuration(trackedSeconds)}
-            </span>
-          </div>
-          <button
-            className="home-add-time"
-            onClick={() => openEditor({ start: "09:00", end: "10:00" })}
-            type="button"
-          >
-            + Adicionar registro
-          </button>
-        </div>
-
-        {all.length ? (
-          <ol className="home-timeline-list">
-            {all.map((item) =>
-              item.kind === "block" ? (
-                <TimelineEntry
-                  block={item.block}
-                  key={`${item.block.entryId}-${item.block.visibleStart.toISOString()}`}
-                  onEdit={() =>
-                    item.block.source === "MANUAL"
-                      ? openEditor({
-                          entryId: item.block.entryId,
-                          start: localTime(item.block.visibleStart, timezone),
-                          end: localTime(item.block.visibleEnd, timezone),
-                          projectId: item.block.projectId,
-                          workItemId: item.block.workItemId,
-                          description: item.block.description,
+            {all.length ? (
+              <ol className="home-timeline-list">
+                {all.map((item) =>
+                  item.kind === "block" ? (
+                    <TimelineEntry
+                      block={item.block}
+                      key={`${item.block.entryId}-${item.block.visibleStart.toISOString()}`}
+                      onEdit={() =>
+                        item.block.source === "MANUAL"
+                          ? openEditor({
+                              entryId: item.block.entryId,
+                              start: localTime(
+                                item.block.visibleStart,
+                                timezone,
+                              ),
+                              end: localTime(item.block.visibleEnd, timezone),
+                              projectId: item.block.projectId,
+                              workItemId: item.block.workItemId,
+                              description: item.block.description,
+                            })
+                          : undefined
+                      }
+                      timezone={timezone}
+                    />
+                  ) : (
+                    <TimelineGap
+                      gap={item.gap}
+                      key={`gap-${item.gap.start.toISOString()}`}
+                      onReconstruct={() =>
+                        openEditor({
+                          start: localTime(item.gap.start, timezone),
+                          end: localTime(item.gap.end, timezone),
+                          reconstruction: true,
                         })
-                      : undefined
-                  }
-                  timezone={timezone}
-                />
-              ) : (
-                <TimelineGap
-                  gap={item.gap}
-                  key={`gap-${item.gap.start.toISOString()}`}
-                  onReconstruct={() =>
-                    openEditor({
-                      start: localTime(item.gap.start, timezone),
-                      end: localTime(item.gap.end, timezone),
-                      reconstruction: true,
-                    })
-                  }
-                  timezone={timezone}
-                />
-              ),
-            )}
-          </ol>
-        ) : (
-          <div className="home-empty">
-            <p className="home-empty__title">
-              {isToday
-                ? "Nenhum tempo registrado hoje."
-                : "Nenhum tempo registrado neste dia."}
-            </p>
-            <p>
-              {isToday
-                ? "Comece uma atividade acima ou registre algo que você já fez."
-                : "Adicione um registro do que aconteceu neste dia."}
-            </p>
-            <button
-              className="home-add-time"
-              onClick={() => openEditor({ start: "09:00", end: "10:00" })}
-              type="button"
-            >
-              + Adicionar registro
-            </button>
-          </div>
-        )}
-
-        <div className="home-week-context">
-          <span>Esta semana · {formatCompactDuration(weekTotal)}</span>
-          <Link href={`/w/${slug}/insights`}>
-            Ver insights <span aria-hidden="true">→</span>
-          </Link>
-        </div>
-      </section>
-
-      {continueItems.length > 0 ? (
-        <section
-          className="home-continue"
-          aria-labelledby="home-continue-title"
-        >
-          <h2 id="home-continue-title">Continuar trabalhando</h2>
-          <ul>
-            {continueItems.map((item) => (
-              <li key={item.id}>
+                      }
+                      timezone={timezone}
+                    />
+                  ),
+                )}
+              </ol>
+            ) : (
+              <div className="home-empty">
+                <span className="home-empty__rail" aria-hidden="true" />
                 <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.projectName}</span>
+                  <p className="home-empty__title">
+                    {isToday
+                      ? "Nenhum tempo registrado hoje."
+                      : "Nenhum tempo registrado neste dia."}
+                  </p>
+                  <p>
+                    {isToday
+                      ? "Comece uma atividade acima ou registre algo que você já fez."
+                      : "Adicione um registro do que aconteceu neste dia."}
+                  </p>
                 </div>
-                <StartTimerButton
-                  slug={slug}
-                  projectId={item.projectId}
-                  workItemId={item.id}
-                  projectName={item.projectName}
-                  workItemTitle={item.title}
-                />
-              </li>
-            ))}
-          </ul>
-          <Link className="home-continue__more" href={`/w/${slug}/work`}>
-            Ver demandas <span aria-hidden="true">→</span>
-          </Link>
-        </section>
-      ) : null}
+              </div>
+            )}
 
-      {isToday && gettingStarted ? (
-        <GettingStarted progress={gettingStarted} slug={slug} />
-      ) : null}
+            <div className="home-week-context">
+              <span>{formatCompactDuration(weekTotal)} nesta semana</span>
+              <Link href={`/w/${slug}/insights`}>
+                Ver insights <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </section>
+        </div>
+
+        <aside className="home-layout__side">
+          {continueItems.length > 0 ? (
+            <section
+              className="home-continue"
+              aria-labelledby="home-continue-title"
+            >
+              <h2 id="home-continue-title">Continuar trabalhando</h2>
+              <ul>
+                {continueItems.map((item) => (
+                  <li key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.projectName}</span>
+                    </div>
+                    <StartTimerButton
+                      compact
+                      slug={slug}
+                      projectId={item.projectId}
+                      workItemId={item.id}
+                      projectName={item.projectName}
+                      workItemTitle={item.title}
+                    />
+                  </li>
+                ))}
+              </ul>
+              <Link className="home-continue__more" href={`/w/${slug}/work`}>
+                Ver demandas <span aria-hidden="true">→</span>
+              </Link>
+            </section>
+          ) : null}
+
+          {isToday && gettingStarted ? (
+            <GettingStarted progress={gettingStarted} slug={slug} />
+          ) : null}
+        </aside>
+      </div>
 
       {pickerOpen ? (
         <div className="time-drawer-backdrop">
@@ -745,7 +751,9 @@ function TimelineEntry({
           {block.workItemTitle ? <span>{block.projectName}</span> : null}
         </div>
         <div className="home-timeline-block__details">
-          <time>{formatCompactDuration(block.durationSeconds)}</time>
+          {block.active && block.durationSeconds < 60 ? null : (
+            <time>{formatCompactDuration(block.durationSeconds)}</time>
+          )}
           {block.source === "MANUAL" ? (
             <details className="home-entry-actions">
               <summary aria-label="Mais ações" title="Mais ações">
