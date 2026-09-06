@@ -3808,6 +3808,7 @@
   border-left: 1px solid var(--border-default);
   box-shadow: var(--shadow-floating);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
   max-width: 420px;
