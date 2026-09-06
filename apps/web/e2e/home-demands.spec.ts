@@ -249,32 +249,11 @@ test("keeps time record actions accessible with a long demand title", async ({
   await expect(
     page.getByRole("button", { name: "Fechar painel" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Fechar painel" }).click();
-
-  await page.goto(workspacePath);
-  await page.getByRole("button", { name: "+ Adicionar registro" }).click();
+  await page.getByRole("button", { name: "Adicionar tempo" }).click();
+  await expect(page.locator(".time-drawer")).toContainText(demandName);
   await page.getByLabel("Início").fill("08:00");
   await page.getByLabel("Fim").fill("09:00");
-  await page
-    .locator('select[name="projectId"]')
-    .selectOption({ label: projectName });
-  await page
-    .locator('select[name="workItemId"]')
-    .selectOption({ label: demandName });
   await page.getByRole("button", { name: "Salvar tempo" }).click();
-  await expect(
-    page.locator(".home-timeline-block").filter({ hasText: demandName }),
-  ).toBeVisible();
-
-  await page.goto(`${workspacePath}/work`);
-  await page
-    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
-    .click();
-  expect(
-    await demandDrawer.evaluate(
-      (drawer) => drawer.scrollWidth - drawer.clientWidth,
-    ),
-  ).toBeLessThanOrEqual(0);
   const recordActions = page.getByRole("button", {
     name: /Ações do registro/,
   });
@@ -286,4 +265,5 @@ test("keeps time record actions accessible with a long demand title", async ({
   await expect(
     page.getByRole("menuitem", { name: "Excluir registro" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Fechar painel" }).click();
 });

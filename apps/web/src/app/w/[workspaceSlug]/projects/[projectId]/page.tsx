@@ -4,6 +4,7 @@ import { ProjectDetailView } from "@/components/projects/project-detail-view";
 import { requireCoreSession } from "@/modules/auth/session";
 import { ProjectError } from "@/modules/projects/errors";
 import { getProjectPage } from "@/modules/projects/service";
+import { getUserTimezone } from "@/modules/workspaces/service";
 
 export default async function ProjectPage({
   params,
@@ -17,6 +18,7 @@ export default async function ProjectPage({
   const session = await requireCoreSession(
     `/w/${workspaceSlug}/projects/${projectId}`,
   );
+  const userTimezone = await getUserTimezone(session.user.id);
   const view =
     query.view === "demands" || query.view === "activity"
       ? query.view
@@ -73,6 +75,7 @@ export default async function ProjectPage({
       summary={data.projectSummary}
       slug={workspaceSlug}
       timezone={data.context.timezone}
+      userTimezone={userTimezone}
       view={view}
       {...(query.created === "1"
         ? { notice: "Projeto criado." }

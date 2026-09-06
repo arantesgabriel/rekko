@@ -10,7 +10,11 @@ import {
 } from "@/modules/time-tracking/admin-errors";
 import { WorkspaceError } from "@/modules/workspaces/errors";
 import { requireWorkspace } from "@/modules/workspaces/service";
-import { localDateTimeToUtc, zonedDateTimeToUtc } from "./domain";
+import {
+  addCalendarDays,
+  localDateTimeToUtc,
+  zonedDateTimeToUtc,
+} from "./domain";
 import { ManualTimeError, manualTimeErrorMessage } from "./errors";
 import { manualTimeInputSchema, ownTimeEntryIntervalSchema } from "./schemas";
 import {
@@ -70,24 +74,20 @@ export async function saveManualTimeAction(
       slug,
       date: parsed.data.date,
     });
+    const startDate = parsed.data.startDate ?? parsed.data.date;
+    const endDate =
+      parsed.data.endDate ??
+      (parsed.data.endTime < parsed.data.startTime
+        ? addCalendarDays(parsed.data.date, 1)
+        : parsed.data.date);
     const start = zonedDateTimeToUtc(
-      `${parsed.data.date}T${parsed.data.startTime}:00`,
+      `${startDate}T${parsed.data.startTime}:00`,
       timeline.timezone,
     );
-    let end = zonedDateTimeToUtc(
-      `${parsed.data.date}T${parsed.data.endTime}:00`,
+    const end = zonedDateTimeToUtc(
+      `${endDate}T${parsed.data.endTime}:00`,
       timeline.timezone,
     );
-    if (end <= start && parsed.data.endTime !== parsed.data.startTime) {
-      const next = new Date(start.getTime() + 36 * 60 * 60 * 1000);
-      const nextDate = new Intl.DateTimeFormat("en-CA", {
-        timeZone: timeline.timezone,
-      }).format(next);
-      end = zonedDateTimeToUtc(
-        `${nextDate}T${parsed.data.endTime}:00`,
-        timeline.timezone,
-      );
-    }
     await saveManualTime({
       actorUserId: session.user.id,
       slug,

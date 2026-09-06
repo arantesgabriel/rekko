@@ -8,8 +8,10 @@ import { DemandStatus } from "@/components/demands/demand-status";
 import { DemandTimeRecords } from "@/components/demands/demand-time-records";
 import { DemandForm } from "@/components/projects/new-demand-form";
 import { formatDuration } from "@/components/projects/project-format";
+import { ManualTimeEntryDialog } from "@/components/timeline/manual-time-entry-dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { useOptionalActiveSession } from "@/components/time-tracking/active-session-provider";
+import { StartTimerButton } from "@/components/time-tracking/timer-controls";
 import { formatEstimate } from "@/modules/projects/domain";
 import type {
   DemandListItem,
@@ -29,6 +31,7 @@ export function DemandDrawer({
   slug,
   startInEdit = false,
   timezone,
+  userTimezone,
 }: {
   canManage: boolean;
   demand?: DemandListItem;
@@ -42,20 +45,30 @@ export function DemandDrawer({
   slug: string;
   startInEdit?: boolean;
   timezone: string;
+  userTimezone?: string;
 }) {
   const [editing, setEditing] = useState(startInEdit);
   const [dirty, setDirty] = useState(false);
+  const [timeEntryOpen, setTimeEntryOpen] = useState(false);
   const tracking = useOptionalActiveSession();
   const isCreate = !demand;
+  const timeEntryTimezone = userTimezone ?? timezone;
   const sessionOnDemand =
     demand && tracking?.session?.workItemId === demand.id
       ? tracking.session.status
       : null;
+  const canTrack = Boolean(
+    demand &&
+    demand.projectStatus === "ACTIVE" &&
+    demand.isActive &&
+    demand.status !== "DONE",
+  );
 
   if (!open) return null;
   const requestClose = () => {
     if (dirty && !window.confirm("Descartar alterações não salvas?")) return;
     setDirty(false);
+    setTimeEntryOpen(false);
     onClose();
   };
   const beginEditing = () => {
@@ -73,126 +86,162 @@ export function DemandDrawer({
     : projects;
 
   return (
-    <Drawer
-      {...(demand?.externalIdentifier && !isCreate && !editing
-        ? { eyebrow: demand.externalIdentifier }
-        : {})}
-      headerActions={
-        !isCreate && !editing && demand ? (
+    <>
+      <Drawer
+        {...(demand?.externalIdentifier && !isCreate && !editing
+          ? { eyebrow: demand.externalIdentifier }
+          : {})}
+        headerActions={
+          !isCreate && !editing && demand ? (
+            <>
+              {canManage && demand.source === "MANUAL" ? (
+                <button
+                  className="button button--ghost button--sm"
+                  onClick={beginEditing}
+                  type="button"
+                >
+                  Editar
+                </button>
+              ) : null}
+              {canManage ? (
+                <DemandActionsMenu
+                  canManage={canManage}
+                  demand={demand}
+                  onEdit={beginEditing}
+                  projects={projects}
+                  slug={slug}
+                  {...(onChanged ? { onChanged } : {})}
+                  {...(onFeedback ? { onFeedback } : {})}
+                />
+              ) : null}
+            </>
+          ) : undefined
+        }
+        onClose={requestClose}
+        open={open}
+        title={title}
+      >
+        {isCreate || editing ? (
           <>
-            {canManage && demand.source === "MANUAL" ? (
-              <button
-                className="button button--ghost button--sm"
-                onClick={beginEditing}
-                type="button"
-              >
-                Editar
-              </button>
-            ) : null}
-            {canManage ? (
-              <DemandActionsMenu
-                canManage={canManage}
-                demand={demand}
-                onEdit={beginEditing}
-                projects={projects}
-                slug={slug}
-                {...(onChanged ? { onChanged } : {})}
-                {...(onFeedback ? { onFeedback } : {})}
-              />
-            ) : null}
+            <p className="drawer__intro">
+              {isCreate
+                ? "Crie uma demanda para registrar o tempo no projeto certo."
+                : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
+            </p>
+            <DemandForm
+              drawer
+              onCancel={requestClose}
+              onDirtyChange={setDirty}
+              onSuccess={() => {
+                setDirty(false);
+                setEditing(false);
+                if (isCreate) onClose();
+              }}
+              parents={parents}
+              projects={formProjects}
+              slug={slug}
+              {...(editing && demand ? { item: demand } : {})}
+              {...(projectId ? { projectId } : {})}
+            />
           </>
-        ) : undefined
-      }
-      onClose={requestClose}
-      open={open}
-      title={title}
-    >
-      {isCreate || editing ? (
-        <>
-          <p className="drawer__intro">
-            {isCreate
-              ? "Crie uma demanda para registrar o tempo no projeto certo."
-              : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
-          </p>
-          <DemandForm
-            drawer
-            onCancel={requestClose}
-            onDirtyChange={setDirty}
-            onSuccess={() => {
-              setDirty(false);
-              setEditing(false);
-              if (isCreate) onClose();
-            }}
-            parents={parents}
-            projects={formProjects}
-            slug={slug}
-            {...(editing && demand ? { item: demand } : {})}
-            {...(projectId ? { projectId } : {})}
-          />
-        </>
-      ) : (
-        <div className="demand-drawer__content">
-          <div className="demand-drawer__topline">
-            <Link href={`/w/${slug}/projects/${demand.projectId}`}>
-              {demand.projectName}
-            </Link>
-            <span aria-hidden="true">·</span>
-            <DemandStatus status={demand.status} />
+        ) : (
+          <div className="demand-drawer__content">
+            <div className="demand-drawer__topline">
+              <Link href={`/w/${slug}/projects/${demand.projectId}`}>
+                {demand.projectName}
+              </Link>
+              <span aria-hidden="true">·</span>
+              <DemandStatus status={demand.status} />
+            </div>
+            {sessionOnDemand ? (
+              <p className="demand-drawer__session">
+                <span aria-hidden="true" className="timer-status-dot" />
+                {sessionOnDemand === "PAUSED" ? "Pausado" : "Em andamento"}
+              </p>
+            ) : null}
+            {canTrack ? (
+              <div className="demand-drawer__time-actions">
+                <StartTimerButton
+                  projectId={demand.projectId}
+                  projectName={demand.projectName}
+                  slug={slug}
+                  workItemId={demand.id}
+                  workItemIdentifier={demand.externalIdentifier}
+                  workItemTitle={demand.title}
+                />
+                <button
+                  className="button button--secondary button--sm"
+                  onClick={() => setTimeEntryOpen(true)}
+                  type="button"
+                >
+                  Adicionar tempo
+                </button>
+              </div>
+            ) : null}
+            <dl className="demand-drawer__facts">
+              <div>
+                <dt>Registrado</dt>
+                <dd>
+                  {demand.trackedSeconds > 0
+                    ? formatDuration(demand.trackedSeconds)
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Estimativa</dt>
+                <dd>
+                  {demand.estimatedMinutes
+                    ? formatEstimate(demand.estimatedMinutes)
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+            {demand.parentWorkItemId ? (
+              <p className="drawer-meta">
+                Esta demanda faz parte de uma demanda principal.
+              </p>
+            ) : null}
+            {demand.description ? (
+              <section className="demand-drawer__section">
+                <h3>Descrição</h3>
+                <p className="demand-drawer__description">
+                  {demand.description}
+                </p>
+              </section>
+            ) : null}
+            <DemandTimeRecords
+              demand={demand}
+              slug={slug}
+              timezone={timeEntryTimezone}
+              {...(onChanged ? { onChanged } : {})}
+              {...(onFeedback ? { onFeedback } : {})}
+            />
+            {demand.source === "LINEAR" && demand.externalUrl ? (
+              <a
+                className="button button--secondary demand-drawer__external"
+                href={demand.externalUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Abrir no Linear
+              </a>
+            ) : null}
           </div>
-          {sessionOnDemand ? (
-            <p className="demand-drawer__session">
-              <span aria-hidden="true" className="timer-status-dot" />
-              {sessionOnDemand === "PAUSED" ? "Pausado" : "Em andamento"}
-            </p>
-          ) : null}
-          <dl className="demand-drawer__facts">
-            <div>
-              <dt>Registrado</dt>
-              <dd>
-                {demand.trackedSeconds > 0
-                  ? formatDuration(demand.trackedSeconds)
-                  : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt>Estimativa</dt>
-              <dd>
-                {demand.estimatedMinutes
-                  ? formatEstimate(demand.estimatedMinutes)
-                  : "—"}
-              </dd>
-            </div>
-          </dl>
-          {demand.parentWorkItemId ? (
-            <p className="drawer-meta">
-              Esta demanda faz parte de uma demanda principal.
-            </p>
-          ) : null}
-          {demand.description ? (
-            <section className="demand-drawer__section">
-              <h3>Descrição</h3>
-              <p className="demand-drawer__description">{demand.description}</p>
-            </section>
-          ) : null}
-          <DemandTimeRecords
-            demand={demand}
-            slug={slug}
-            timezone={timezone}
-            {...(onChanged ? { onChanged } : {})}
-            {...(onFeedback ? { onFeedback } : {})}
-          />
-          {demand.source === "LINEAR" && demand.externalUrl ? (
-            <a
-              className="button button--secondary demand-drawer__external"
-              href={demand.externalUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Abrir no Linear
-            </a>
-          ) : null}
-        </div>
-      )}
-    </Drawer>
+        )}
+      </Drawer>
+      {demand && timeEntryOpen ? (
+        <ManualTimeEntryDialog
+          demand={demand}
+          onClose={() => setTimeEntryOpen(false)}
+          onSaved={(message) => {
+            setTimeEntryOpen(false);
+            onChanged?.();
+            onFeedback?.(message);
+          }}
+          slug={slug}
+          timezone={timeEntryTimezone}
+        />
+      ) : null}
+    </>
   );
 }

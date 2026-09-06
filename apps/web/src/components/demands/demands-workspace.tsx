@@ -27,6 +27,7 @@ export function DemandsWorkspace({
   query,
   slug,
   timezone,
+  userTimezone,
 }: {
   canManage: boolean;
   counts: { all: number; active: number; done: number };
@@ -36,6 +37,7 @@ export function DemandsWorkspace({
   query: DemandListQuery;
   slug: string;
   timezone: string;
+  userTimezone: string;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -178,6 +180,7 @@ export function DemandsWorkspace({
         slug={slug}
         startInEdit={Boolean(selected && editDemandId === selected.id)}
         timezone={timezone}
+        userTimezone={userTimezone}
         {...(selected ? { demand: selected } : {})}
       />
       <DemandDrawer
@@ -191,6 +194,7 @@ export function DemandsWorkspace({
         projects={projectOptions}
         slug={slug}
         timezone={timezone}
+        userTimezone={userTimezone}
       />
     </div>
   );
