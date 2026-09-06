@@ -3920,6 +3920,40 @@
   margin: var(--space-3) 0 0;
 }
 
+.demand-drawer__time-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.demand-drawer__time-actions .button {
+  min-height: 40px;
+}
+
+.manual-time-entry-context,
+.manual-time-entry-duration {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.manual-time-entry-context {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  padding: var(--space-3);
+}
+
+.manual-time-entry-context span,
+.manual-time-entry-duration span {
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+}
+
+.manual-time-entry-duration strong {
+  font-variant-numeric: tabular-nums;
+}
+
 .demand-drawer__topline {
   align-items: center;
   display: flex;

@@ -52,6 +52,7 @@ export function ProjectDetailView({
   summary,
   slug,
   timezone,
+  userTimezone,
   view: viewParam,
 }: {
   canManage: boolean;
@@ -62,6 +63,7 @@ export function ProjectDetailView({
   summary: ProjectSummary;
   slug: string;
   timezone: string;
+  userTimezone: string;
   view?: string;
 }) {
   const router = useRouter();
@@ -137,6 +139,7 @@ export function ProjectDetailView({
           projects={[{ id: project.id, name: project.name }]}
           slug={slug}
           timezone={timezone}
+          userTimezone={userTimezone}
         />
       ) : null}
     </PageContainer>

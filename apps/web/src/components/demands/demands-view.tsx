@@ -15,6 +15,7 @@ export function DemandsView({
   query,
   slug,
   timezone,
+  userTimezone,
 }: {
   canManage: boolean;
   counts: { all: number; active: number; done: number };
@@ -24,6 +25,7 @@ export function DemandsView({
   query: DemandListQuery;
   slug: string;
   timezone: string;
+  userTimezone: string;
 }) {
   return (
     <DemandsWorkspace
@@ -35,6 +37,7 @@ export function DemandsView({
       query={query}
       slug={slug}
       timezone={timezone}
+      userTimezone={userTimezone}
     />
   );
 }

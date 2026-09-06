@@ -3,6 +3,7 @@ import { PageContainer } from "@/components/ui/page-container";
 import { requireCoreSession } from "@/modules/auth/session";
 import { parseDemandSort } from "@/modules/projects/demand-sort";
 import { listDemands } from "@/modules/projects/service";
+import { getUserTimezone } from "@/modules/workspaces/service";
 
 export const metadata = { title: "Demandas" };
 
@@ -24,15 +25,18 @@ export default async function DemandsPage({
     typeof query.sort === "string" ? query.sort : undefined,
     typeof query.dir === "string" ? query.dir : undefined,
   );
-  const data = await listDemands({
-    userId: session.user.id,
-    slug: workspaceSlug,
-    ...(search ? { search } : {}),
-    ...(projectId ? { projectId } : {}),
-    status,
-    sort,
-    dir,
-  });
+  const [data, userTimezone] = await Promise.all([
+    listDemands({
+      userId: session.user.id,
+      slug: workspaceSlug,
+      ...(search ? { search } : {}),
+      ...(projectId ? { projectId } : {}),
+      status,
+      sort,
+      dir,
+    }),
+    getUserTimezone(session.user.id),
+  ]);
   return (
     <PageContainer width="lg">
       <DemandsView
@@ -44,6 +48,7 @@ export default async function DemandsPage({
         query={{ dir, projectId, search, sort, status }}
         slug={workspaceSlug}
         timezone={data.context.timezone}
+        userTimezone={userTimezone}
       />
     </PageContainer>
   );
