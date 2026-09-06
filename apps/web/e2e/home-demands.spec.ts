@@ -205,3 +205,85 @@ test("unifies the operational home and manages demands", async ({
     )
     .toBeLessThanOrEqual(0);
 });
+
+test("keeps time record actions accessible with a long demand title", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  const projectName = `Drawer Project ${stamp}`;
+  const demandName = `AC-956: feat/sumsub-validation: consolidar Test Strategy da integração ${stamp}`;
+
+  await signUp(page, stamp);
+  const workspacePath = new URL(page.url()).pathname;
+
+  await page.goto(`${workspacePath}/projects`);
+  await page
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .first()
+    .click();
+  await page.getByLabel("Nome *").fill(projectName);
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar projeto", exact: true })
+    .click();
+
+  await page.goto(`${workspacePath}/work`);
+  await page.getByRole("button", { name: "Nova demanda", exact: true }).click();
+  await page.getByLabel("Projeto *").selectOption({ label: projectName });
+  await page.getByLabel("Título *").fill(demandName);
+  await page
+    .locator(".drawer-form__footer")
+    .getByRole("button", { name: "Criar demanda", exact: true })
+    .click();
+
+  await page
+    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
+    .click();
+  const demandDrawer = page.locator(".drawer");
+  expect(
+    await demandDrawer.evaluate(
+      (drawer) => drawer.scrollWidth - drawer.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  await expect(
+    page.getByRole("button", { name: "Fechar painel" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Fechar painel" }).click();
+
+  await page.goto(workspacePath);
+  await page.getByRole("button", { name: "+ Adicionar registro" }).click();
+  await page.getByLabel("Início").fill("08:00");
+  await page.getByLabel("Fim").fill("09:00");
+  await page
+    .locator('select[name="projectId"]')
+    .selectOption({ label: projectName });
+  await page
+    .locator('select[name="workItemId"]')
+    .selectOption({ label: demandName });
+  await page.getByRole("button", { name: "Salvar tempo" }).click();
+  await expect(
+    page.locator(".home-timeline-block").filter({ hasText: demandName }),
+  ).toBeVisible();
+
+  await page.goto(`${workspacePath}/work`);
+  await page
+    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
+    .click();
+  expect(
+    await demandDrawer.evaluate(
+      (drawer) => drawer.scrollWidth - drawer.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  const recordActions = page.getByRole("button", {
+    name: /Ações do registro/,
+  });
+  await expect(recordActions).toBeVisible();
+  await recordActions.click();
+  await expect(
+    page.getByRole("menuitem", { name: "Editar registro" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Excluir registro" }),
+  ).toBeVisible();
+});
