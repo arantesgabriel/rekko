@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { formatDuration } from "@/components/projects/project-format";
+import { DateInput } from "@/components/ui/date-input";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import type {
   DemandListItem,
@@ -437,11 +438,9 @@ function EditTimeEntryDialog({
           <label>
             <span>Início</span>
             <div className="demand-time-edit-dialog__pair">
-              <input
+              <DateInput
                 name="startDate"
-                onChange={(event) => setStartDate(event.currentTarget.value)}
-                required
-                type="date"
+                onChange={setStartDate}
                 value={startDate}
               />
               <input
@@ -457,13 +456,7 @@ function EditTimeEntryDialog({
           <label>
             <span>Fim</span>
             <div className="demand-time-edit-dialog__pair">
-              <input
-                name="endDate"
-                onChange={(event) => setEndDate(event.currentTarget.value)}
-                required
-                type="date"
-                value={endDate}
-              />
+              <DateInput name="endDate" onChange={setEndDate} value={endDate} />
               <input
                 aria-label="Horário final"
                 name="endTime"

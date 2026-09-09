@@ -4,11 +4,13 @@ import {
   calculateGaps,
   clipInterval,
   dayWindow,
+  formatDateInput,
   formatCompactDuration,
   formatWeekStripDuration,
   intervalSeconds,
   intervalsOverlap,
   isDisplayableSession,
+  parseDateInput,
   startOfIsoWeek,
   weekDates,
   zonedDateTimeToUtc,
@@ -130,5 +132,31 @@ describe("timeline intervals", () => {
     const start = zonedDateTimeToUtc("2026-09-03T22:41:00", "UTC");
     const end = zonedDateTimeToUtc("2026-09-04T00:37:00", "UTC");
     expect(end.getTime() - start.getTime()).toBe((1 * 60 + 56) * 60 * 1000);
+  });
+
+  it("keeps date fields in day/month/year order", () => {
+    expect(formatDateInput("2026-09-08")).toBe("08/09/2026");
+    expect(parseDateInput("08/09/2026")).toBe("2026-09-08");
+    expect(parseDateInput("09/09/2026")).toBe("2026-09-09");
+  });
+
+  it("calculates the screenshot interval as 1h24 instead of 30 days", () => {
+    const startDate = parseDateInput("08/09/2026");
+    const endDate = parseDateInput("09/09/2026");
+    expect(startDate).toBe("2026-09-08");
+    expect(endDate).toBe("2026-09-09");
+    if (!startDate || !endDate) throw new Error("Expected valid dates");
+
+    const start = zonedDateTimeToUtc(
+      `${startDate}T23:34:00`,
+      "America/Sao_Paulo",
+    );
+    const end = zonedDateTimeToUtc(`${endDate}T00:58:00`, "America/Sao_Paulo");
+    expect(intervalSeconds({ start, end })).toBe(84 * 60);
+  });
+
+  it("rejects impossible displayed dates", () => {
+    expect(parseDateInput("31/02/2026")).toBeNull();
+    expect(parseDateInput("09/09/26")).toBeNull();
   });
 });
