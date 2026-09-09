@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { formatDuration } from "@/components/projects/project-format";
+import { DateInput } from "@/components/ui/date-input";
 import {
   saveManualTimeAction,
   type ManualTimeActionState,
@@ -163,23 +164,15 @@ export function ManualTimeEntryDialog({
           <div className="form-row">
             <label>
               Data inicial
-              <input
+              <DateInput
                 name="startDate"
-                onChange={(event) => setStartDate(event.currentTarget.value)}
-                required
-                type="date"
+                onChange={setStartDate}
                 value={startDate}
               />
             </label>
             <label>
               Data final
-              <input
-                name="endDate"
-                onChange={(event) => setEndDate(event.currentTarget.value)}
-                required
-                type="date"
-                value={endDate}
-              />
+              <DateInput name="endDate" onChange={setEndDate} value={endDate} />
             </label>
           </div>
           <div className="form-row">

@@ -129,6 +129,28 @@ export function localDateTimeToUtc(
   return zonedDateTimeToUtc(`${date}T${time}:00`, timezone);
 }
 
+/** Formats an ISO date for the product's unambiguous Brazilian date fields. */
+export function formatDateInput(date: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+/** Parses the DD/MM/YYYY value shown by Rekko's date fields to an ISO date. */
+export function parseDateInput(value: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const candidate = `${year}-${month}-${day}`;
+  const parsed = new Date(`${candidate}T12:00:00.000Z`);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== candidate
+  )
+    return null;
+  return candidate;
+}
+
 /** Calendar-day arithmetic for `YYYY-MM-DD` values (noon UTC, no DST edge). */
 export function addCalendarDays(date: string, amount: number) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new RangeError("Invalid date");
