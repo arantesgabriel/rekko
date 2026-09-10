@@ -21,6 +21,8 @@ import {
   sql,
 } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { demandBreadcrumb } from "@/modules/projects/domain";
+import { listAccessibleDemandHierarchy } from "@/modules/projects/hierarchy-service";
 import {
   buildTimeEntryAuditSnapshot,
   recordAudit,
@@ -350,33 +352,39 @@ export async function getDailyTimeline(input: {
   const selectedDate =
     input.date ?? dateInTimezone(clock.now(), person.timezone);
   const window = dayWindow(selectedDate, person.timezone);
-  const rows = await db
-    .select({
-      entryId: timeEntry.id,
-      source: timeEntry.source,
-      status: timeEntry.status,
-      description: timeEntry.description,
-      projectId: project.id,
-      projectName: project.name,
-      workItemId: workItem.id,
-      workItemTitle: workItem.title,
-      startedAt: timeSegment.startedAt,
-      endedAt: timeSegment.endedAt,
-    })
-    .from(timeSegment)
-    .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
-    .innerJoin(project, eq(project.id, timeEntry.projectId))
-    .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
-    .where(
-      and(
-        eq(timeEntry.userId, input.userId),
-        eq(timeEntry.workspaceId, context.id),
-        ne(timeEntry.status, "ARCHIVED"),
-        lt(timeSegment.startedAt, window.end),
-        or(isNull(timeSegment.endedAt), gt(timeSegment.endedAt, window.start)),
-      ),
-    )
-    .orderBy(asc(timeSegment.startedAt));
+  const [rows, hierarchy] = await Promise.all([
+    db
+      .select({
+        entryId: timeEntry.id,
+        source: timeEntry.source,
+        status: timeEntry.status,
+        description: timeEntry.description,
+        projectId: project.id,
+        projectName: project.name,
+        workItemId: workItem.id,
+        workItemTitle: workItem.title,
+        startedAt: timeSegment.startedAt,
+        endedAt: timeSegment.endedAt,
+      })
+      .from(timeSegment)
+      .innerJoin(timeEntry, eq(timeEntry.id, timeSegment.timeEntryId))
+      .innerJoin(project, eq(project.id, timeEntry.projectId))
+      .innerJoin(workItem, eq(workItem.id, timeEntry.workItemId))
+      .where(
+        and(
+          eq(timeEntry.userId, input.userId),
+          eq(timeEntry.workspaceId, context.id),
+          ne(timeEntry.status, "ARCHIVED"),
+          lt(timeSegment.startedAt, window.end),
+          or(
+            isNull(timeSegment.endedAt),
+            gt(timeSegment.endedAt, window.start),
+          ),
+        ),
+      )
+      .orderBy(asc(timeSegment.startedAt)),
+    listAccessibleDemandHierarchy(input.userId, context.id),
+  ]);
   const now = clock.now();
   const blocks = rows.flatMap((row) => {
     const clipped = clipInterval(
@@ -387,6 +395,7 @@ export async function getDailyTimeline(input: {
       ? [
           {
             ...row,
+            workItemBreadcrumb: demandBreadcrumb(row.workItemId, hierarchy),
             visibleStart: clipped.start,
             visibleEnd: clipped.end,
             durationSeconds: intervalSeconds(clipped),
@@ -480,6 +489,8 @@ export async function listRecentWorkItems(
       id: workItem.id,
       projectId: workItem.projectId,
       title: workItem.title,
+      externalIdentifier: workItem.externalIdentifier,
+      parentWorkItemId: workItem.parentWorkItemId,
       projectName: project.name,
       startedAt: timeSegment.startedAt,
     })
@@ -500,12 +511,14 @@ export async function listRecentWorkItems(
     )
     .orderBy(desc(timeSegment.startedAt))
     .limit(40);
+  const hierarchy = await listAccessibleDemandHierarchy(userId, context.id);
   const seen = new Set<string>();
   const items: {
     id: string;
     projectId: string;
     title: string;
     projectName: string;
+    workItemBreadcrumb: string;
   }[] = [];
   for (const row of rows) {
     if (seen.has(row.id)) continue;
@@ -515,6 +528,7 @@ export async function listRecentWorkItems(
       projectId: row.projectId,
       title: row.title,
       projectName: row.projectName,
+      workItemBreadcrumb: demandBreadcrumb(row.id, hierarchy),
     });
     if (items.length >= limit) break;
   }
@@ -539,6 +553,8 @@ export async function listManualTimeTargets(userId: string, slug: string) {
       id: workItem.id,
       projectId: workItem.projectId,
       title: workItem.title,
+      externalIdentifier: workItem.externalIdentifier,
+      parentWorkItemId: workItem.parentWorkItemId,
     })
     .from(workItem)
     .where(
@@ -551,7 +567,14 @@ export async function listManualTimeTargets(userId: string, slug: string) {
       ),
     )
     .orderBy(asc(workItem.title));
-  return { projects, items };
+  const hierarchy = await listAccessibleDemandHierarchy(userId, context.id);
+  return {
+    projects,
+    items: items.map((item) => ({
+      ...item,
+      workItemBreadcrumb: demandBreadcrumb(item.id, hierarchy),
+    })),
+  };
 }
 
 export async function getGettingStartedProgress(userId: string, slug: string) {

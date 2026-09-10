@@ -6,7 +6,10 @@ import { PageContainer } from "@/components/ui/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireCoreSession } from "@/modules/auth/session";
 import { requireWorkspace } from "@/modules/workspaces/service";
-import { listProjects } from "@/modules/projects/service";
+import {
+  listDemandParentOptions,
+  listProjects,
+} from "@/modules/projects/service";
 import { getLinearConnection } from "@/modules/integrations/linear/service";
 import { LinearBrowser } from "@/components/linear/linear-browser";
 import { importLinearIssuesAction } from "@/modules/integrations/linear/actions";
@@ -34,7 +37,10 @@ export default async function NewProjectPage({
     mode || !existingProjectId ? "project:manage" : undefined,
   );
   if (mode) {
-    const { projects } = await listProjects(session.user.id, workspaceSlug);
+    const [{ projects }, { parents }] = await Promise.all([
+      listProjects(session.user.id, workspaceSlug),
+      listDemandParentOptions(session.user.id, workspaceSlug),
+    ]);
     const activeProjects = projects
       .filter((project) => project.status === "ACTIVE")
       .map(({ id, name }) => ({ id, name }));
@@ -47,7 +53,11 @@ export default async function NewProjectPage({
           description="Dê um contexto ao trabalho e registre seu tempo com mais clareza."
           title="Nova demanda"
         />
-        <NewDemandForm projects={activeProjects} slug={workspaceSlug} />
+        <NewDemandForm
+          parents={parents}
+          projects={activeProjects}
+          slug={workspaceSlug}
+        />
       </PageContainer>
     );
   }

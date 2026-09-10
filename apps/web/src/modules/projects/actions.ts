@@ -14,7 +14,7 @@ import {
   archiveProject,
   createProject,
   archiveWorkItem,
-  createWorkItem,
+  createWorkItemWithParent,
   duplicateWorkItem,
   moveWorkItem,
   setWorkItemStatus,
@@ -25,6 +25,7 @@ import {
 export type ProjectActionState = {
   message: string;
   status: "error" | "idle" | "success";
+  createdDemandId?: string;
 };
 
 export async function createProjectAction(
@@ -138,11 +139,11 @@ export async function createWorkItemAction(
   formData: FormData,
 ) {
   const session = await requireCoreSession(`/w/${slug}/projects/${projectId}`);
-  const parsed = parseWorkItemForm(formData);
+  const parsed = parseCreateWorkItemForm(formData);
   if (!parsed.success)
     return errorState("Revise os dados da demanda e a estimativa.");
   try {
-    await createWorkItem({
+    const created = await createWorkItemWithParent({
       actorUserId: session.user.id,
       slug,
       projectId,
@@ -151,7 +152,7 @@ export async function createWorkItemAction(
     revalidatePath(`/w/${slug}/projects/${projectId}`);
     revalidatePath(`/w/${slug}/work`);
     revalidatePath(`/w/${slug}/insights`);
-    return successState("Demanda criada.");
+    return successState("Demanda criada.", created.id);
   } catch (error) {
     return mappedError(error);
   }
@@ -164,11 +165,12 @@ export async function createGlobalWorkItemAction(
 ) {
   const session = await requireCoreSession(`/w/${slug}/work/new?mode=demand`);
   const projectId = z.uuid().safeParse(formData.get("projectId"));
-  const parsed = parseWorkItemForm(formData);
+  const parsed = parseCreateWorkItemForm(formData);
   if (!projectId.success || !parsed.success)
     return errorState("Revise o projeto, os dados da demanda e a estimativa.");
+  let created: { id: string };
   try {
-    await createWorkItem({
+    created = await createWorkItemWithParent({
       actorUserId: session.user.id,
       slug,
       projectId: projectId.data,
@@ -180,7 +182,7 @@ export async function createGlobalWorkItemAction(
   revalidatePath(`/w/${slug}/work`);
   revalidatePath(`/w/${slug}/projects/${projectId.data}`);
   revalidatePath(`/w/${slug}/insights`);
-  redirect(`/w/${slug}/work?created=1`);
+  redirect(`/w/${slug}/work?created=1&demand=${created.id}`);
 }
 
 export async function updateWorkItemAction(
@@ -218,11 +220,11 @@ export async function createDemandDrawerAction(
 ) {
   const session = await requireCoreSession(`/w/${slug}/work`);
   const projectId = z.uuid().safeParse(formData.get("projectId"));
-  const parsed = parseWorkItemForm(formData);
+  const parsed = parseCreateWorkItemForm(formData);
   if (!projectId.success || !parsed.success)
     return errorState("Revise o projeto, os dados da demanda e a estimativa.");
   try {
-    await createWorkItem({
+    const created = await createWorkItemWithParent({
       actorUserId: session.user.id,
       slug,
       projectId: projectId.data,
@@ -232,7 +234,7 @@ export async function createDemandDrawerAction(
     revalidatePath(`/w/${slug}/projects/${projectId.data}`);
     revalidatePath(`/w/${slug}/projects`);
     revalidatePath(`/w/${slug}/insights`);
-    return successState("Demanda criada.");
+    return successState("Demanda criada.", created.id);
   } catch (error) {
     return mappedError(error);
   }
@@ -271,7 +273,7 @@ export async function moveWorkItemAction(
   if (!z.uuid().safeParse(targetProjectId).success)
     return errorState("Selecione um projeto válido.");
   try {
-    await moveWorkItem({
+    const result = await moveWorkItem({
       actorUserId: session.user.id,
       slug,
       itemId,
@@ -280,7 +282,9 @@ export async function moveWorkItemAction(
     revalidatePath(`/w/${slug}/work`);
     revalidatePath(`/w/${slug}/projects`);
     revalidatePath(`/w/${slug}/insights`);
-    return successState("Demanda movida.");
+    return successState(
+      result.movedCount > 1 ? "Demanda e filhas movidas." : "Demanda movida.",
+    );
   } catch (error) {
     return mappedError(error);
   }
@@ -343,6 +347,47 @@ function parseWorkItemForm(formData: FormData) {
     : { success: false as const };
 }
 
+function parseCreateWorkItemForm(formData: FormData) {
+  const parsed = parseWorkItemForm(formData);
+  if (!parsed.success) return parsed;
+
+  const rawMode = formData.get("parentMode");
+  if (rawMode !== "NEW") {
+    const parentMode = parsed.data.parentWorkItemId
+      ? ("EXISTING" as const)
+      : ("NONE" as const);
+
+    return {
+      success: true as const,
+      data: { ...parsed.data, parentMode },
+    };
+  }
+
+  const newParent = workItemInputSchema.safeParse({
+    title: formData.get("parentTitle"),
+    description: formData.get("parentDescription"),
+    status: formData.get("parentStatus"),
+    estimate: formData.get("parentEstimate"),
+    parentWorkItemId: formData.get("parentParentWorkItemId"),
+  });
+  if (!newParent.success) return { success: false as const };
+  return {
+    success: true as const,
+    data: {
+      ...parsed.data,
+      parentMode: "NEW" as const,
+      parentWorkItemId: null,
+      newParent: {
+        title: newParent.data.title,
+        description: newParent.data.description,
+        status: newParent.data.status,
+        estimatedMinutes: newParent.data.estimate,
+        parentWorkItemId: newParent.data.parentWorkItemId,
+      },
+    },
+  };
+}
+
 function mappedError(error: unknown): ProjectActionState {
   if (error instanceof ProjectError)
     return errorState(projectErrorMessage[error.code]);
@@ -357,6 +402,13 @@ function mappedError(error: unknown): ProjectActionState {
 function errorState(message: string): ProjectActionState {
   return { message, status: "error" };
 }
-function successState(message: string): ProjectActionState {
-  return { message, status: "success" };
+function successState(
+  message: string,
+  createdDemandId?: string,
+): ProjectActionState {
+  return {
+    message,
+    status: "success",
+    ...(createdDemandId ? { createdDemandId } : {}),
+  };
 }

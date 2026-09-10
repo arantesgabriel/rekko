@@ -42,9 +42,10 @@ export function SwitchSessionDialog({
           <span>
             <small>Próxima</small>
             <strong>
-              {next.workItemIdentifier
-                ? `${next.workItemIdentifier} · ${next.workItemTitle}`
-                : next.workItemTitle}
+              {next.workItemBreadcrumb ??
+                (next.workItemIdentifier
+                  ? `${next.workItemIdentifier} · ${next.workItemTitle}`
+                  : next.workItemTitle)}
             </strong>
             <span>{next.projectName}</span>
           </span>

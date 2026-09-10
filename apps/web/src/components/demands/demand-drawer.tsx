@@ -24,6 +24,7 @@ export function DemandDrawer({
   initialProjectId,
   onClose,
   onChanged,
+  onCreated,
   onFeedback,
   open,
   parents = [],
@@ -37,10 +38,16 @@ export function DemandDrawer({
   demand?: DemandListItem;
   initialProjectId?: string;
   onChanged?: () => void;
+  onCreated?: (demandId: string) => void;
   onClose: () => void;
   onFeedback?: (message: string) => void;
   open: boolean;
-  parents?: { id: string; title: string }[];
+  parents?: {
+    id: string;
+    title: string;
+    projectId?: string;
+    workItemBreadcrumb?: string | null | undefined;
+  }[];
   projects: DemandProjectOption[];
   slug: string;
   startInEdit?: boolean;
@@ -48,10 +55,12 @@ export function DemandDrawer({
   userTimezone?: string;
 }) {
   const [editing, setEditing] = useState(startInEdit);
+  const [creatingChild, setCreatingChild] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [timeEntryOpen, setTimeEntryOpen] = useState(false);
   const tracking = useOptionalActiveSession();
   const isCreate = !demand;
+  const isCreatingChild = Boolean(demand && creatingChild);
   const timeEntryTimezone = userTimezone ?? timezone;
   const sessionOnDemand =
     demand && tracking?.session?.workItemId === demand.id
@@ -69,17 +78,20 @@ export function DemandDrawer({
     if (dirty && !window.confirm("Descartar alterações não salvas?")) return;
     setDirty(false);
     setTimeEntryOpen(false);
+    setCreatingChild(false);
     onClose();
   };
   const beginEditing = () => {
     setDirty(false);
     setEditing(true);
   };
-  const title = isCreate
-    ? "Nova demanda"
-    : editing
-      ? "Editar demanda"
-      : demand.title;
+  const title = isCreatingChild
+    ? "Nova subdemanda"
+    : isCreate
+      ? "Nova demanda"
+      : editing
+        ? "Editar demanda"
+        : demand.title;
   const projectId = initialProjectId ?? demand?.projectId;
   const formProjects = projectId
     ? projects.filter((project) => project.id === projectId)
@@ -92,8 +104,20 @@ export function DemandDrawer({
           ? { eyebrow: demand.externalIdentifier }
           : {})}
         headerActions={
-          !isCreate && !editing && demand ? (
+          !isCreate && !isCreatingChild && !editing && demand ? (
             <>
+              {canManage && demand.source === "MANUAL" ? (
+                <button
+                  className="button button--secondary button--sm"
+                  onClick={() => {
+                    setDirty(false);
+                    setCreatingChild(true);
+                  }}
+                  type="button"
+                >
+                  + Subdemanda
+                </button>
+              ) : null}
               {canManage && demand.source === "MANUAL" ? (
                 <button
                   className="button button--ghost button--sm"
@@ -121,25 +145,33 @@ export function DemandDrawer({
         open={open}
         title={title}
       >
-        {isCreate || editing ? (
+        {isCreate || isCreatingChild || editing ? (
           <>
             <p className="drawer__intro">
-              {isCreate
-                ? "Crie uma demanda para registrar o tempo no projeto certo."
-                : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
+              {isCreatingChild
+                ? "Crie uma demanda filha mantendo este contexto."
+                : isCreate
+                  ? "Crie uma demanda para registrar o tempo no projeto certo."
+                  : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
             </p>
             <DemandForm
               drawer
               onCancel={requestClose}
               onDirtyChange={setDirty}
-              onSuccess={() => {
+              onSuccess={(createdDemandId) => {
                 setDirty(false);
                 setEditing(false);
-                if (isCreate) onClose();
+                if (isCreate || isCreatingChild) {
+                  onClose();
+                  if (createdDemandId) onCreated?.(createdDemandId);
+                }
               }}
               parents={parents}
               projects={formProjects}
               slug={slug}
+              {...(isCreatingChild && demand
+                ? { initialParentId: demand.id }
+                : {})}
               {...(editing && demand ? { item: demand } : {})}
               {...(projectId ? { projectId } : {})}
             />

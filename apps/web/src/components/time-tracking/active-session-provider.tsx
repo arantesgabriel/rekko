@@ -68,6 +68,7 @@ function optimisticRunning(
     workItemId: input.workItemId,
     workItemTitle: input.workItemTitle,
     workItemIdentifier: input.workItemIdentifier ?? null,
+    workItemBreadcrumb: input.workItemBreadcrumb ?? null,
     accumulatedSeconds: 0,
     openSegmentStartedAt: new Date().toISOString(),
     startedAt: new Date().toISOString(),

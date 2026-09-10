@@ -26,6 +26,7 @@ function toSnapshot(
     workItemId: timer.workItemId,
     workItemTitle: timer.workItemTitle,
     workItemIdentifier: timer.workItemIdentifier,
+    workItemBreadcrumb: timer.workItemBreadcrumb,
     accumulatedSeconds: timer.accumulatedSeconds,
     openSegmentStartedAt: timer.openSegmentStartedAt?.toISOString() ?? null,
     startedAt: timer.startedAt.toISOString(),

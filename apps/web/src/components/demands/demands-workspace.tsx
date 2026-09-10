@@ -22,6 +22,7 @@ export function DemandsWorkspace({
   canManage,
   counts,
   demands,
+  initialDemandId,
   parentOptions,
   projectOptions,
   query,
@@ -32,6 +33,7 @@ export function DemandsWorkspace({
   canManage: boolean;
   counts: { all: number; active: number; done: number };
   demands: DemandListItem[];
+  initialDemandId?: string;
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
   query: DemandListQuery;
@@ -40,7 +42,9 @@ export function DemandsWorkspace({
   userTimezone: string;
 }) {
   const router = useRouter();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialDemandId ?? null,
+  );
   const [editDemandId, setEditDemandId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -48,9 +52,7 @@ export function DemandsWorkspace({
   const selectedParents = selected
     ? parentOptions.filter((parent) => parent.projectId === selected.projectId)
     : [];
-  const createParents = query.projectId
-    ? parentOptions.filter((parent) => parent.projectId === query.projectId)
-    : [];
+  const createParents = parentOptions;
   const hasFilters = Boolean(
     query.search ||
     query.projectId ||
@@ -173,6 +175,10 @@ export function DemandsWorkspace({
         canManage={canManage}
         onChanged={refresh}
         onClose={closeDrawer}
+        onCreated={(demandId) => {
+          setEditDemandId(null);
+          setSelectedId(demandId);
+        }}
         onFeedback={showFeedback}
         open={Boolean(selected)}
         parents={selectedParents}
@@ -188,6 +194,10 @@ export function DemandsWorkspace({
         canManage={canManage}
         {...(query.projectId ? { initialProjectId: query.projectId } : {})}
         onClose={closeDrawer}
+        onCreated={(demandId) => {
+          setCreateOpen(false);
+          setSelectedId(demandId);
+        }}
         onFeedback={showFeedback}
         open={createOpen}
         parents={createParents}

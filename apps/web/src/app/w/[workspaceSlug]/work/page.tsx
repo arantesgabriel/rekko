@@ -18,6 +18,7 @@ export default async function DemandsPage({
   const query = await searchParams;
   const session = await requireCoreSession(`/w/${workspaceSlug}/work`);
   const search = typeof query.q === "string" ? query.q : "";
+  const demandId = typeof query.demand === "string" ? query.demand : undefined;
   const projectId = typeof query.projectId === "string" ? query.projectId : "";
   const status =
     query.status === "ACTIVE" || query.status === "DONE" ? query.status : "ALL";
@@ -40,9 +41,11 @@ export default async function DemandsPage({
   return (
     <PageContainer width="lg">
       <DemandsView
+        key={demandId ?? "no-created-demand"}
         canManage={data.context.role !== "MEMBER"}
         counts={data.counts}
         demands={data.demands}
+        {...(demandId ? { initialDemandId: demandId } : {})}
         parentOptions={data.parentOptions}
         projectOptions={data.projectOptions}
         query={{ dir, projectId, search, sort, status }}

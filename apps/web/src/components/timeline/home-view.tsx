@@ -29,6 +29,7 @@ type Block = {
   projectName: string;
   workItemId: string | null;
   workItemTitle: string | null;
+  workItemBreadcrumb?: string;
   visibleStart: Date;
   visibleEnd: Date;
   durationSeconds: number;
@@ -37,13 +38,19 @@ type Block = {
 type Gap = { start: Date; end: Date };
 type Target = {
   projects: { id: string; name: string }[];
-  items: { id: string; projectId: string; title: string }[];
+  items: {
+    id: string;
+    projectId: string;
+    title: string;
+    workItemBreadcrumb?: string;
+  }[];
 };
 type RecentItem = {
   id: string;
   projectId: string;
   title: string;
   projectName: string;
+  workItemBreadcrumb?: string;
 };
 type WeekDay = { date: string; trackedSeconds: number };
 
@@ -173,6 +180,7 @@ export function HomeView({
     isToday && tracking?.session
       ? {
           workItemTitle: tracking.session.workItemTitle,
+          workItemBreadcrumb: tracking.session.workItemBreadcrumb ?? undefined,
           projectName: tracking.session.projectName,
         }
       : activeBlock;
@@ -196,6 +204,7 @@ export function HomeView({
           projectId: item.projectId,
           title: item.title,
           projectName: byId.get(item.projectId) ?? "Projeto",
+          workItemBreadcrumb: item.workItemBreadcrumb,
         })),
     ];
     if (!query) return ranked.slice(0, 8);
@@ -203,7 +212,8 @@ export function HomeView({
       .filter(
         (item) =>
           item.title.toLowerCase().includes(query) ||
-          item.projectName.toLowerCase().includes(query),
+          item.projectName.toLowerCase().includes(query) ||
+          item.workItemBreadcrumb?.toLowerCase().includes(query),
       )
       .slice(0, 8);
   }, [pickerQuery, recentItems, targets.items, targets.projects]);
@@ -432,7 +442,7 @@ export function HomeView({
                 {continueItems.map((item) => (
                   <li key={item.id}>
                     <div>
-                      <strong>{item.title}</strong>
+                      <strong>{item.workItemBreadcrumb ?? item.title}</strong>
                       <span>{item.projectName}</span>
                     </div>
                     <StartTimerButton
@@ -442,6 +452,7 @@ export function HomeView({
                       workItemId={item.id}
                       projectName={item.projectName}
                       workItemTitle={item.title}
+                      workItemBreadcrumb={item.workItemBreadcrumb}
                     />
                   </li>
                 ))}
@@ -498,7 +509,7 @@ export function HomeView({
                   {pickerItems.map((item) => (
                     <li key={item.id}>
                       <div>
-                        <strong>{item.title}</strong>
+                        <strong>{item.workItemBreadcrumb ?? item.title}</strong>
                         <span>{item.projectName}</span>
                       </div>
                       <StartTimerButton
@@ -507,6 +518,7 @@ export function HomeView({
                         workItemId={item.id}
                         projectName={item.projectName}
                         workItemTitle={item.title}
+                        workItemBreadcrumb={item.workItemBreadcrumb}
                       />
                     </li>
                   ))}
@@ -611,7 +623,7 @@ export function HomeView({
                     .filter((item) => item.projectId === projectId)
                     .map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.title}
+                        {item.workItemBreadcrumb ?? item.title}
                       </option>
                     ))}
                 </select>
@@ -729,7 +741,8 @@ function TimelineEntry({
   onEdit: () => void;
   timezone: string;
 }) {
-  const title = block.workItemTitle ?? block.projectName;
+  const title =
+    block.workItemBreadcrumb ?? block.workItemTitle ?? block.projectName;
   const endLabel = block.active
     ? "agora"
     : localTime(block.visibleEnd, timezone);

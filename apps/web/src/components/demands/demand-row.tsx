@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { DemandActionsMenu } from "@/components/demands/demand-actions-menu";
 import { DemandStatus } from "@/components/demands/demand-status";
@@ -33,6 +34,10 @@ export function DemandRow({
   projects,
   slug,
   timezone,
+  childCount = 0,
+  expanded = false,
+  level = 0,
+  onToggle,
 }: {
   canManage?: boolean;
   context: "workspace" | "project";
@@ -44,6 +49,10 @@ export function DemandRow({
   projects?: DemandProjectOption[];
   slug: string;
   timezone: string;
+  childCount?: number;
+  expanded?: boolean;
+  level?: number;
+  onToggle?: () => void;
 }) {
   const title = demandTitle(demand);
   const updated = formatUpdated(demand.lastActivityAt, timezone);
@@ -70,20 +79,51 @@ export function DemandRow({
       className={`demand-row demand-row--${context}${sessionOnItem ? " is-running" : ""}`}
       onClick={(event) => openUnlessControl(event.target)}
     >
-      <button
-        aria-label={`Abrir ${title}`}
+      <div
         className="demand-row__title"
-        onClick={() => onOpen(demand.id)}
-        title={title}
-        type="button"
+        style={{ "--demand-level": level } as CSSProperties}
       >
-        {demand.externalIdentifier ? (
-          <span className="demand-row__identifier">
-            {demand.externalIdentifier}
+        {childCount > 0 ? (
+          <span className="demand-row__toggle-slot">
+            <button
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Recolher" : "Expandir"} ${title}`}
+              className="demand-row__toggle"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggle?.();
+              }}
+              type="button"
+            >
+              <span aria-hidden="true">{expanded ? "⌄" : "›"}</span>
+              <span className="sr-only">
+                {childCount === 1 ? "1 filho" : `${childCount} filhos`}
+              </span>
+            </button>
           </span>
-        ) : null}
-        <strong>{demand.title}</strong>
-      </button>
+        ) : (
+          <span aria-hidden="true" className="demand-row__toggle-slot" />
+        )}
+        <button
+          aria-label={`Abrir ${title}`}
+          className="demand-row__title-button"
+          onClick={() => onOpen(demand.id)}
+          title={title}
+          type="button"
+        >
+          <span className="demand-row__title-copy">
+            {demand.externalIdentifier ? (
+              <span className="demand-row__identifier">
+                {demand.externalIdentifier}
+              </span>
+            ) : null}
+            <strong>{demand.title}</strong>
+          </span>
+          {childCount > 0 ? (
+            <small className="demand-row__child-count">{childCount}</small>
+          ) : null}
+        </button>
+      </div>
       {context === "workspace" ? (
         <div className="demand-row__project">
           <Link
@@ -126,6 +166,7 @@ export function DemandRow({
           <StartTimerButton
             projectId={demand.projectId}
             projectName={demand.projectName}
+            workItemBreadcrumb={demand.workItemBreadcrumb}
             slug={slug}
             workItemId={demand.id}
             workItemIdentifier={demand.externalIdentifier}

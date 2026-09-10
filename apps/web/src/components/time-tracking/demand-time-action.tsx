@@ -9,6 +9,7 @@ export function StartTimerButton({
   projectName,
   workItemTitle,
   workItemIdentifier,
+  workItemBreadcrumb,
   compact = false,
 }: {
   slug: string;
@@ -17,6 +18,7 @@ export function StartTimerButton({
   projectName: string;
   workItemTitle: string;
   workItemIdentifier?: string | null;
+  workItemBreadcrumb?: string | null | undefined;
   compact?: boolean;
 }) {
   const context = useOptionalActiveSession();
@@ -45,6 +47,7 @@ export function StartTimerButton({
           projectName,
           workItemTitle,
           workItemIdentifier,
+          workItemBreadcrumb,
         })
       }
       title={compact ? "Iniciar atividade" : undefined}

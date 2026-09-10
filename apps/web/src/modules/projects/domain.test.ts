@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createsParentCycle, formatEstimate, parseEstimate } from "./domain";
+import {
+  createsParentCycle,
+  demandBreadcrumb,
+  formatEstimate,
+  parseEstimate,
+} from "./domain";
 
 describe("project domain", () => {
   it.each([
@@ -29,5 +34,30 @@ describe("project domain", () => {
     ]);
     expect(createsParentCycle("a", "b", parents)).toBe(true);
     expect(createsParentCycle("c", "b", parents)).toBe(false);
+  });
+
+  it("builds a readable breadcrumb for any hierarchy depth", () => {
+    expect(
+      demandBreadcrumb("task", [
+        {
+          id: "epic",
+          title: "Implementar modelo ABCD",
+          parentWorkItemId: null,
+          externalIdentifier: "AC-1",
+        },
+        {
+          id: "feature",
+          title: "Backend",
+          parentWorkItemId: "epic",
+          externalIdentifier: null,
+        },
+        {
+          id: "task",
+          title: "Criar DTO XYZ",
+          parentWorkItemId: "feature",
+          externalIdentifier: null,
+        },
+      ]),
+    ).toBe("AC-1 · Implementar modelo ABCD / Backend / Criar DTO XYZ");
   });
 });

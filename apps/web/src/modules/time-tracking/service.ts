@@ -8,6 +8,8 @@ import {
 } from "@rekko/db";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { demandBreadcrumb } from "@/modules/projects/domain";
+import { listAccessibleDemandHierarchy } from "@/modules/projects/hierarchy-service";
 import { requireWorkspace } from "@/modules/workspaces/service";
 import type { Clock } from "./clock";
 import { systemClock } from "./clock";
@@ -298,8 +300,15 @@ export async function getCurrentTimer(
     .orderBy(asc(timeSegment.startedAt));
   const now = clock.now();
   const closed = segments.filter((segment) => segment.endedAt);
+  const hierarchy = await listAccessibleDemandHierarchy(
+    userId,
+    entry.workspaceId,
+  );
   return {
     ...entry,
+    workItemBreadcrumb: entry.workItemId
+      ? demandBreadcrumb(entry.workItemId, hierarchy) || null
+      : null,
     status: activeStatus,
     accumulatedSeconds: durationSeconds(closed, now),
     elapsedSeconds: durationSeconds(segments, now),
@@ -309,35 +318,44 @@ export async function getCurrentTimer(
 }
 
 export async function listTimerTargets(userId: string) {
-  const items = await db
-    .select({
-      projectId: project.id,
-      projectName: project.name,
-      slug: workspace.slug,
-      workspaceName: workspace.name,
-      workItemId: workItem.id,
-      workItemTitle: workItem.title,
-    })
-    .from(workItem)
-    .innerJoin(project, eq(project.id, workItem.projectId))
-    .innerJoin(workspace, eq(workspace.id, workItem.workspaceId))
-    .innerJoin(
-      workspaceMember,
-      and(
-        eq(workspaceMember.workspaceId, workItem.workspaceId),
-        eq(workspaceMember.userId, userId),
-      ),
-    )
-    .where(
-      and(
-        isNull(project.archivedAt),
-        eq(project.status, "ACTIVE"),
-        isNull(workItem.archivedAt),
-        eq(workItem.isActive, true),
-        eq(workItem.isTrackable, true),
-        inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
-      ),
-    )
-    .orderBy(asc(workspace.name), asc(project.name), asc(workItem.title));
-  return { items };
+  const [items, hierarchy] = await Promise.all([
+    db
+      .select({
+        projectId: project.id,
+        projectName: project.name,
+        slug: workspace.slug,
+        workspaceName: workspace.name,
+        workItemId: workItem.id,
+        workItemTitle: workItem.title,
+        workItemIdentifier: workItem.externalIdentifier,
+      })
+      .from(workItem)
+      .innerJoin(project, eq(project.id, workItem.projectId))
+      .innerJoin(workspace, eq(workspace.id, workItem.workspaceId))
+      .innerJoin(
+        workspaceMember,
+        and(
+          eq(workspaceMember.workspaceId, workItem.workspaceId),
+          eq(workspaceMember.userId, userId),
+        ),
+      )
+      .where(
+        and(
+          isNull(project.archivedAt),
+          eq(project.status, "ACTIVE"),
+          isNull(workItem.archivedAt),
+          eq(workItem.isActive, true),
+          eq(workItem.isTrackable, true),
+          inArray(workItem.status, ["TODO", "IN_PROGRESS"]),
+        ),
+      )
+      .orderBy(asc(workspace.name), asc(project.name), asc(workItem.title)),
+    listAccessibleDemandHierarchy(userId),
+  ]);
+  return {
+    items: items.map((item) => ({
+      ...item,
+      workItemBreadcrumb: demandBreadcrumb(item.workItemId, hierarchy),
+    })),
+  };
 }

@@ -36,6 +36,37 @@ export function createsParentCycle(
   return false;
 }
 
+export type DemandHierarchyNode = {
+  id: string;
+  title: string;
+  parentWorkItemId: string | null;
+  externalIdentifier?: string | null;
+};
+
+export function demandHierarchyLabel(node: DemandHierarchyNode) {
+  return node.externalIdentifier
+    ? `${node.externalIdentifier} · ${node.title}`
+    : node.title;
+}
+
+export function demandBreadcrumb(
+  itemId: string,
+  nodes: readonly DemandHierarchyNode[],
+) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const labels: string[] = [];
+  const visited = new Set<string>();
+  let current = byId.get(itemId);
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    labels.unshift(demandHierarchyLabel(current));
+    current = current.parentWorkItemId
+      ? byId.get(current.parentWorkItemId)
+      : undefined;
+  }
+  return labels.join(" / ");
+}
+
 export const projectStatusLabel = {
   ACTIVE: "Ativo",
   COMPLETED: "Concluído",

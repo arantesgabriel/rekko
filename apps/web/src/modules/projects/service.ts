@@ -22,8 +22,9 @@ import {
   type DemandSortDir,
   type DemandSortKey,
 } from "./demand-sort";
-import { createsParentCycle } from "./domain";
+import { createsParentCycle, demandBreadcrumb } from "./domain";
 import { ProjectError } from "./errors";
+import { listAccessibleDemandHierarchy } from "./hierarchy-service";
 
 export type ProjectListItem = {
   id: string;
@@ -159,6 +160,7 @@ export type DemandListItem = {
   externalIdentifier: string | null;
   externalUrl: string | null;
   parentWorkItemId: string | null;
+  workItemBreadcrumb: string | null;
   status: "TODO" | "IN_PROGRESS" | "DONE";
   isActive: boolean;
   estimatedMinutes: number | null;
@@ -188,7 +190,45 @@ export type DemandParentOption = {
   id: string;
   projectId: string;
   title: string;
+  workItemBreadcrumb: string;
 };
+
+export async function listDemandParentOptions(userId: string, slug: string) {
+  const context = await requireWorkspace(userId, slug);
+  const parents = await db
+    .select({
+      id: workItem.id,
+      projectId: workItem.projectId,
+      title: workItem.title,
+    })
+    .from(workItem)
+    .innerJoin(
+      project,
+      and(
+        eq(project.id, workItem.projectId),
+        eq(project.workspaceId, context.id),
+      ),
+    )
+    .where(
+      and(
+        eq(workItem.workspaceId, context.id),
+        eq(workItem.source, "MANUAL"),
+        isNull(workItem.archivedAt),
+        isNull(project.archivedAt),
+        eq(project.status, "ACTIVE"),
+      ),
+    )
+    .orderBy(asc(workItem.title));
+
+  const hierarchy = await listAccessibleDemandHierarchy(userId, context.id);
+  return {
+    context,
+    parents: parents.map((parent) => ({
+      ...parent,
+      workItemBreadcrumb: demandBreadcrumb(parent.id, hierarchy),
+    })) satisfies DemandParentOption[],
+  };
+}
 
 export async function listDemands(input: {
   userId: string;
@@ -221,72 +261,74 @@ export async function listDemands(input: {
     listFilters.push(inArray(workItem.status, ["TODO", "IN_PROGRESS"]));
   if (input.status === "DONE") listFilters.push(eq(workItem.status, "DONE"));
 
-  const [rows, statusRows, projectOptions, parentOptions] = await Promise.all([
-    db
-      .select({
-        id: workItem.id,
-        title: workItem.title,
-        description: workItem.description,
-        source: workItem.source,
-        externalIdentifier: workItem.externalIdentifier,
-        externalUrl: workItem.externalUrl,
-        parentWorkItemId: workItem.parentWorkItemId,
-        status: workItem.status,
-        isActive: workItem.isActive,
-        estimatedMinutes: workItem.estimatedMinutes,
-        projectId: project.id,
-        projectName: project.name,
-        projectSource: project.source,
-        projectStatus: project.status,
-      })
-      .from(workItem)
-      .innerJoin(
-        project,
-        and(
-          eq(project.id, workItem.projectId),
-          eq(project.workspaceId, context.id),
-        ),
-      )
-      .where(and(...listFilters))
-      .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
-    db
-      .select({
-        status: workItem.status,
-        total: count(),
-      })
-      .from(workItem)
-      .innerJoin(
-        project,
-        and(
-          eq(project.id, workItem.projectId),
-          eq(project.workspaceId, context.id),
-        ),
-      )
-      .where(and(...filters))
-      .groupBy(workItem.status),
-    db
-      .select({ id: project.id, name: project.name })
-      .from(project)
-      .where(
-        and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
-      )
-      .orderBy(asc(project.name)),
-    db
-      .select({
-        id: workItem.id,
-        projectId: workItem.projectId,
-        title: workItem.title,
-      })
-      .from(workItem)
-      .where(
-        and(
-          eq(workItem.workspaceId, context.id),
-          eq(workItem.source, "MANUAL"),
-          isNull(workItem.archivedAt),
-        ),
-      )
-      .orderBy(asc(workItem.title)),
-  ]);
+  const [rows, statusRows, projectOptions, parentOptions, hierarchy] =
+    await Promise.all([
+      db
+        .select({
+          id: workItem.id,
+          title: workItem.title,
+          description: workItem.description,
+          source: workItem.source,
+          externalIdentifier: workItem.externalIdentifier,
+          externalUrl: workItem.externalUrl,
+          parentWorkItemId: workItem.parentWorkItemId,
+          status: workItem.status,
+          isActive: workItem.isActive,
+          estimatedMinutes: workItem.estimatedMinutes,
+          projectId: project.id,
+          projectName: project.name,
+          projectSource: project.source,
+          projectStatus: project.status,
+        })
+        .from(workItem)
+        .innerJoin(
+          project,
+          and(
+            eq(project.id, workItem.projectId),
+            eq(project.workspaceId, context.id),
+          ),
+        )
+        .where(and(...listFilters))
+        .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
+      db
+        .select({
+          status: workItem.status,
+          total: count(),
+        })
+        .from(workItem)
+        .innerJoin(
+          project,
+          and(
+            eq(project.id, workItem.projectId),
+            eq(project.workspaceId, context.id),
+          ),
+        )
+        .where(and(...filters))
+        .groupBy(workItem.status),
+      db
+        .select({ id: project.id, name: project.name })
+        .from(project)
+        .where(
+          and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
+        )
+        .orderBy(asc(project.name)),
+      db
+        .select({
+          id: workItem.id,
+          projectId: workItem.projectId,
+          title: workItem.title,
+        })
+        .from(workItem)
+        .where(
+          and(
+            eq(workItem.workspaceId, context.id),
+            eq(workItem.source, "MANUAL"),
+            isNull(workItem.archivedAt),
+          ),
+        )
+        .orderBy(asc(workItem.title)),
+      listAccessibleDemandHierarchy(input.userId, context.id),
+    ]);
 
   const summaries = await getDemandSummaries(
     context.id,
@@ -304,6 +346,7 @@ export async function listDemands(input: {
           status: row.projectStatus,
         },
         summaries.get(row.id),
+        demandBreadcrumb(row.id, hierarchy),
       ),
     ),
     input.sort ?? "updated",
@@ -324,7 +367,10 @@ export async function listDemands(input: {
     },
     demands,
     projectOptions: projectOptions satisfies DemandProjectOption[],
-    parentOptions: parentOptions satisfies DemandParentOption[],
+    parentOptions: parentOptions.map((parent) => ({
+      ...parent,
+      workItemBreadcrumb: demandBreadcrumb(parent.id, hierarchy),
+    })) satisfies DemandParentOption[],
   };
 }
 
@@ -380,6 +426,10 @@ export async function getProjectPage(input: {
     input.userId,
     visible.map((item) => item.id),
   );
+  const hierarchy = await listAccessibleDemandHierarchy(
+    input.userId,
+    result.context.id,
+  );
   const demandItems = visible.map((item) =>
     toDemandListItem(
       item,
@@ -390,12 +440,14 @@ export async function getProjectPage(input: {
         status: result.project.status,
       },
       summaries.get(item.id),
+      demandBreadcrumb(item.id, hierarchy),
     ),
   );
   const allItems = await db
     .select({
       id: workItem.id,
       title: workItem.title,
+      source: workItem.source,
       parentWorkItemId: workItem.parentWorkItemId,
       status: workItem.status,
     })
@@ -453,10 +505,19 @@ export async function getProjectPage(input: {
         : latest;
     }, null),
   };
+  const parentOptions = allItems
+    .filter((item) => item.source === "MANUAL")
+    .map((item) => ({
+      id: item.id,
+      projectId: result.project.id,
+      title: item.title,
+      workItemBreadcrumb: demandBreadcrumb(item.id, hierarchy),
+    }));
   return {
     ...result,
     items: visible,
     demandItems,
+    parentOptions: parentOptions satisfies DemandParentOption[],
     projectSummary,
   };
 }
@@ -559,6 +620,18 @@ type WorkItemMutation = {
   estimatedMinutes: number | null;
   parentWorkItemId: string | null;
 };
+
+type WorkItemDraft = Pick<
+  WorkItemMutation,
+  "title" | "description" | "status" | "estimatedMinutes" | "parentWorkItemId"
+>;
+
+export type WorkItemCreation = WorkItemMutation &
+  (
+    | { parentMode: "NONE"; newParent?: never }
+    | { parentMode: "EXISTING"; newParent?: never }
+    | { parentMode: "NEW"; newParent: WorkItemDraft }
+  );
 
 type DemandSummary = {
   trackedSeconds: number;
@@ -667,6 +740,7 @@ function toDemandListItem(
     status: "ACTIVE" | "COMPLETED";
   },
   summary?: DemandSummary,
+  workItemBreadcrumb?: string,
 ): DemandListItem {
   const recentRecords = summary
     ? [...summary.records.values()]
@@ -683,6 +757,7 @@ function toDemandListItem(
     projectName: projectData.name,
     projectSource: projectData.source,
     projectStatus: projectData.status,
+    workItemBreadcrumb: workItemBreadcrumb || null,
     trackedSeconds: summary?.trackedSeconds ?? 0,
     recordCount: summary
       ? [...summary.records.values()].filter(
@@ -748,25 +823,66 @@ async function validateParent(input: WorkItemMutation & { itemId?: string }) {
 }
 
 export async function createWorkItem(input: WorkItemMutation) {
+  return createWorkItemWithParent({
+    ...input,
+    parentMode: input.parentWorkItemId ? "EXISTING" : "NONE",
+  });
+}
+
+function workItemValues(
+  workspaceId: string,
+  projectId: string,
+  input: WorkItemDraft,
+) {
+  return {
+    workspaceId,
+    projectId,
+    source: "MANUAL" as const,
+    estimateSource: "MANUAL" as const,
+    title: input.title,
+    description: input.description,
+    status: input.status,
+    isActive: input.status !== "DONE",
+    estimatedMinutes: input.estimatedMinutes,
+    parentWorkItemId: input.parentWorkItemId,
+  };
+}
+
+export async function createWorkItemWithParent(input: WorkItemCreation) {
   const context = await validateMutableProject(input);
-  await validateParent(input);
-  const [created] = await db
-    .insert(workItem)
-    .values({
-      workspaceId: context.id,
-      projectId: input.projectId,
-      source: "MANUAL",
-      estimateSource: "MANUAL",
-      title: input.title,
-      description: input.description,
-      status: input.status,
-      isActive: input.status !== "DONE",
-      estimatedMinutes: input.estimatedMinutes,
-      parentWorkItemId: input.parentWorkItemId,
-    })
-    .returning({ id: workItem.id });
-  if (!created) throw new Error("Work item insert returned no row");
-  return created;
+  if (input.parentMode === "EXISTING") await validateParent(input);
+  if (input.parentMode === "NEW") {
+    await validateParent({
+      ...input,
+      parentWorkItemId: input.newParent.parentWorkItemId,
+    });
+  }
+
+  return db.transaction(async (tx) => {
+    let parentWorkItemId = input.parentWorkItemId;
+    let parentId: string | null = null;
+    if (input.parentMode === "NEW") {
+      const [parent] = await tx
+        .insert(workItem)
+        .values(workItemValues(context.id, input.projectId, input.newParent))
+        .returning({ id: workItem.id });
+      if (!parent) throw new Error("Parent work item insert returned no row");
+      parentWorkItemId = parent.id;
+      parentId = parent.id;
+    }
+
+    const [created] = await tx
+      .insert(workItem)
+      .values(
+        workItemValues(context.id, input.projectId, {
+          ...input,
+          parentWorkItemId,
+        }),
+      )
+      .returning({ id: workItem.id });
+    if (!created) throw new Error("Work item insert returned no row");
+    return { id: created.id, parentId };
+  });
 }
 
 export async function updateWorkItem(
@@ -878,6 +994,32 @@ export async function moveWorkItem(input: {
     .limit(1);
   if (!item) throw new ProjectError("WORK_ITEM_NOT_FOUND");
   if (item.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
+  const childRows = await db
+    .select({
+      id: workItem.id,
+      parentWorkItemId: workItem.parentWorkItemId,
+      source: workItem.source,
+    })
+    .from(workItem)
+    .where(eq(workItem.workspaceId, context.id));
+  const childrenByParent = new Map<string, string[]>();
+  for (const row of childRows) {
+    if (!row.parentWorkItemId) continue;
+    const children = childrenByParent.get(row.parentWorkItemId) ?? [];
+    children.push(row.id);
+    childrenByParent.set(row.parentWorkItemId, children);
+  }
+  const subtreeIds = new Set<string>();
+  const pendingIds = [item.id];
+  while (pendingIds.length > 0) {
+    const currentId = pendingIds.pop();
+    if (!currentId || subtreeIds.has(currentId)) continue;
+    subtreeIds.add(currentId);
+    pendingIds.push(...(childrenByParent.get(currentId) ?? []));
+  }
+  const subtree = childRows.filter((row) => subtreeIds.has(row.id));
+  if (subtree.some((row) => row.source === "LINEAR"))
+    throw new ProjectError("SOURCE_READ_ONLY");
   await validateMutableProject({
     actorUserId: input.actorUserId,
     slug: input.slug,
@@ -897,32 +1039,67 @@ export async function moveWorkItem(input: {
   if (!target) throw new ProjectError("PROJECT_NOT_FOUND");
   if (target.source === "LINEAR") throw new ProjectError("SOURCE_READ_ONLY");
   if (target.status !== "ACTIVE") throw new ProjectError("PROJECT_ARCHIVED");
-  if (target.id === item.projectId) return;
+  if (target.id === item.projectId) return { movedCount: 0 };
+  const subtreeIdList = [...subtreeIds];
   await db.transaction(async (tx) => {
-    await tx
-      .update(timeEntry)
-      .set({ projectId: target.id, updatedAt: new Date() })
+    const entries = await tx
+      .select({ id: timeEntry.id, workItemId: timeEntry.workItemId })
+      .from(timeEntry)
       .where(
         and(
           eq(timeEntry.workspaceId, context.id),
-          eq(timeEntry.workItemId, item.id),
+          inArray(timeEntry.workItemId, subtreeIdList),
           eq(timeEntry.projectId, item.projectId),
+        ),
+      )
+      .for("update");
+    if (entries.length > 0) {
+      const entryIds = entries.map((entry) => entry.id);
+      await tx
+        .update(timeEntry)
+        .set({ projectId: target.id, workItemId: null, updatedAt: new Date() })
+        .where(inArray(timeEntry.id, entryIds));
+    }
+    await tx
+      .update(workItem)
+      .set({ parentWorkItemId: null, updatedAt: new Date() })
+      .where(
+        and(
+          inArray(workItem.id, subtreeIdList),
+          eq(workItem.workspaceId, context.id),
         ),
       );
     await tx
       .update(workItem)
-      .set({
-        projectId: target.id,
-        parentWorkItemId: null,
-        updatedAt: new Date(),
-      })
+      .set({ projectId: target.id, updatedAt: new Date() })
       .where(
         and(
-          eq(workItem.id, item.id),
+          inArray(workItem.id, subtreeIdList),
           eq(workItem.workspaceId, context.id),
-          isNull(workItem.archivedAt),
         ),
       );
+    for (const entry of entries) {
+      if (!entry.workItemId) continue;
+      await tx
+        .update(timeEntry)
+        .set({ workItemId: entry.workItemId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(timeEntry.id, entry.id),
+            eq(timeEntry.workspaceId, context.id),
+          ),
+        );
+    }
+    for (const row of subtree) {
+      if (!row.parentWorkItemId || !subtreeIds.has(row.parentWorkItemId))
+        continue;
+      await tx
+        .update(workItem)
+        .set({ parentWorkItemId: row.parentWorkItemId, updatedAt: new Date() })
+        .where(
+          and(eq(workItem.id, row.id), eq(workItem.workspaceId, context.id)),
+        );
+    }
     await recordAudit(tx, {
       workspaceId: context.id,
       actorUserId: input.actorUserId,
@@ -933,9 +1110,14 @@ export async function moveWorkItem(input: {
         projectId: item.projectId,
         parentWorkItemId: item.parentWorkItemId,
       },
-      afterJson: { projectId: target.id, parentWorkItemId: null },
+      afterJson: {
+        projectId: target.id,
+        parentWorkItemId: null,
+        movedCount: subtreeIds.size,
+      },
     });
   });
+  return { movedCount: subtreeIds.size };
 }
 
 export async function duplicateWorkItem(input: {
@@ -1035,6 +1217,18 @@ export async function archiveWorkItem(input: {
     )
     .limit(1);
   if (activeTimer) throw new ProjectError("WORK_ITEM_HAS_ACTIVE_TIMER");
+  const [child] = await db
+    .select({ id: workItem.id })
+    .from(workItem)
+    .where(
+      and(
+        eq(workItem.workspaceId, context.id),
+        eq(workItem.parentWorkItemId, item.id),
+        isNull(workItem.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (child) throw new ProjectError("WORK_ITEM_HAS_CHILDREN");
   await db.transaction(async (tx) => {
     await tx
       .update(workItem)

@@ -143,7 +143,8 @@ export function ActiveSession() {
       if (!query) return true;
       return (
         target.workItemTitle.toLowerCase().includes(query) ||
-        target.projectName.toLowerCase().includes(query)
+        target.projectName.toLowerCase().includes(query) ||
+        target.workItemBreadcrumb?.toLowerCase().includes(query)
       );
     });
   }, [pickerQuery, session?.workItemId, targets]);
@@ -324,11 +325,15 @@ export function ActiveSession() {
                             workItemId: target.workItemId,
                             projectName: target.projectName,
                             workItemTitle: target.workItemTitle,
+                            workItemIdentifier: target.workItemIdentifier,
+                            workItemBreadcrumb: target.workItemBreadcrumb,
                           });
                         }}
                         type="button"
                       >
-                        <strong>{target.workItemTitle}</strong>
+                        <strong>
+                          {target.workItemBreadcrumb ?? target.workItemTitle}
+                        </strong>
                         <span>
                           {target.workspaceName} · {target.projectName}
                         </span>

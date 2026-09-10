@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DemandDrawer } from "@/components/demands/demand-drawer";
@@ -17,6 +17,7 @@ import { ProjectOverview } from "@/components/projects/project-overview";
 import { PageContainer } from "@/components/ui/page-container";
 import type {
   DemandListItem,
+  DemandParentOption,
   ProjectListItem,
   ProjectSummary,
 } from "@/modules/projects/service";
@@ -48,6 +49,7 @@ export function ProjectDetailView({
   demands,
   filter,
   notice,
+  parentOptions,
   project,
   summary,
   slug,
@@ -58,6 +60,7 @@ export function ProjectDetailView({
   canManage: boolean;
   demands: DemandListItem[];
   filter: { kind: string; query: string; status: string };
+  parentOptions: DemandParentOption[];
   notice?: string;
   project: ProjectDetail;
   summary: ProjectSummary;
@@ -71,10 +74,6 @@ export function ProjectDetailView({
   const [projectEditOpen, setProjectEditOpen] = useState(false);
   const [selectedDemandId, setSelectedDemandId] = useState<string | null>(null);
   const selectedDemand = demands.find((item) => item.id === selectedDemandId);
-  const parents = useMemo(
-    () => demands.map((item) => ({ id: item.id, title: item.title })),
-    [demands],
-  );
 
   return (
     <PageContainer width="md">
@@ -134,8 +133,9 @@ export function ProjectDetailView({
           demand={selectedDemand}
           initialProjectId={project.id}
           onClose={() => setSelectedDemandId(null)}
+          onCreated={setSelectedDemandId}
           open
-          parents={parents}
+          parents={parentOptions}
           projects={[{ id: project.id, name: project.name }]}
           slug={slug}
           timezone={timezone}

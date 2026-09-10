@@ -72,6 +72,7 @@ export default async function ProjectPage({
         estimatedMinutes: data.project.estimatedMinutes,
         archivedAt: data.project.archivedAt,
       }}
+      parentOptions={data.parentOptions}
       summary={data.projectSummary}
       slug={workspaceSlug}
       timezone={data.context.timezone}

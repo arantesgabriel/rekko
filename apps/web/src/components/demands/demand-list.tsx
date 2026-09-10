@@ -1,3 +1,7 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
 import { DemandColumnMenu } from "@/components/demands/demand-column-menu";
 import type { DemandListQuery } from "@/components/demands/demand-query";
 import { DemandRow } from "@/components/demands/demand-row";
@@ -5,6 +9,10 @@ import type {
   DemandListItem,
   DemandProjectOption,
 } from "@/modules/projects/service";
+import {
+  demandTreeParentIds,
+  flattenDemandTree,
+} from "@/modules/projects/demand-tree";
 
 export function DemandList({
   canManage,
@@ -33,6 +41,16 @@ export function DemandList({
   slug: string;
   timezone: string;
 }) {
+  const parentIds = useMemo(() => demandTreeParentIds(demands), [demands]);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const expandedIds = useMemo(
+    () => new Set([...parentIds].filter((id) => !collapsedIds.has(id))),
+    [collapsedIds, parentIds],
+  );
+  const treeDemands = flattenDemandTree(demands, expandedIds);
+
   return (
     <section
       aria-label={context === "workspace" ? "Demandas" : "Demandas do projeto"}
@@ -118,7 +136,7 @@ export function DemandList({
         <span />
       </div>
       <div className="demand-list__rows">
-        {demands.map((demand) => (
+        {treeDemands.map((demand) => (
           <DemandRow
             context={context}
             demand={demand}
@@ -126,6 +144,20 @@ export function DemandList({
             onOpen={onOpen}
             slug={slug}
             timezone={timezone}
+            {...(demand.childCount
+              ? {
+                  childCount: demand.childCount,
+                  expanded: expandedIds.has(demand.id),
+                  level: demand.level,
+                  onToggle: () =>
+                    setCollapsedIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(demand.id)) next.delete(demand.id);
+                      else next.add(demand.id);
+                      return next;
+                    }),
+                }
+              : { level: demand.level })}
             {...(canManage !== undefined ? { canManage } : {})}
             {...(onChanged ? { onChanged } : {})}
             {...(onEdit ? { onEdit: () => onEdit(demand.id) } : {})}
