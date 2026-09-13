@@ -35,9 +35,14 @@ export function DemandRow({
   slug,
   timezone,
   childCount = 0,
+  completedChildCount = 0,
   expanded = false,
   level = 0,
   onToggle,
+  onCreateChild,
+  selected = false,
+  showChildProgress = false,
+  treeLines = [],
 }: {
   canManage?: boolean;
   context: "workspace" | "project";
@@ -50,9 +55,14 @@ export function DemandRow({
   slug: string;
   timezone: string;
   childCount?: number;
+  completedChildCount?: number;
   expanded?: boolean;
   level?: number;
   onToggle?: () => void;
+  onCreateChild?: () => void;
+  selected?: boolean;
+  showChildProgress?: boolean;
+  treeLines?: boolean[];
 }) {
   const title = demandTitle(demand);
   const updated = formatUpdated(demand.lastActivityAt, timezone);
@@ -66,6 +76,10 @@ export function DemandRow({
     demand.status !== "DONE";
   const tracking = useOptionalActiveSession();
   const sessionOnItem = tracking?.session?.workItemId === demand.id;
+  const ancestorContext =
+    level === 0 && demand.parentWorkItemId && demand.workItemBreadcrumb
+      ? demand.workItemBreadcrumb.split(" / ").slice(0, -1).join(" / ")
+      : "";
 
   function openUnlessControl(target: EventTarget | null) {
     const node = target instanceof Element ? target : null;
@@ -76,18 +90,34 @@ export function DemandRow({
 
   return (
     <article
-      className={`demand-row demand-row--${context}${sessionOnItem ? " is-running" : ""}`}
+      aria-current={selected ? "true" : undefined}
+      className={`demand-row demand-row--${context}${sessionOnItem ? " is-running" : ""}${selected ? " is-selected" : ""}${level > 0 ? " is-child" : ""}${expanded ? " is-expanded" : ""}`}
       onClick={(event) => openUnlessControl(event.target)}
     >
       <div
         className="demand-row__title"
         style={{ "--demand-level": level } as CSSProperties}
       >
+        {treeLines.map((continues, index) => {
+          const isElbow = index === treeLines.length - 1;
+          return (
+            <span
+              aria-hidden="true"
+              className={
+                isElbow
+                  ? `demand-row__elbow${continues ? "" : " is-last"}`
+                  : `demand-row__rail${continues ? " is-continue" : ""}`
+              }
+              key={index}
+              style={{ "--demand-line-index": index } as CSSProperties}
+            />
+          );
+        })}
         {childCount > 0 ? (
           <span className="demand-row__toggle-slot">
             <button
               aria-expanded={expanded}
-              aria-label={`${expanded ? "Recolher" : "Expandir"} ${title}`}
+              aria-label={`${expanded ? "Recolher" : "Mostrar"} ${childCount === 1 ? "1 subdemanda" : `${childCount} subdemandas`} de ${title}`}
               className="demand-row__toggle"
               onClick={(event) => {
                 event.stopPropagation();
@@ -101,9 +131,9 @@ export function DemandRow({
               </span>
             </button>
           </span>
-        ) : (
+        ) : level === 0 ? (
           <span aria-hidden="true" className="demand-row__toggle-slot" />
-        )}
+        ) : null}
         <button
           aria-label={`Abrir ${title}`}
           className="demand-row__title-button"
@@ -112,16 +142,35 @@ export function DemandRow({
           type="button"
         >
           <span className="demand-row__title-copy">
+            {ancestorContext ? (
+              <span
+                className="demand-row__ancestor-context"
+                title={ancestorContext}
+              >
+                {ancestorContext} /
+              </span>
+            ) : null}
             {demand.externalIdentifier ? (
               <span className="demand-row__identifier">
                 {demand.externalIdentifier}
               </span>
             ) : null}
             <strong>{demand.title}</strong>
+            {childCount > 0 ? (
+              <small
+                className="demand-row__child-count"
+                title={
+                  showChildProgress
+                    ? `${completedChildCount} de ${childCount} subdemandas concluídas`
+                    : `${childCount} ${childCount === 1 ? "subdemanda" : "subdemandas"}`
+                }
+              >
+                {showChildProgress
+                  ? `${completedChildCount}/${childCount}`
+                  : childCount}
+              </small>
+            ) : null}
           </span>
-          {childCount > 0 ? (
-            <small className="demand-row__child-count">{childCount}</small>
-          ) : null}
         </button>
       </div>
       {context === "workspace" ? (
@@ -162,8 +211,20 @@ export function DemandRow({
         </time>
       ) : null}
       <div className="demand-row__actions">
+        {canManage && demand.source === "MANUAL" && onCreateChild ? (
+          <button
+            aria-label={`Adicionar subdemanda em ${title}`}
+            className="button button--ghost button--icon button--sm demand-row__add-child"
+            onClick={onCreateChild}
+            title="Adicionar subdemanda"
+            type="button"
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        ) : null}
         {canStart ? (
           <StartTimerButton
+            compact
             projectId={demand.projectId}
             projectName={demand.projectName}
             workItemBreadcrumb={demand.workItemBreadcrumb}

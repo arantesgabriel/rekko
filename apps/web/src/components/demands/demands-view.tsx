@@ -4,6 +4,7 @@ import type {
   DemandListItem,
   DemandParentOption,
   DemandProjectOption,
+  DemandRelationItem,
 } from "@/modules/projects/service";
 
 export function DemandsView({
@@ -12,6 +13,7 @@ export function DemandsView({
   demands,
   parentOptions,
   projectOptions,
+  relations,
   query,
   slug,
   timezone,
@@ -22,6 +24,7 @@ export function DemandsView({
   demands: DemandListItem[];
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
+  relations: DemandRelationItem[];
   query: DemandListQuery;
   slug: string;
   timezone: string;
@@ -34,6 +37,7 @@ export function DemandsView({
       demands={demands}
       parentOptions={parentOptions}
       projectOptions={projectOptions}
+      relations={relations}
       query={query}
       slug={slug}
       timezone={timezone}

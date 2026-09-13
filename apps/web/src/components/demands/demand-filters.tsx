@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import {
@@ -55,7 +55,9 @@ export function DemandFilters({
   const [projectId, setProjectId] = useState(initialProjectId);
   const [sort, setSort] = useState<DemandSortKey>(initialSort);
   const [dir, setDir] = useState<DemandSortDir>(initialDir);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   function currentQuery(next: Partial<DemandListQuery> = {}): DemandListQuery {
     return {
@@ -83,6 +85,24 @@ export function DemandFilters({
     // The initial query is the server-confirmed value for this navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    function close(event: PointerEvent) {
+      if (!filtersRef.current?.contains(event.target as Node)) {
+        setFiltersOpen(false);
+      }
+    }
+    function closeWithKeyboard(event: KeyboardEvent) {
+      if (event.key === "Escape") setFiltersOpen(false);
+    }
+    document.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeWithKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeWithKeyboard);
+    };
+  }, [filtersOpen]);
 
   const hasFilters = Boolean(
     query ||
@@ -120,84 +140,8 @@ export function DemandFilters({
         />
       </label>
       <div className="demand-filters__controls">
-        <div
-          aria-label="Filtrar demandas por status"
-          className="demand-status-tabs"
-          role="tablist"
-        >
-          {(
-            [
-              ["ALL", "Todas", counts.all],
-              ["ACTIVE", "Ativas", counts.active],
-              ["DONE", "Concluídas", counts.done],
-            ] as const
-          ).map(([value, label, count]) => (
-            <button
-              aria-selected={status === value}
-              className={status === value ? "is-selected" : undefined}
-              key={value}
-              onClick={() => {
-                setStatus(value);
-                updateRoute({ status: value });
-              }}
-              role="tab"
-              type="button"
-            >
-              <span className="demand-status-tabs__label">{label}</span>
-              <span className="demand-status-tabs__count">{count}</span>
-            </button>
-          ))}
-        </div>
-        <label className="demand-sort-filter">
-          <span className="sr-only">Ordenar demandas</span>
-          <select
-            aria-label="Ordenar demandas"
-            onChange={(event) => {
-              const [nextSort, nextDir] = event.target.value.split(":") as [
-                DemandSortKey,
-                DemandSortDir,
-              ];
-              setSort(nextSort);
-              setDir(nextDir);
-              updateRoute({ sort: nextSort, dir: nextDir });
-            }}
-            value={mobileSortValue}
-          >
-            {mobileSortOptions.map((option) => (
-              <option
-                key={`${option.sort}:${option.dir}`}
-                value={`${option.sort}:${option.dir}`}
-              >
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="demand-project-filter">
-          {hasFilters ? (
-            <button
-              aria-label="Limpar filtros"
-              className="button button--ghost button--sm demand-filters__clear"
-              onClick={() => {
-                setQuery("");
-                setStatus("ALL");
-                setProjectId("");
-                setSort(defaultDemandSort.sort);
-                setDir(defaultDemandSort.dir);
-                updateRoute({
-                  search: "",
-                  status: "ALL",
-                  projectId: "",
-                  sort: defaultDemandSort.sort,
-                  dir: defaultDemandSort.dir,
-                });
-              }}
-              type="button"
-            >
-              Limpar
-            </button>
-          ) : null}
-          <span className="sr-only">Filtrar por projeto</span>
+          <span className="demand-project-filter__prefix">Projeto:</span>
           <select
             aria-label="Filtrar por projeto"
             onChange={(event) => {
@@ -214,6 +158,97 @@ export function DemandFilters({
             ))}
           </select>
         </label>
+        <div className="demand-filter-menu" ref={filtersRef}>
+          <button
+            aria-expanded={filtersOpen}
+            className="button button--secondary button--sm demand-filter-menu__trigger"
+            onClick={() => setFiltersOpen((current) => !current)}
+            type="button"
+          >
+            Filtros
+            {status !== "ALL" ? <span aria-hidden="true">1</span> : null}
+          </button>
+          {filtersOpen ? (
+            <div className="demand-filter-menu__panel">
+              <span className="demand-filter-menu__label">Status</span>
+              <div
+                aria-label="Filtrar demandas por status"
+                className="demand-status-tabs"
+                role="tablist"
+              >
+                {(
+                  [
+                    ["ALL", "Todas", counts.all],
+                    ["ACTIVE", "Ativas", counts.active],
+                    ["DONE", "Concluídas", counts.done],
+                  ] as const
+                ).map(([value, label, count]) => (
+                  <button
+                    aria-selected={status === value}
+                    className={status === value ? "is-selected" : undefined}
+                    key={value}
+                    onClick={() => {
+                      setStatus(value);
+                      updateRoute({ status: value });
+                    }}
+                    role="tab"
+                    type="button"
+                  >
+                    <span>{label}</span>
+                    <span>{count}</span>
+                  </button>
+                ))}
+              </div>
+              <label className="demand-sort-filter">
+                <span className="demand-filter-menu__label">Ordenação</span>
+                <select
+                  aria-label="Ordenar demandas"
+                  onChange={(event) => {
+                    const [nextSort, nextDir] = event.target.value.split(
+                      ":",
+                    ) as [DemandSortKey, DemandSortDir];
+                    setSort(nextSort);
+                    setDir(nextDir);
+                    updateRoute({ sort: nextSort, dir: nextDir });
+                  }}
+                  value={mobileSortValue}
+                >
+                  {mobileSortOptions.map((option) => (
+                    <option
+                      key={`${option.sort}:${option.dir}`}
+                      value={`${option.sort}:${option.dir}`}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+        </div>
+        {hasFilters ? (
+          <button
+            aria-label="Limpar filtros"
+            className="button button--ghost button--sm demand-filters__clear"
+            onClick={() => {
+              setQuery("");
+              setStatus("ALL");
+              setProjectId("");
+              setSort(defaultDemandSort.sort);
+              setDir(defaultDemandSort.dir);
+              updateRoute({
+                search: "",
+                status: "ALL",
+                projectId: "",
+                sort: defaultDemandSort.sort,
+                dir: defaultDemandSort.dir,
+              });
+            }}
+            type="button"
+          >
+            Limpar
+          </button>
+        ) : null}
       </div>
     </div>
   );

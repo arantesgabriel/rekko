@@ -21,9 +21,9 @@ import {
   archiveWorkItem,
   createProject,
   createWorkItem,
-  createWorkItemWithParent,
   duplicateWorkItem,
   getProjectPage,
+  listDemands,
   listProjects,
   moveWorkItem,
   setWorkItemStatus,
@@ -180,6 +180,15 @@ describe.sequential("projects and work items with PostgreSQL", () => {
       })
       .returning({ id: timeEntry.id });
     expect(entry).toBeTruthy();
+    const filtered = await listDemands({
+      userId: ids.admin,
+      slug,
+      search: "Grandchild",
+    });
+    expect(filtered.demands.map((item) => item.id)).toEqual([grandchild.id]);
+    expect(filtered.relations.map((item) => item.id)).toEqual(
+      expect.arrayContaining([parent.id, child.id, grandchild.id]),
+    );
     await expect(
       createWorkItem({
         actorUserId: ids.admin,
@@ -247,82 +256,6 @@ describe.sequential("projects and work items with PostgreSQL", () => {
         }),
       ]),
     );
-  });
-
-  it("creates a new parent and child atomically", async () => {
-    const target = (await listProjects(ids.owner, slug)).projects.find(
-      (item) => item.name === "Admin project",
-    )!;
-    const result = await createWorkItemWithParent({
-      actorUserId: ids.admin,
-      slug,
-      projectId: target.id,
-      title: "Create DTO XYZ",
-      description: null,
-      status: "TODO",
-      estimatedMinutes: 30,
-      parentWorkItemId: null,
-      parentMode: "NEW",
-      newParent: {
-        title: "Implement model ABCD",
-        description: "Feature context",
-        status: "TODO",
-        estimatedMinutes: 120,
-        parentWorkItemId: null,
-      },
-    });
-
-    expect(result.parentId).toBeTruthy();
-    const detail = await getProjectPage({
-      userId: ids.owner,
-      slug,
-      projectId: target.id,
-    });
-    expect(detail.demandItems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: result.parentId,
-          title: "Implement model ABCD",
-          parentWorkItemId: null,
-        }),
-        expect.objectContaining({
-          id: result.id,
-          title: "Create DTO XYZ",
-          parentWorkItemId: result.parentId,
-        }),
-      ]),
-    );
-
-    await expect(
-      createWorkItemWithParent({
-        actorUserId: ids.admin,
-        slug,
-        projectId: target.id,
-        title: "This child must roll back",
-        description: null,
-        status: "TODO",
-        estimatedMinutes: -1,
-        parentWorkItemId: null,
-        parentMode: "NEW",
-        newParent: {
-          title: "This parent must roll back",
-          description: null,
-          status: "TODO",
-          estimatedMinutes: null,
-          parentWorkItemId: null,
-        },
-      }),
-    ).rejects.toBeDefined();
-    const afterRollback = await getProjectPage({
-      userId: ids.owner,
-      slug,
-      projectId: target.id,
-    });
-    expect(
-      afterRollback.demandItems.some(
-        (item) => item.title === "This parent must roll back",
-      ),
-    ).toBe(false);
   });
 
   it("manages the demand lifecycle without changing its project context", async () => {

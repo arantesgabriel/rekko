@@ -193,6 +193,8 @@ export type DemandParentOption = {
   workItemBreadcrumb: string;
 };
 
+export type DemandRelationItem = DemandListItem;
+
 export async function listDemandParentOptions(userId: string, slug: string) {
   const context = await requireWorkspace(userId, slug);
   const parents = await db
@@ -261,79 +263,118 @@ export async function listDemands(input: {
     listFilters.push(inArray(workItem.status, ["TODO", "IN_PROGRESS"]));
   if (input.status === "DONE") listFilters.push(eq(workItem.status, "DONE"));
 
-  const [rows, statusRows, projectOptions, parentOptions, hierarchy] =
-    await Promise.all([
-      db
-        .select({
-          id: workItem.id,
-          title: workItem.title,
-          description: workItem.description,
-          source: workItem.source,
-          externalIdentifier: workItem.externalIdentifier,
-          externalUrl: workItem.externalUrl,
-          parentWorkItemId: workItem.parentWorkItemId,
-          status: workItem.status,
-          isActive: workItem.isActive,
-          estimatedMinutes: workItem.estimatedMinutes,
-          projectId: project.id,
-          projectName: project.name,
-          projectSource: project.source,
-          projectStatus: project.status,
-        })
-        .from(workItem)
-        .innerJoin(
-          project,
-          and(
-            eq(project.id, workItem.projectId),
-            eq(project.workspaceId, context.id),
-          ),
-        )
-        .where(and(...listFilters))
-        .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
-      db
-        .select({
-          status: workItem.status,
-          total: count(),
-        })
-        .from(workItem)
-        .innerJoin(
-          project,
-          and(
-            eq(project.id, workItem.projectId),
-            eq(project.workspaceId, context.id),
-          ),
-        )
-        .where(and(...filters))
-        .groupBy(workItem.status),
-      db
-        .select({ id: project.id, name: project.name })
-        .from(project)
-        .where(
-          and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
-        )
-        .orderBy(asc(project.name)),
-      db
-        .select({
-          id: workItem.id,
-          projectId: workItem.projectId,
-          title: workItem.title,
-        })
-        .from(workItem)
-        .where(
-          and(
-            eq(workItem.workspaceId, context.id),
-            eq(workItem.source, "MANUAL"),
-            isNull(workItem.archivedAt),
-          ),
-        )
-        .orderBy(asc(workItem.title)),
-      listAccessibleDemandHierarchy(input.userId, context.id),
-    ]);
+  const [
+    rows,
+    statusRows,
+    projectOptions,
+    parentOptions,
+    hierarchy,
+    relationRows,
+  ] = await Promise.all([
+    db
+      .select({
+        id: workItem.id,
+        title: workItem.title,
+        description: workItem.description,
+        source: workItem.source,
+        externalIdentifier: workItem.externalIdentifier,
+        externalUrl: workItem.externalUrl,
+        parentWorkItemId: workItem.parentWorkItemId,
+        status: workItem.status,
+        isActive: workItem.isActive,
+        estimatedMinutes: workItem.estimatedMinutes,
+        projectId: project.id,
+        projectName: project.name,
+        projectSource: project.source,
+        projectStatus: project.status,
+      })
+      .from(workItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, workItem.projectId),
+          eq(project.workspaceId, context.id),
+        ),
+      )
+      .where(and(...listFilters))
+      .orderBy(desc(workItem.updatedAt), asc(workItem.title)),
+    db
+      .select({
+        status: workItem.status,
+        total: count(),
+      })
+      .from(workItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, workItem.projectId),
+          eq(project.workspaceId, context.id),
+        ),
+      )
+      .where(and(...filters))
+      .groupBy(workItem.status),
+    db
+      .select({ id: project.id, name: project.name })
+      .from(project)
+      .where(
+        and(eq(project.workspaceId, context.id), isNull(project.archivedAt)),
+      )
+      .orderBy(asc(project.name)),
+    db
+      .select({
+        id: workItem.id,
+        projectId: workItem.projectId,
+        title: workItem.title,
+      })
+      .from(workItem)
+      .where(
+        and(
+          eq(workItem.workspaceId, context.id),
+          eq(workItem.source, "MANUAL"),
+          isNull(workItem.archivedAt),
+        ),
+      )
+      .orderBy(asc(workItem.title)),
+    listAccessibleDemandHierarchy(input.userId, context.id),
+    db
+      .select({
+        id: workItem.id,
+        description: workItem.description,
+        source: workItem.source,
+        externalUrl: workItem.externalUrl,
+        projectId: workItem.projectId,
+        projectName: project.name,
+        projectSource: project.source,
+        projectStatus: project.status,
+        parentWorkItemId: workItem.parentWorkItemId,
+        title: workItem.title,
+        externalIdentifier: workItem.externalIdentifier,
+        status: workItem.status,
+        isActive: workItem.isActive,
+        estimatedMinutes: workItem.estimatedMinutes,
+      })
+      .from(workItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, workItem.projectId),
+          eq(project.workspaceId, context.id),
+        ),
+      )
+      .where(
+        and(
+          eq(workItem.workspaceId, context.id),
+          isNull(workItem.archivedAt),
+          isNull(project.archivedAt),
+        ),
+      )
+      .orderBy(asc(workItem.title)),
+  ]);
 
   const summaries = await getDemandSummaries(
     context.id,
     input.userId,
-    rows.map((row) => row.id),
+    relationRows.map((row) => row.id),
   );
   const demands = sortDemands(
     rows.map((row) =>
@@ -371,6 +412,19 @@ export async function listDemands(input: {
       ...parent,
       workItemBreadcrumb: demandBreadcrumb(parent.id, hierarchy),
     })) satisfies DemandParentOption[],
+    relations: relationRows.map((item) =>
+      toDemandListItem(
+        item,
+        {
+          id: item.projectId,
+          name: item.projectName,
+          source: item.projectSource,
+          status: item.projectStatus,
+        },
+        summaries.get(item.id),
+        demandBreadcrumb(item.id, hierarchy),
+      ),
+    ) satisfies DemandRelationItem[],
   };
 }
 
@@ -630,7 +684,6 @@ export type WorkItemCreation = WorkItemMutation &
   (
     | { parentMode: "NONE"; newParent?: never }
     | { parentMode: "EXISTING"; newParent?: never }
-    | { parentMode: "NEW"; newParent: WorkItemDraft }
   );
 
 type DemandSummary = {
@@ -851,38 +904,13 @@ function workItemValues(
 export async function createWorkItemWithParent(input: WorkItemCreation) {
   const context = await validateMutableProject(input);
   if (input.parentMode === "EXISTING") await validateParent(input);
-  if (input.parentMode === "NEW") {
-    await validateParent({
-      ...input,
-      parentWorkItemId: input.newParent.parentWorkItemId,
-    });
-  }
 
-  return db.transaction(async (tx) => {
-    let parentWorkItemId = input.parentWorkItemId;
-    let parentId: string | null = null;
-    if (input.parentMode === "NEW") {
-      const [parent] = await tx
-        .insert(workItem)
-        .values(workItemValues(context.id, input.projectId, input.newParent))
-        .returning({ id: workItem.id });
-      if (!parent) throw new Error("Parent work item insert returned no row");
-      parentWorkItemId = parent.id;
-      parentId = parent.id;
-    }
-
-    const [created] = await tx
-      .insert(workItem)
-      .values(
-        workItemValues(context.id, input.projectId, {
-          ...input,
-          parentWorkItemId,
-        }),
-      )
-      .returning({ id: workItem.id });
-    if (!created) throw new Error("Work item insert returned no row");
-    return { id: created.id, parentId };
-  });
+  const [created] = await db
+    .insert(workItem)
+    .values(workItemValues(context.id, input.projectId, input))
+    .returning({ id: workItem.id });
+  if (!created) throw new Error("Work item insert returned no row");
+  return { id: created.id, parentId: null };
 }
 
 export async function updateWorkItem(

@@ -350,41 +350,12 @@ function parseWorkItemForm(formData: FormData) {
 function parseCreateWorkItemForm(formData: FormData) {
   const parsed = parseWorkItemForm(formData);
   if (!parsed.success) return parsed;
-
-  const rawMode = formData.get("parentMode");
-  if (rawMode !== "NEW") {
-    const parentMode = parsed.data.parentWorkItemId
-      ? ("EXISTING" as const)
-      : ("NONE" as const);
-
-    return {
-      success: true as const,
-      data: { ...parsed.data, parentMode },
-    };
-  }
-
-  const newParent = workItemInputSchema.safeParse({
-    title: formData.get("parentTitle"),
-    description: formData.get("parentDescription"),
-    status: formData.get("parentStatus"),
-    estimate: formData.get("parentEstimate"),
-    parentWorkItemId: formData.get("parentParentWorkItemId"),
-  });
-  if (!newParent.success) return { success: false as const };
+  const parentMode = parsed.data.parentWorkItemId
+    ? ("EXISTING" as const)
+    : ("NONE" as const);
   return {
     success: true as const,
-    data: {
-      ...parsed.data,
-      parentMode: "NEW" as const,
-      parentWorkItemId: null,
-      newParent: {
-        title: newParent.data.title,
-        description: newParent.data.description,
-        status: newParent.data.status,
-        estimatedMinutes: newParent.data.estimate,
-        parentWorkItemId: newParent.data.parentWorkItemId,
-      },
-    },
+    data: { ...parsed.data, parentMode },
   };
 }
 

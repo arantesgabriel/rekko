@@ -42,12 +42,36 @@ describe("demand tree", () => {
 
     const rows = flattenDemandTree(demands, new Set(["root", "child"]));
 
-    expect(rows.map((row) => [row.id, row.level, row.childCount])).toEqual([
-      ["root", 0, 2],
-      ["child", 1, 1],
-      ["grandchild", 2, 0],
-      ["sibling", 1, 0],
+    expect(
+      rows.map((row) => [
+        row.id,
+        row.level,
+        row.childCount,
+        row.completedChildCount,
+        row.treeLines,
+      ]),
+    ).toEqual([
+      ["root", 0, 2, 0, []],
+      ["child", 1, 1, 0, [true]],
+      ["grandchild", 2, 0, 0, [true, false]],
+      ["sibling", 1, 0, 0, [false]],
     ]);
+  });
+
+  it("counts completed direct children without rolling status up", () => {
+    const completed = demand("done", "root");
+    completed.status = "DONE";
+
+    const rows = flattenDemandTree(
+      [demand("root"), completed, demand("todo", "root")],
+      new Set(["root"]),
+    );
+
+    expect(rows[0]).toMatchObject({
+      childCount: 2,
+      completedChildCount: 1,
+      id: "root",
+    });
   });
 
   it("hides descendants when a parent is collapsed", () => {

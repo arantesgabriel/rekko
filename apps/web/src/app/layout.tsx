@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="pt-BR" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider>
           <AnalyticsProvider>{children}</AnalyticsProvider>
         </ThemeProvider>

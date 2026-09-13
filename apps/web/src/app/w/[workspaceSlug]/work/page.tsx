@@ -48,6 +48,7 @@ export default async function DemandsPage({
         {...(demandId ? { initialDemandId: demandId } : {})}
         parentOptions={data.parentOptions}
         projectOptions={data.projectOptions}
+        relations={data.relations}
         query={{ dir, projectId, search, sort, status }}
         slug={workspaceSlug}
         timezone={data.context.timezone}

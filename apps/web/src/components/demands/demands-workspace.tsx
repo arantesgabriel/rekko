@@ -16,6 +16,7 @@ import type {
   DemandListItem,
   DemandParentOption,
   DemandProjectOption,
+  DemandRelationItem,
 } from "@/modules/projects/service";
 
 export function DemandsWorkspace({
@@ -26,6 +27,7 @@ export function DemandsWorkspace({
   parentOptions,
   projectOptions,
   query,
+  relations,
   slug,
   timezone,
   userTimezone,
@@ -37,6 +39,7 @@ export function DemandsWorkspace({
   parentOptions: DemandParentOption[];
   projectOptions: DemandProjectOption[];
   query: DemandListQuery;
+  relations: DemandRelationItem[];
   slug: string;
   timezone: string;
   userTimezone: string;
@@ -47,10 +50,21 @@ export function DemandsWorkspace({
   );
   const [editDemandId, setEditDemandId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [quickCreateParentId, setQuickCreateParentId] = useState<string | null>(
+    null,
+  );
   const [feedback, setFeedback] = useState("");
-  const selected = demands.find((demand) => demand.id === selectedId);
+  const selected =
+    demands.find((demand) => demand.id === selectedId) ??
+    relations.find((demand) => demand.id === selectedId);
   const selectedParents = selected
     ? parentOptions.filter((parent) => parent.projectId === selected.projectId)
+    : [];
+  const selectedParent = selected?.parentWorkItemId
+    ? relations.find((item) => item.id === selected.parentWorkItemId)
+    : undefined;
+  const selectedChildren = selected
+    ? relations.filter((item) => item.parentWorkItemId === selected.id)
     : [];
   const createParents = parentOptions;
   const hasFilters = Boolean(
@@ -65,6 +79,7 @@ export function DemandsWorkspace({
     setSelectedId(null);
     setEditDemandId(null);
     setCreateOpen(false);
+    setQuickCreateParentId(null);
   }, []);
   const refresh = useCallback(() => router.refresh(), [router]);
   const dismissFeedback = useCallback(() => setFeedback(""), []);
@@ -76,6 +91,7 @@ export function DemandsWorkspace({
     setCreateOpen(false);
     setEditDemandId(edit ? id : null);
     setSelectedId(id);
+    setQuickCreateParentId(null);
   }, []);
 
   const emptyTitle = hasFilters
@@ -158,11 +174,18 @@ export function DemandsWorkspace({
           onChanged={refresh}
           onEdit={(id) => openDemand(id, true)}
           onFeedback={showFeedback}
+          onCreateChild={(id) => {
+            setCreateOpen(false);
+            setEditDemandId(null);
+            setSelectedId(id);
+            setQuickCreateParentId(id);
+          }}
           onOpen={(id) => openDemand(id)}
           projects={projectOptions}
           query={query}
           slug={slug}
           timezone={timezone}
+          selectedId={selectedId}
         />
       )}
 
@@ -171,7 +194,13 @@ export function DemandsWorkspace({
       ) : null}
 
       <DemandDrawer
-        key={`demand-${selectedId ?? "none"}-${editDemandId ?? "view"}-${selected ? "open" : "closed"}`}
+        key={
+          quickCreateParentId
+            ? `quick-${quickCreateParentId}`
+            : editDemandId
+              ? `edit-${editDemandId}`
+              : "demand-detail"
+        }
         canManage={canManage}
         onChanged={refresh}
         onClose={closeDrawer}
@@ -180,13 +209,19 @@ export function DemandsWorkspace({
           setSelectedId(demandId);
         }}
         onFeedback={showFeedback}
+        onNavigate={(id) => openDemand(id)}
         open={Boolean(selected)}
         parents={selectedParents}
         projects={projectOptions}
+        subdemands={selectedChildren}
         slug={slug}
         startInEdit={Boolean(selected && editDemandId === selected.id)}
+        startCreatingChild={Boolean(
+          selected && quickCreateParentId === selected.id,
+        )}
         timezone={timezone}
         userTimezone={userTimezone}
+        {...(selectedParent ? { parentDemand: selectedParent } : {})}
         {...(selected ? { demand: selected } : {})}
       />
       <DemandDrawer
@@ -196,7 +231,9 @@ export function DemandsWorkspace({
         onClose={closeDrawer}
         onCreated={(demandId) => {
           setCreateOpen(false);
-          setSelectedId(demandId);
+          setSelectedId(null);
+          refresh();
+          if (demandId) showFeedback("Demanda criada.");
         }}
         onFeedback={showFeedback}
         open={createOpen}

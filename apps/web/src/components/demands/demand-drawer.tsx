@@ -6,6 +6,7 @@ import { useState } from "react";
 import { DemandActionsMenu } from "@/components/demands/demand-actions-menu";
 import { DemandStatus } from "@/components/demands/demand-status";
 import { DemandTimeRecords } from "@/components/demands/demand-time-records";
+import { QuickSubdemandForm } from "@/components/demands/quick-subdemand-form";
 import { DemandForm } from "@/components/projects/new-demand-form";
 import { formatDuration } from "@/components/projects/project-format";
 import { ManualTimeEntryDialog } from "@/components/timeline/manual-time-entry-dialog";
@@ -16,6 +17,7 @@ import { formatEstimate } from "@/modules/projects/domain";
 import type {
   DemandListItem,
   DemandProjectOption,
+  DemandRelationItem,
 } from "@/modules/projects/service";
 
 export function DemandDrawer({
@@ -26,11 +28,15 @@ export function DemandDrawer({
   onChanged,
   onCreated,
   onFeedback,
+  onNavigate,
   open,
+  parentDemand,
   parents = [],
   projects,
   slug,
   startInEdit = false,
+  startCreatingChild = false,
+  subdemands = [],
   timezone,
   userTimezone,
 }: {
@@ -41,7 +47,9 @@ export function DemandDrawer({
   onCreated?: (demandId: string) => void;
   onClose: () => void;
   onFeedback?: (message: string) => void;
+  onNavigate?: (demandId: string) => void;
   open: boolean;
+  parentDemand?: DemandRelationItem;
   parents?: {
     id: string;
     title: string;
@@ -51,16 +59,17 @@ export function DemandDrawer({
   projects: DemandProjectOption[];
   slug: string;
   startInEdit?: boolean;
+  startCreatingChild?: boolean;
+  subdemands?: DemandRelationItem[];
   timezone: string;
   userTimezone?: string;
 }) {
   const [editing, setEditing] = useState(startInEdit);
-  const [creatingChild, setCreatingChild] = useState(false);
+  const [creatingChild, setCreatingChild] = useState(startCreatingChild);
   const [dirty, setDirty] = useState(false);
   const [timeEntryOpen, setTimeEntryOpen] = useState(false);
   const tracking = useOptionalActiveSession();
   const isCreate = !demand;
-  const isCreatingChild = Boolean(demand && creatingChild);
   const timeEntryTimezone = userTimezone ?? timezone;
   const sessionOnDemand =
     demand && tracking?.session?.workItemId === demand.id
@@ -77,6 +86,7 @@ export function DemandDrawer({
   const requestClose = () => {
     if (dirty && !window.confirm("Descartar alterações não salvas?")) return;
     setDirty(false);
+    setEditing(false);
     setTimeEntryOpen(false);
     setCreatingChild(false);
     onClose();
@@ -85,13 +95,17 @@ export function DemandDrawer({
     setDirty(false);
     setEditing(true);
   };
-  const title = isCreatingChild
-    ? "Nova subdemanda"
-    : isCreate
-      ? "Nova demanda"
-      : editing
-        ? "Editar demanda"
-        : demand.title;
+  const navigateTo = (demandId: string) => {
+    setCreatingChild(false);
+    setDirty(false);
+    setEditing(false);
+    onNavigate?.(demandId);
+  };
+  const title = isCreate
+    ? "Nova demanda"
+    : editing
+      ? "Editar demanda"
+      : demand.title;
   const projectId = initialProjectId ?? demand?.projectId;
   const formProjects = projectId
     ? projects.filter((project) => project.id === projectId)
@@ -104,20 +118,8 @@ export function DemandDrawer({
           ? { eyebrow: demand.externalIdentifier }
           : {})}
         headerActions={
-          !isCreate && !isCreatingChild && !editing && demand ? (
+          !isCreate && !editing && demand ? (
             <>
-              {canManage && demand.source === "MANUAL" ? (
-                <button
-                  className="button button--secondary button--sm"
-                  onClick={() => {
-                    setDirty(false);
-                    setCreatingChild(true);
-                  }}
-                  type="button"
-                >
-                  + Subdemanda
-                </button>
-              ) : null}
               {canManage && demand.source === "MANUAL" ? (
                 <button
                   className="button button--ghost button--sm"
@@ -145,14 +147,12 @@ export function DemandDrawer({
         open={open}
         title={title}
       >
-        {isCreate || isCreatingChild || editing ? (
+        {isCreate || editing ? (
           <>
             <p className="drawer__intro">
-              {isCreatingChild
-                ? "Crie uma demanda filha mantendo este contexto."
-                : isCreate
-                  ? "Crie uma demanda para registrar o tempo no projeto certo."
-                  : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
+              {isCreate
+                ? "Crie uma demanda para registrar o tempo no projeto certo."
+                : "Atualize os detalhes da demanda sem sair do contexto do trabalho."}
             </p>
             <DemandForm
               drawer
@@ -161,7 +161,7 @@ export function DemandDrawer({
               onSuccess={(createdDemandId) => {
                 setDirty(false);
                 setEditing(false);
-                if (isCreate || isCreatingChild) {
+                if (isCreate) {
                   onClose();
                   if (createdDemandId) onCreated?.(createdDemandId);
                 }
@@ -169,15 +169,12 @@ export function DemandDrawer({
               parents={parents}
               projects={formProjects}
               slug={slug}
-              {...(isCreatingChild && demand
-                ? { initialParentId: demand.id }
-                : {})}
               {...(editing && demand ? { item: demand } : {})}
               {...(projectId ? { projectId } : {})}
             />
           </>
         ) : (
-          <div className="demand-drawer__content">
+          <div className="demand-drawer__content" key={demand.id}>
             <div className="demand-drawer__topline">
               <Link href={`/w/${slug}/projects/${demand.projectId}`}>
                 {demand.projectName}
@@ -185,6 +182,23 @@ export function DemandDrawer({
               <span aria-hidden="true">·</span>
               <DemandStatus status={demand.status} />
             </div>
+            {parentDemand ? (
+              <div className="demand-drawer__parent-context">
+                <span>Demanda pai</span>
+                <button
+                  onClick={() => navigateTo(parentDemand.id)}
+                  type="button"
+                >
+                  <span aria-hidden="true">↑</span>
+                  <span>
+                    {parentDemand.externalIdentifier
+                      ? `${parentDemand.externalIdentifier} · `
+                      : ""}
+                    {parentDemand.title}
+                  </span>
+                </button>
+              </div>
+            ) : null}
             {sessionOnDemand ? (
               <p className="demand-drawer__session">
                 <span aria-hidden="true" className="timer-status-dot" />
@@ -228,11 +242,70 @@ export function DemandDrawer({
                 </dd>
               </div>
             </dl>
-            {demand.parentWorkItemId ? (
-              <p className="drawer-meta">
-                Esta demanda faz parte de uma demanda principal.
-              </p>
-            ) : null}
+            <section className="demand-drawer__section demand-drawer__subdemands">
+              <div className="demand-drawer__section-heading">
+                <h3>Subdemandas</h3>
+                <span title="Subdemandas concluídas">
+                  {subdemands.length
+                    ? `${subdemands.filter((item) => item.status === "DONE").length}/${subdemands.length}`
+                    : "0"}
+                </span>
+              </div>
+              {subdemands.length ? (
+                <ul className="demand-drawer__subdemand-list">
+                  {subdemands.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => navigateTo(item.id)}
+                        title={item.title}
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`demand-drawer__subdemand-mark demand-drawer__subdemand-mark--${item.status.toLowerCase()}`}
+                        >
+                          {item.status === "DONE" ? "✓" : ""}
+                        </span>
+                        <span className="demand-drawer__subdemand-title">
+                          {item.externalIdentifier ? (
+                            <small>{item.externalIdentifier}</small>
+                          ) : null}
+                          {item.title}
+                        </span>
+                        <span className="demand-drawer__subdemand-estimate">
+                          {item.estimatedMinutes
+                            ? formatEstimate(item.estimatedMinutes)
+                            : "—"}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="drawer-empty-copy">Nenhuma subdemanda.</p>
+              )}
+              {canManage && demand.source === "MANUAL" ? (
+                creatingChild ? (
+                  <QuickSubdemandForm
+                    onCancel={() => setCreatingChild(false)}
+                    onCreated={() => {
+                      onFeedback?.("Subdemanda criada.");
+                    }}
+                    parentId={demand.id}
+                    projectId={demand.projectId}
+                    slug={slug}
+                  />
+                ) : (
+                  <button
+                    className="demand-drawer__add-subdemand"
+                    onClick={() => setCreatingChild(true)}
+                    type="button"
+                  >
+                    + Adicionar subdemanda
+                  </button>
+                )
+              ) : null}
+            </section>
             {demand.description ? (
               <section className="demand-drawer__section">
                 <h3>Descrição</h3>

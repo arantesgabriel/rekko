@@ -23,9 +23,10 @@ test("unifies the operational home and manages demands", async ({
   page,
 }, testInfo) => {
   test.setTimeout(60_000);
-  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  const stamp = `${testInfo.project.name}-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
   const projectName = `Home Project ${stamp}`;
   const demandName = `Provider Analysis ${stamp}`;
+  const childName = `Map provider contract ${stamp}`;
 
   await signUp(page, stamp);
   const workspacePath = new URL(page.url()).pathname;
@@ -39,14 +40,6 @@ test("unifies the operational home and manages demands", async ({
   await expect(
     page.getByRole("link", { name: "Timeline", exact: true }),
   ).toHaveCount(0);
-
-  await page.goto(`${workspacePath}/timeline`);
-  await expect(page).toHaveURL(new RegExp(`${workspacePath}$`));
-
-  await page.getByRole("button", { name: "Dia anterior" }).click();
-  await expect(page).toHaveURL(/date=\d{4}-\d{2}-\d{2}/);
-  await page.getByRole("button", { name: "Hoje", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${workspacePath}$`));
 
   await page.goto(`${workspacePath}/projects`);
   await page
@@ -105,30 +98,19 @@ test("unifies the operational home and manages demands", async ({
     exact: true,
   });
   const expectedControlHeight =
-    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "36px";
+    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "38px";
   await expect
     .poll(() =>
       createDemand.evaluate((button) => getComputedStyle(button).height),
     )
     .toBe(expectedControlHeight);
   if ((page.viewportSize()?.width ?? 1280) >= 768) {
-    const rightBefore = await createDemand.evaluate(
-      (button) => button.getBoundingClientRect().right,
-    );
-    await createDemand.hover();
     await expect
       .poll(() =>
         createDemand.evaluate((button) => button.getBoundingClientRect().width),
       )
       .toBeGreaterThan(100);
-    const rightAfter = await createDemand.evaluate(
-      (button) => button.getBoundingClientRect().right,
-    );
-    const labelFontSize = await createDemand
-      .locator(".demands-create-button__label")
-      .evaluate((label) => getComputedStyle(label).fontSize);
-    expect(Math.abs(rightAfter - rightBefore)).toBeLessThanOrEqual(1);
-    expect(labelFontSize).toBe("12px");
+    await expect(createDemand).toContainText("Nova demanda");
     await expect(
       page.locator(".page-header").getByRole("link", { name: "Projetos" }),
     ).toHaveCount(0);
@@ -147,38 +129,73 @@ test("unifies the operational home and manages demands", async ({
   await expect(
     page.locator(".demand-row").getByRole("link", { name: projectName }),
   ).toBeVisible();
-  await page.getByRole("button", { name: demandName, exact: true }).click();
+  await page
+    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: demandName, exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Fechar painel" }).click();
+  await page.getByRole("button", { name: "+ Adicionar subdemanda" }).click();
+  await page.getByLabel("Título da nova subdemanda").fill(childName);
+  await page.getByLabel("Título da nova subdemanda").press("Enter");
+  await expect(page.getByText("Subdemanda criada.")).toBeVisible();
+  await page
+    .locator(".demand-drawer__subdemand-list")
+    .getByRole("button", { name: new RegExp(childName) })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: childName, exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Demanda pai", { exact: true })).toBeVisible();
+  await page
+    .locator(".demand-drawer__parent-context")
+    .getByRole("button", { name: demandName, exact: true })
+    .click();
+  await page
+    .locator(".drawer__header")
+    .getByRole("button", { name: "Fechar painel" })
+    .click();
+
+  const collapse = page.getByRole("button", {
+    name: new RegExp(`Recolher 1 subdemanda de ${demandName}`),
+  });
+  await expect(collapse).toHaveAttribute("aria-expanded", "true");
+  await collapse.click();
+  await expect(page.getByText(childName, { exact: true })).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: new RegExp(`Mostrar 1 subdemanda de ${demandName}`),
+    })
+    .click();
+  await expect(page.getByText(childName, { exact: true })).toBeVisible();
 
   const search = page.getByLabel("Buscar demandas");
   await search.fill("Provider Analysis");
   await expect(page).toHaveURL(/q=Provider\+Analysis/);
   await expect(page.getByText(demandName, { exact: true })).toBeVisible();
+  await search.fill("Map provider contract");
+  await expect(page.getByText(childName, { exact: true })).toBeVisible();
+  await expect(page.locator(".demand-row__ancestor-context")).toContainText(
+    demandName,
+  );
   await page.getByRole("button", { name: "Limpar filtros" }).click();
 
-  await page.goto(workspacePath);
-  await page.getByRole("button", { name: "Adicionar tempo" }).first().click();
+  await page
+    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
+    .click();
+  await page.getByRole("button", { name: "Adicionar tempo" }).click();
   const drawerOverflow = await page
     .locator(".time-drawer")
     .evaluate((drawer) => drawer.scrollWidth - drawer.clientWidth);
   expect(drawerOverflow).toBeLessThanOrEqual(0);
   await page.getByLabel("Início").fill("08:00");
   await page.getByLabel("Fim").fill("09:00");
-  await page
-    .locator('select[name="projectId"]')
-    .selectOption({ label: projectName });
-  await page
-    .locator('select[name="workItemId"]')
-    .selectOption({ label: demandName });
   await page.getByRole("button", { name: "Salvar tempo" }).click();
-  await expect(
-    page.locator(".home-timeline-block").filter({ hasText: demandName }),
-  ).toBeVisible();
+  await page
+    .locator(".drawer__header")
+    .getByRole("button", { name: "Fechar painel" })
+    .click();
 
-  await page.goto(`${workspacePath}/work`);
   await expect(
     page
       .locator(".demand-row")
@@ -197,6 +214,9 @@ test("unifies the operational home and manages demands", async ({
   await accountMenu.locator("summary").click();
   await accountMenu.getByRole("button", { name: "Usar tema escuro" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
+  if ((await accountMenu.getAttribute("open")) !== null) {
+    await accountMenu.locator("summary").click();
+  }
   await expect
     .poll(() =>
       page.evaluate(
@@ -210,7 +230,7 @@ test("keeps time record actions accessible with a long demand title", async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
-  const stamp = `${testInfo.project.name}-${Date.now()}`;
+  const stamp = `${testInfo.project.name}-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
   const projectName = `Drawer Project ${stamp}`;
   const demandName = `AC-956: feat/sumsub-validation: consolidar Test Strategy da integração ${stamp}`;
 

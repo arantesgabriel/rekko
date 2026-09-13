@@ -20,11 +20,13 @@ export function DemandList({
   counts,
   demands,
   onChanged,
+  onCreateChild,
   onEdit,
   onFeedback,
   onOpen,
   projects,
   query,
+  selectedId,
   slug,
   timezone,
 }: {
@@ -32,11 +34,13 @@ export function DemandList({
   context: "workspace" | "project";
   demands: DemandListItem[];
   onChanged?: () => void;
+  onCreateChild?: (demandId: string) => void;
   onEdit?: (demandId: string) => void;
   onFeedback?: (message: string) => void;
   onOpen: (demandId: string) => void;
   projects?: DemandProjectOption[];
   query?: DemandListQuery;
+  selectedId?: string | null;
   counts?: { all: number; active: number; done: number };
   slug: string;
   timezone: string;
@@ -142,13 +146,16 @@ export function DemandList({
             demand={demand}
             key={demand.id}
             onOpen={onOpen}
+            selected={selectedId === demand.id}
             slug={slug}
             timezone={timezone}
+            level={demand.level}
+            treeLines={demand.treeLines}
             {...(demand.childCount
               ? {
                   childCount: demand.childCount,
+                  completedChildCount: demand.completedChildCount,
                   expanded: expandedIds.has(demand.id),
-                  level: demand.level,
                   onToggle: () =>
                     setCollapsedIds((current) => {
                       const next = new Set(current);
@@ -157,12 +164,18 @@ export function DemandList({
                       return next;
                     }),
                 }
-              : { level: demand.level })}
+              : {})}
             {...(canManage !== undefined ? { canManage } : {})}
             {...(onChanged ? { onChanged } : {})}
+            {...(onCreateChild
+              ? { onCreateChild: () => onCreateChild(demand.id) }
+              : {})}
             {...(onEdit ? { onEdit: () => onEdit(demand.id) } : {})}
             {...(onFeedback ? { onFeedback } : {})}
             {...(projects ? { projects } : {})}
+            showChildProgress={Boolean(
+              !query?.search && (!query || query.status === "ALL"),
+            )}
           />
         ))}
       </div>
