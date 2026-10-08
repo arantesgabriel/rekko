@@ -17,6 +17,7 @@ import type {
 export function DemandActionsMenu({
   canManage,
   demand,
+  onCreateChild,
   onEdit,
   onChanged,
   onFeedback,
@@ -26,6 +27,7 @@ export function DemandActionsMenu({
   canManage: boolean;
   demand: DemandListItem;
   onChanged?: () => void;
+  onCreateChild?: () => void;
   onEdit?: () => void;
   onFeedback?: (message: string) => void;
   projects: DemandProjectOption[];
@@ -132,6 +134,21 @@ export function DemandActionsMenu({
           >
             Editar demanda
           </button>
+          {onCreateChild ? (
+            <button
+              className="demand-actions-menu__item"
+              disabled={readOnly || pending}
+              onClick={() => {
+                setOpen(false);
+                onCreateChild();
+              }}
+              role="menuitem"
+              title={readOnly ? "Atualizada pelo Linear" : undefined}
+              type="button"
+            >
+              Adicionar demanda filha
+            </button>
+          ) : null}
           <button
             className="demand-actions-menu__item"
             disabled={readOnly || pending}

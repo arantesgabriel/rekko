@@ -10,12 +10,13 @@ import type {
   DemandProjectOption,
 } from "@/modules/projects/service";
 import {
-  demandTreeParentIds,
-  flattenDemandTree,
+  flattenVisibleDemandTree,
+  visibleDemandParentIds,
 } from "@/modules/projects/demand-tree";
 
 export function DemandList({
   canManage,
+  catalog,
   context,
   counts,
   demands,
@@ -31,6 +32,7 @@ export function DemandList({
   timezone,
 }: {
   canManage?: boolean;
+  catalog?: DemandListItem[];
   context: "workspace" | "project";
   demands: DemandListItem[];
   onChanged?: () => void;
@@ -45,15 +47,34 @@ export function DemandList({
   slug: string;
   timezone: string;
 }) {
-  const parentIds = useMemo(() => demandTreeParentIds(demands), [demands]);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(
-    () => new Set(),
+  const parentIds = useMemo(
+    () => visibleDemandParentIds(demands, catalog),
+    [catalog, demands],
+  );
+  const filterKey = `${query?.search ?? ""}:${query?.status ?? "ALL"}:${query?.projectId ?? ""}`;
+  const [collapseState, setCollapseState] = useState({
+    key: filterKey,
+    ids: new Set<string>(),
+  });
+  const collapsedIds = useMemo(
+    () =>
+      collapseState.key === filterKey ? collapseState.ids : new Set<string>(),
+    [collapseState, filterKey],
   );
   const expandedIds = useMemo(
     () => new Set([...parentIds].filter((id) => !collapsedIds.has(id))),
     [collapsedIds, parentIds],
   );
-  const treeDemands = flattenDemandTree(demands, expandedIds);
+  const treeDemands = useMemo(
+    () =>
+      flattenVisibleDemandTree({
+        ...(catalog ? { catalog } : {}),
+        ...(query ? { dir: query.dir, sort: query.sort } : {}),
+        expandedIds,
+        matches: demands,
+      }),
+    [catalog, demands, expandedIds, query],
+  );
 
   return (
     <section
@@ -149,19 +170,17 @@ export function DemandList({
             selected={selectedId === demand.id}
             slug={slug}
             timezone={timezone}
-            level={demand.level}
-            treeLines={demand.treeLines}
-            {...(demand.childCount
+            {...(demand.hasChildren
               ? {
-                  childCount: demand.childCount,
-                  completedChildCount: demand.completedChildCount,
-                  expanded: expandedIds.has(demand.id),
                   onToggle: () =>
-                    setCollapsedIds((current) => {
-                      const next = new Set(current);
-                      if (next.has(demand.id)) next.delete(demand.id);
-                      else next.add(demand.id);
-                      return next;
+                    setCollapseState((current) => {
+                      const ids =
+                        current.key === filterKey
+                          ? new Set(current.ids)
+                          : new Set<string>();
+                      if (ids.has(demand.id)) ids.delete(demand.id);
+                      else ids.add(demand.id);
+                      return { ids, key: filterKey };
                     }),
                 }
               : {})}
@@ -173,9 +192,6 @@ export function DemandList({
             {...(onEdit ? { onEdit: () => onEdit(demand.id) } : {})}
             {...(onFeedback ? { onFeedback } : {})}
             {...(projects ? { projects } : {})}
-            showChildProgress={Boolean(
-              !query?.search && (!query || query.status === "ALL"),
-            )}
           />
         ))}
       </div>

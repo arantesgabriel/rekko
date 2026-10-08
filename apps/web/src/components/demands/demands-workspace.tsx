@@ -94,14 +94,18 @@ export function DemandsWorkspace({
     setQuickCreateParentId(null);
   }, []);
 
+  const searchOnly =
+    Boolean(query.search) && query.status === "ALL" && !query.projectId;
   const emptyTitle = hasFilters
-    ? "Nenhuma demanda encontrada."
-    : "Nenhuma demanda ainda.";
+    ? searchOnly
+      ? `Nenhuma demanda encontrada para “${query.search.trim()}”.`
+      : "Nenhuma demanda corresponde aos filtros aplicados."
+    : "Nenhuma demanda por aqui ainda.";
   const emptyDescription = hasFilters
-    ? query.search && query.status === "ALL" && !query.projectId
-      ? "Ajuste os filtros ou crie uma nova demanda."
-      : "Nenhuma demanda corresponde aos filtros selecionados."
-    : "Crie sua primeira demanda para começar a registrar seu tempo.";
+    ? searchOnly
+      ? "Tente outro termo ou limpe a busca para ver a árvore completa."
+      : "Ajuste os filtros ou limpe-os para ver outras demandas."
+    : "Crie sua primeira demanda para começar a organizar e registrar seu tempo.";
 
   return (
     <div className="demands-page">
@@ -135,39 +139,35 @@ export function DemandsWorkspace({
       </PageToolbar>
 
       {demands.length === 0 ? (
-        <>
-          {hasFilters ? (
-            <DemandList
-              canManage={canManage}
-              context="workspace"
-              counts={counts}
-              demands={[]}
-              onOpen={() => undefined}
-              projects={projectOptions}
-              query={query}
-              slug={slug}
-              timezone={timezone}
-            />
-          ) : null}
-          <EmptyState
-            actions={
-              hasFilters || !canManage ? null : (
-                <button
-                  className="button button--primary"
-                  onClick={() => setCreateOpen(true)}
-                  type="button"
-                >
-                  + Nova demanda
-                </button>
-              )
-            }
-            description={emptyDescription}
-            title={emptyTitle}
-          />
-        </>
+        <EmptyState
+          actions={
+            hasFilters ? (
+              <button
+                className="button button--ghost"
+                onClick={() =>
+                  router.replace(`/w/${slug}/work`, { scroll: false })
+                }
+                type="button"
+              >
+                Limpar filtros
+              </button>
+            ) : canManage ? (
+              <button
+                className="button button--primary"
+                onClick={() => setCreateOpen(true)}
+                type="button"
+              >
+                + Nova demanda
+              </button>
+            ) : null
+          }
+          description={emptyDescription}
+          title={emptyTitle}
+        />
       ) : (
         <DemandList
           canManage={canManage}
+          catalog={relations}
           context="workspace"
           counts={counts}
           demands={demands}

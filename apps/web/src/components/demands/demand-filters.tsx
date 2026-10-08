@@ -14,22 +14,28 @@ import {
   type DemandSortKey,
 } from "@/modules/projects/demand-sort";
 
-const mobileSortOptions: {
+const sortOptions: {
   label: string;
   sort: DemandSortKey;
   dir: DemandSortDir;
 }[] = [
-  { label: "Atualizado: recente", sort: "updated", dir: "desc" },
-  { label: "Atualizado: antigo", sort: "updated", dir: "asc" },
-  { label: "Demanda: A–Z", sort: "title", dir: "asc" },
-  { label: "Demanda: Z–A", sort: "title", dir: "desc" },
-  { label: "Projeto: A–Z", sort: "project", dir: "asc" },
-  { label: "Projeto: Z–A", sort: "project", dir: "desc" },
-  { label: "Registrado: mais tempo", sort: "tracked", dir: "desc" },
-  { label: "Registrado: menos tempo", sort: "tracked", dir: "asc" },
-  { label: "Estimativa: maior", sort: "estimate", dir: "desc" },
-  { label: "Estimativa: menor", sort: "estimate", dir: "asc" },
+  { label: "Atualizado", sort: "updated", dir: "desc" },
+  { label: "Mais antigo", sort: "updated", dir: "asc" },
+  { label: "Demanda A–Z", sort: "title", dir: "asc" },
+  { label: "Demanda Z–A", sort: "title", dir: "desc" },
+  { label: "Projeto A–Z", sort: "project", dir: "asc" },
+  { label: "Projeto Z–A", sort: "project", dir: "desc" },
+  { label: "Mais tempo", sort: "tracked", dir: "desc" },
+  { label: "Menos tempo", sort: "tracked", dir: "asc" },
+  { label: "Maior estimativa", sort: "estimate", dir: "desc" },
+  { label: "Menor estimativa", sort: "estimate", dir: "asc" },
 ];
+
+const statusLabels: Record<DemandStatusFilter, string> = {
+  ALL: "Todas",
+  ACTIVE: "Ativas",
+  DONE: "Concluídas",
+};
 
 export function DemandFilters({
   counts,
@@ -55,9 +61,8 @@ export function DemandFilters({
   const [projectId, setProjectId] = useState(initialProjectId);
   const [sort, setSort] = useState<DemandSortKey>(initialSort);
   const [dir, setDir] = useState<DemandSortDir>(initialDir);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const filtersRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   function currentQuery(next: Partial<DemandListQuery> = {}): DemandListQuery {
     return {
@@ -86,62 +91,62 @@ export function DemandFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  useEffect(() => {
-    if (!filtersOpen) return;
-    function close(event: PointerEvent) {
-      if (!filtersRef.current?.contains(event.target as Node)) {
-        setFiltersOpen(false);
-      }
-    }
-    function closeWithKeyboard(event: KeyboardEvent) {
-      if (event.key === "Escape") setFiltersOpen(false);
-    }
-    document.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", closeWithKeyboard);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", closeWithKeyboard);
-    };
-  }, [filtersOpen]);
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const hasSearch = Boolean(query.trim());
+  const hasProject = Boolean(projectId);
+  const hasStatus = status !== "ALL";
+  const hasSort =
+    sort !== defaultDemandSort.sort || dir !== defaultDemandSort.dir;
+  const hasFilters = hasSearch || hasProject || hasStatus || hasSort;
+  const sortValue = `${sort}:${dir}`;
 
-  const hasFilters = Boolean(
-    query ||
-    projectId ||
-    status !== "ALL" ||
-    sort !== defaultDemandSort.sort ||
-    dir !== defaultDemandSort.dir,
-  );
-  const mobileSortValue = `${sort}:${dir}`;
+  function clearFilters() {
+    setQuery("");
+    setStatus("ALL");
+    setProjectId("");
+    setSort(defaultDemandSort.sort);
+    setDir(defaultDemandSort.dir);
+    updateRoute({
+      search: "",
+      status: "ALL",
+      projectId: "",
+      sort: defaultDemandSort.sort,
+      dir: defaultDemandSort.dir,
+    });
+    searchRef.current?.focus();
+  }
+
   return (
     <div className="demand-filters" aria-busy={pending}>
-      <label className="demand-search">
-        <span className="sr-only">Buscar demandas</span>
-        <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
-          <circle
-            cx="8.5"
-            cy="8.5"
-            r="5"
-            stroke="currentColor"
-            strokeWidth="1.5"
+      <div className="demand-filters__toolbar">
+        <label className="demand-search">
+          <span className="sr-only">Buscar demandas</span>
+          <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+            <circle
+              cx="8.5"
+              cy="8.5"
+              r="5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="m12.5 12.5 4 4"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <input
+            aria-label="Buscar demandas"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar demandas…"
+            ref={searchRef}
+            type="search"
+            value={query}
           />
-          <path
-            d="m12.5 12.5 4 4"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="1.5"
-          />
-        </svg>
-        <input
-          aria-label="Buscar demandas"
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar demandas…"
-          type="search"
-          value={query}
-        />
-      </label>
-      <div className="demand-filters__controls">
-        <label className="demand-project-filter">
-          <span className="demand-project-filter__prefix">Projeto:</span>
+        </label>
+        <label className="demand-toolbar-control">
+          <span className="sr-only">Filtrar por projeto</span>
           <select
             aria-label="Filtrar por projeto"
             onChange={(event) => {
@@ -150,7 +155,7 @@ export function DemandFilters({
             }}
             value={projectId}
           >
-            <option value="">Todos os projetos</option>
+            <option value="">Projeto</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
@@ -158,98 +163,101 @@ export function DemandFilters({
             ))}
           </select>
         </label>
-        <div className="demand-filter-menu" ref={filtersRef}>
-          <button
-            aria-expanded={filtersOpen}
-            className="button button--secondary button--sm demand-filter-menu__trigger"
-            onClick={() => setFiltersOpen((current) => !current)}
-            type="button"
-          >
-            Filtros
-            {status !== "ALL" ? <span aria-hidden="true">1</span> : null}
-          </button>
-          {filtersOpen ? (
-            <div className="demand-filter-menu__panel">
-              <span className="demand-filter-menu__label">Status</span>
-              <div
-                aria-label="Filtrar demandas por status"
-                className="demand-status-tabs"
-                role="tablist"
-              >
-                {(
-                  [
-                    ["ALL", "Todas", counts.all],
-                    ["ACTIVE", "Ativas", counts.active],
-                    ["DONE", "Concluídas", counts.done],
-                  ] as const
-                ).map(([value, label, count]) => (
-                  <button
-                    aria-selected={status === value}
-                    className={status === value ? "is-selected" : undefined}
-                    key={value}
-                    onClick={() => {
-                      setStatus(value);
-                      updateRoute({ status: value });
-                    }}
-                    role="tab"
-                    type="button"
-                  >
-                    <span>{label}</span>
-                    <span>{count}</span>
-                  </button>
-                ))}
-              </div>
-              <label className="demand-sort-filter">
-                <span className="demand-filter-menu__label">Ordenação</span>
-                <select
-                  aria-label="Ordenar demandas"
-                  onChange={(event) => {
-                    const [nextSort, nextDir] = event.target.value.split(
-                      ":",
-                    ) as [DemandSortKey, DemandSortDir];
-                    setSort(nextSort);
-                    setDir(nextDir);
-                    updateRoute({ sort: nextSort, dir: nextDir });
-                  }}
-                  value={mobileSortValue}
-                >
-                  {mobileSortOptions.map((option) => (
-                    <option
-                      key={`${option.sort}:${option.dir}`}
-                      value={`${option.sort}:${option.dir}`}
-                    >
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : null}
-        </div>
-        {hasFilters ? (
-          <button
-            aria-label="Limpar filtros"
-            className="button button--ghost button--sm demand-filters__clear"
-            onClick={() => {
-              setQuery("");
-              setStatus("ALL");
-              setProjectId("");
-              setSort(defaultDemandSort.sort);
-              setDir(defaultDemandSort.dir);
-              updateRoute({
-                search: "",
-                status: "ALL",
-                projectId: "",
-                sort: defaultDemandSort.sort,
-                dir: defaultDemandSort.dir,
-              });
+        <label className="demand-toolbar-control">
+          <span className="sr-only">Filtrar por status</span>
+          <select
+            aria-label="Filtrar por status"
+            onChange={(event) => {
+              const next = event.target.value as DemandStatusFilter;
+              setStatus(next);
+              updateRoute({ status: next });
             }}
+            value={status}
+          >
+            <option value="ALL">Status</option>
+            <option value="ACTIVE">{`Ativas (${counts.active})`}</option>
+            <option value="DONE">{`Concluídas (${counts.done})`}</option>
+          </select>
+        </label>
+        <label className="demand-toolbar-control demand-toolbar-control--sort">
+          <span className="sr-only">Ordenar demandas</span>
+          <select
+            aria-label="Ordenar demandas"
+            onChange={(event) => {
+              const [nextSort, nextDir] = event.target.value.split(":") as [
+                DemandSortKey,
+                DemandSortDir,
+              ];
+              setSort(nextSort);
+              setDir(nextDir);
+              updateRoute({ sort: nextSort, dir: nextDir });
+            }}
+            value={sortValue}
+          >
+            {sortOptions.map((option) => (
+              <option
+                key={`${option.sort}:${option.dir}`}
+                value={`${option.sort}:${option.dir}`}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {hasFilters ? (
+        <div className="demand-filter-chips">
+          {hasSearch ? (
+            <button
+              className="demand-filter-chip"
+              onClick={() => {
+                setQuery("");
+                updateRoute({ search: "" });
+              }}
+              type="button"
+            >
+              <span>{query.trim()}</span>
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">Remover busca</span>
+            </button>
+          ) : null}
+          {hasProject ? (
+            <button
+              className="demand-filter-chip"
+              onClick={() => {
+                setProjectId("");
+                updateRoute({ projectId: "" });
+              }}
+              type="button"
+            >
+              <span>Projeto: {selectedProject?.name ?? "selecionado"}</span>
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">Remover filtro de projeto</span>
+            </button>
+          ) : null}
+          {hasStatus ? (
+            <button
+              className="demand-filter-chip"
+              onClick={() => {
+                setStatus("ALL");
+                updateRoute({ status: "ALL" });
+              }}
+              type="button"
+            >
+              <span>Status: {statusLabels[status]}</span>
+              <span aria-hidden="true">×</span>
+              <span className="sr-only">Remover filtro de status</span>
+            </button>
+          ) : null}
+          <button
+            className="demand-filters__clear"
+            onClick={clearFilters}
             type="button"
           >
-            Limpar
+            Limpar filtros
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

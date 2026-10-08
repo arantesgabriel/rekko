@@ -463,9 +463,7 @@ test("Owner creates a manual Project, Work Items, hierarchy and filters", async 
     }),
   ).toContainText("Concluída");
   await expect(page.getByRole("status")).toContainText("Demanda concluída.");
-  await page
-    .getByPlaceholder("Buscar por nome, código ou projeto…")
-    .fill("Google");
+  await page.getByPlaceholder("Buscar demandas…").fill("Google");
   await expect(page).toHaveURL(/q=Google/);
   await expect(rowNamed("Google login")).toBeVisible();
   await expectNoHorizontalOverflow(page);

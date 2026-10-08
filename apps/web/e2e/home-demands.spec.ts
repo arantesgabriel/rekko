@@ -98,19 +98,13 @@ test("unifies the operational home and manages demands", async ({
     exact: true,
   });
   const expectedControlHeight =
-    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "38px";
+    (page.viewportSize()?.width ?? 1280) < 768 ? "44px" : "36px";
   await expect
     .poll(() =>
       createDemand.evaluate((button) => getComputedStyle(button).height),
     )
     .toBe(expectedControlHeight);
   if ((page.viewportSize()?.width ?? 1280) >= 768) {
-    await expect
-      .poll(() =>
-        createDemand.evaluate((button) => button.getBoundingClientRect().width),
-      )
-      .toBeGreaterThan(100);
-    await expect(createDemand).toContainText("Nova demanda");
     await expect(
       page.locator(".page-header").getByRole("link", { name: "Projetos" }),
     ).toHaveCount(0);
@@ -129,9 +123,7 @@ test("unifies the operational home and manages demands", async ({
   await expect(
     page.locator(".demand-row").getByRole("link", { name: projectName }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
-    .click();
+  await page.getByRole("button", { name: demandName, exact: true }).click();
   await expect(
     page.getByRole("heading", { name: demandName, exact: true }),
   ).toBeVisible();
@@ -175,14 +167,12 @@ test("unifies the operational home and manages demands", async ({
   await expect(page.getByText(demandName, { exact: true })).toBeVisible();
   await search.fill("Map provider contract");
   await expect(page.getByText(childName, { exact: true })).toBeVisible();
-  await expect(page.locator(".demand-row__ancestor-context")).toContainText(
-    demandName,
-  );
+  await expect(
+    page.getByRole("button", { name: demandName, exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros" }).click();
 
-  await page
-    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
-    .click();
+  await page.getByRole("button", { name: demandName, exact: true }).click();
   await page.getByRole("button", { name: "Adicionar tempo" }).click();
   const drawerOverflow = await page
     .locator(".time-drawer")
@@ -257,9 +247,7 @@ test("keeps time record actions accessible with a long demand title", async ({
     .getByRole("button", { name: "Criar demanda", exact: true })
     .click();
 
-  await page
-    .getByRole("button", { name: `Abrir ${demandName}`, exact: true })
-    .click();
+  await page.getByRole("button", { name: demandName, exact: true }).click();
   const demandDrawer = page.locator(".drawer");
   expect(
     await demandDrawer.evaluate(
